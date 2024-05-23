@@ -1,0 +1,31 @@
+package ru.beeline.fdmproducts.controller;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
+
+import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
+
+import ru.beeline.fdmproducts.service.ProductService;
+import ru.beeline.fdmproducts.domain.Product;
+
+@CrossOrigin(origins = "*", allowedHeaders = "*")
+@RestController
+@RequestMapping("/api/v1")
+@Api(value = "Product API", tags = "product")
+public class ProductController {
+    @Autowired
+    private ProductService productService;
+
+    @GetMapping("/user/product")
+    @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
+    public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
+        Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    }
+}

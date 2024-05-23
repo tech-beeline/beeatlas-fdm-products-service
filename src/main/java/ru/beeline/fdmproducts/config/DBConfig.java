@@ -20,7 +20,7 @@ import javax.sql.DataSource;
 @EnableTransactionManagement
 @EnableJpaRepositories(
         entityManagerFactoryRef = "entityManagerFactory",
-        basePackages = {"ru.beeline.fdmproducts"}
+        basePackages = {"ru.beeline.fdmproducts.repository"}
 )
 public class DBConfig {
 

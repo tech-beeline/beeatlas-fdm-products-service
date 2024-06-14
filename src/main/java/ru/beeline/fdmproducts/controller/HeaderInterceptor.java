@@ -24,6 +24,9 @@ public class HeaderInterceptor implements HandlerInterceptor {
 
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         try {
+            if (request.getRequestURI().contains("/tech")) {
+                return true;
+            }
             Map<String, Object> headers = new HashMap<>();
             Enumeration<String> headerNames = request.getHeaderNames();
             while (headerNames.hasMoreElements()) {

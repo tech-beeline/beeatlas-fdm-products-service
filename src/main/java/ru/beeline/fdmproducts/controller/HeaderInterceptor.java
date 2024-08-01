@@ -24,12 +24,15 @@ public class HeaderInterceptor implements HandlerInterceptor {
 
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         try {
+            if (request.getRequestURI().contains("/tech")) {
+                return true;
+            }
             Map<String, Object> headers = new HashMap<>();
             Enumeration<String> headerNames = request.getHeaderNames();
             while (headerNames.hasMoreElements()) {
                 String headerName = headerNames.nextElement();
                 String headerValue = request.getHeader(headerName);
-                System.out.println(headerName + ": " + headerValue);
+                logger.info(headerName + ": " + headerValue);
             }
             logger.info(USER_ID_HEADER + request.getHeader(USER_ID_HEADER));
             headers.put(USER_ID_HEADER, request.getHeader(USER_ID_HEADER).toString());
@@ -43,7 +46,6 @@ public class HeaderInterceptor implements HandlerInterceptor {
             logger.info("Set headers complete");
             return true;
         } catch (Exception e) {
-            logger.info("403 Forbidden.");
             throw new ForbiddenException("403 Forbidden.");
         }
     }

@@ -11,6 +11,7 @@ import java.util.List;
 
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
 
+import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.service.ProductService;
 import ru.beeline.fdmproducts.domain.Product;
 
@@ -27,5 +28,11 @@ public class ProductController {
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    }
+
+    @PutMapping("/user/product")
+    @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
+    public ResponseEntity putProducts(ProductPutDto productPutDto) {
+        return ResponseEntity.status(HttpStatus.OK).body("");
     }
 }

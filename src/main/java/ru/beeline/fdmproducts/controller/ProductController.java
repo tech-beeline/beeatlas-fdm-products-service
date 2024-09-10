@@ -34,8 +34,8 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
     }
 
-    @PutMapping("/user/product")
-    @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
+    @PutMapping("/product")
+    @ApiOperation(value = "Редактирование продукта", response = List.class)
     public ResponseEntity putProducts(ProductPutDto productPutDto) {
         return ResponseEntity.status(HttpStatus.OK).body("");
     }

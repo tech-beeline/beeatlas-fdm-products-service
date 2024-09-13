@@ -1,4 +1,5 @@
 package ru.beeline.fdmproducts.domain;
+
 import lombok.*;
 
 import javax.persistence.*;
@@ -22,4 +23,22 @@ public class Product {
 
     @Column(name = "alias")
     private String alias;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "git_url")
+    private String gitUrl;
+
+    @Column(name = "structurizr_workspace_name")
+    private String structurizrWorkspaceName;
+
+    @Column(name = "structurizr_api_key")
+    private String structurizrApiKey;
+
+    @Column(name = "structurizr_api_secret")
+    private String structurizrApiSecret;
+
+    @Column(name = "structurizr_api_url")
+    private String structurizrApiUrl;
 }

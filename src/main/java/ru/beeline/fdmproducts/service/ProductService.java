@@ -48,13 +48,13 @@ public class ProductService {
             product.setDescription(productPutDto.getDescription());
             product.setGitUrl(productPutDto.getGitUrl());
         }
-        if (productPutDto.getName() != null && !product.getName().equals(productPutDto.getName())) {
+        if (productPutDto.getName() != null) {
             product.setName(productPutDto.getName());
         }
-        if (productPutDto.getDescription() != null && !product.getDescription().equals(productPutDto.getDescription())) {
+        if (productPutDto.getDescription() != null) {
             product.setDescription(productPutDto.getDescription());
         }
-        if (productPutDto.getGitUrl() != null && !product.getGitUrl().equals(productPutDto.getGitUrl())) {
+        if (productPutDto.getGitUrl() != null) {
             product.setGitUrl(productPutDto.getGitUrl());
         }
 

@@ -77,7 +77,7 @@ public class ProductService {
 
     public void validateProductPutDto(ProductPutDto productPutDto) {
         StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getName() == null) {
+        if (productPutDto.getName() == null || productPutDto.getName().equals("")) {
             errMsg.append("Отсутствует обязательное поле name");
         }
         if (!errMsg.toString().isEmpty()) {
@@ -87,16 +87,16 @@ public class ProductService {
 
     public void validatePatchProductPutDto(ProductPutDto productPutDto) {
         StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getStructurizrWorkspaceName() == null) {
+        if (productPutDto.getStructurizrWorkspaceName() == null || productPutDto.getStructurizrWorkspaceName().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrWorkspaceName");
         }
-        if (productPutDto.getStructurizrApiKey() == null) {
+        if (productPutDto.getStructurizrApiKey() == null || productPutDto.getStructurizrApiKey().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiKey");
         }
-        if (productPutDto.getStructurizrApiSecret() == null) {
+        if (productPutDto.getStructurizrApiSecret() == null || productPutDto.getStructurizrApiSecret().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiSecret");
         }
-        if (productPutDto.getStructurizrApiUrl() == null) {
+        if (productPutDto.getStructurizrApiUrl() == null || productPutDto.getStructurizrApiUrl().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiUrl");
         }
         if (!errMsg.toString().isEmpty()) {

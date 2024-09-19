@@ -15,10 +15,6 @@ import java.util.List;
 
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
 
-import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.service.ProductService;
-import ru.beeline.fdmproducts.domain.Product;
-
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1")
@@ -34,11 +30,26 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
     }
 
+    @GetMapping("/product/{code}")
+    @ApiOperation(value = "Получить продукт по alias", response = Product.class)
+    public Product getProductsByCode(@PathVariable String code) {
+        return productService.getProductByCode(code);
+    }
+
     @PutMapping("/product/{code}")
-    @ApiOperation(value = "Редактирование продукта", response = List.class)
+    @ApiOperation(value = "Редактирование продукта")
     public ResponseEntity putProducts(@PathVariable String code,
-                                      ProductPutDto productPutDto) {
-        return ResponseEntity.status(HttpStatus.OK).body("");
+                                      @RequestBody ProductPutDto productPutDto) {
+        productService.createOrUpdate(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PatchMapping("product/{code}/workspace")
+    @ApiOperation(value = "Добавление атрибутов к продукту")
+    public ResponseEntity patchProducts(@PathVariable String code,
+                                        @RequestBody ProductPutDto productPutDto) {
+        productService.patchProduct(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("product/{code}/workspace")

@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
+import ru.beeline.fdmproducts.exception.ValidationException;
 
 @ControllerAdvice
 @Slf4j
@@ -21,6 +22,7 @@ public class CustomExceptionHandler {
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
                 .body(e.getMessage());
     }
+
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Object> handleException(RuntimeException e) {
         log.error(e.getMessage());
@@ -30,4 +32,9 @@ public class CustomExceptionHandler {
                 .body(e.getMessage());
     }
 
+    @ExceptionHandler(ValidationException.class)
+    public ResponseEntity<Object> handleException(ValidationException e) {
+        log.error(e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body("409 Ошибка валидации тела запроса : " + e.getMessage());
+    }
 }

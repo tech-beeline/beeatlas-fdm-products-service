@@ -24,7 +24,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
 
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         try {
-            if (request.getRequestURI().contains("/tech")) {
+            if (request.getRequestURI().contains("/tech") || request.getRequestURI().contains("/api/v1/product")) {
                 return true;
             }
             Map<String, Object> headers = new HashMap<>();

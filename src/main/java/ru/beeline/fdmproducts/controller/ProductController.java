@@ -52,11 +52,11 @@ public class ProductController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @PatchMapping("product/{code}/workspace")
-    @ApiOperation(value = "Добавление атрибутов к продукту")
-    public ResponseEntity patchProducts(@PathVariable String code,
-                                        @RequestBody ProductPutDto productPutDto) {
-        productService.patchProduct(productPutDto, code);
+    @PostMapping("/user/{id}/products")
+    @ApiOperation(value = "Создание связи пользователя и продукта")
+    public ResponseEntity postUserProducts(@PathVariable String id,
+                                           @RequestBody List<String> aliasLIst) {
+        productService.postUserProduct(aliasLIst, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

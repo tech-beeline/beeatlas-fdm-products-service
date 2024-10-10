@@ -51,4 +51,12 @@ public class ProductController {
         productService.patchProduct(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @PostMapping("/user/{id}/products")
+    @ApiOperation(value = "Создание связи пользователя и продукта")
+    public ResponseEntity postUserProducts(@PathVariable String id,
+                                           @RequestBody List<String> aliasLIst) {
+        productService.postUserProduct(aliasLIst, id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

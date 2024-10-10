@@ -75,6 +75,19 @@ public class ProductService {
         }
     }
 
+    public void postUserProduct(List<String> aliasLIst, String id) {
+        for (String alias : aliasLIst) {
+            Product product = productRepository.findByAlias(alias);
+            if (product != null) {
+                UserProduct userProduct = UserProduct.builder()
+                        .userId(Integer.valueOf(id))
+                        .product(product)
+                        .build();
+                userProductRepository.save(userProduct);
+            }
+        }
+    }
+
     public void validateProductPutDto(ProductPutDto productPutDto) {
         StringBuilder errMsg = new StringBuilder();
         if (productPutDto.getName() == null || productPutDto.getName().equals("")) {

@@ -11,6 +11,7 @@ import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -75,15 +76,28 @@ public class ProductService {
         }
     }
 
-    public void postUserProduct(List<String> aliasLIst, String id) {
-        for (String alias : aliasLIst) {
+    public void postUserProduct(List<String> aliasList, String id) {
+        if (aliasList.isEmpty()) {
+            throw new IllegalArgumentException("400: Массив пустой. ");
+        }
+        Integer userId = Integer.valueOf(id);
+        List<String> notFoundAliases = new ArrayList<>();
+        for (String alias : aliasList) {
             Product product = productRepository.findByAlias(alias);
             if (product != null) {
-                UserProduct userProduct = UserProduct.builder()
-                        .userId(Integer.valueOf(id))
-                        .product(product)
-                        .build();
-                userProductRepository.save(userProduct);
+                if (!userProductRepository.existsByUserIdAndProductId(userId, product.getId())) {
+                    UserProduct userProduct = UserProduct.builder()
+                            .userId(userId)
+                            .product(product)
+                            .build();
+                    userProductRepository.save(userProduct);
+                }
+            } else {
+                notFoundAliases.add(alias);
+            }
+            if (notFoundAliases.size() == aliasList.size()) {
+                throw new IllegalArgumentException("Ни один из продуктов не найден.");
+
             }
         }
     }

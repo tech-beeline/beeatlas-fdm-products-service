@@ -37,4 +37,10 @@ public class CustomExceptionHandler {
         log.error(e.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body("409 Ошибка валидации тела запроса : " + e.getMessage());
     }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Object> handleException(IllegalArgumentException e) {
+        log.error(e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("400 Bad Request : " + e.getMessage());
+    }
 }

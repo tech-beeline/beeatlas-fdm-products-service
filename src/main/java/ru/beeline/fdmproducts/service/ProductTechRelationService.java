@@ -30,4 +30,8 @@ public class ProductTechRelationService {
     public List<ProductDTO> getProductsWithTech() {
         return productTechMapper.mapToDto(productService.findAll());
     }
+
+    public void deleteRelation(Integer techId, Integer productId) {
+        techService.deleteRelation(techId, productId);
+    }
 }

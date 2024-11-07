@@ -39,6 +39,10 @@ public class ProductService {
         return product;
     }
 
+    public List<Product> findAll() {
+        return productRepository.findAll();
+    }
+
     public void createOrUpdate(ProductPutDto productPutDto, String code) {
         validateProductPutDto(productPutDto);
         Product product = productRepository.findByAlias(code);

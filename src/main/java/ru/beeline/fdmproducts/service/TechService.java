@@ -29,4 +29,8 @@ public class TechService {
             techProductRepository.save(TechProduct.builder().product(product).techId(techId).build());
         }
     }
+
+    public void deleteRelation(Integer techId, Integer productId) {
+        techProductRepository.deleteByTechIdAndProductId(techId, productId);
+    }
 }

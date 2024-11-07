@@ -21,6 +21,12 @@ public class ProductTechRelationController {
     @Autowired
     private ProductTechRelationService productTechRelationService;
 
+    @GetMapping
+    @ApiOperation(value = "Получение связей продукта и технологии", response = List.class)
+    public ResponseEntity<List<ProductDTO>> getProductsWithTech() {
+        return ResponseEntity.status(HttpStatus.OK).body(productTechRelationService.getProductsWithTech());
+    }
+
     @PostMapping("/{techId}")
     @ApiOperation(value = "Создание связи технологии и продукта", response = ResponseEntity.class)
     public ResponseEntity getProducts(@PathVariable Integer techId,
@@ -28,10 +34,12 @@ public class ProductTechRelationController {
         productTechRelationService.addRelation(techId, productTechRelationDTO);
         return new ResponseEntity(HttpStatus.OK);
     }
-
-    @GetMapping
-    @ApiOperation(value = "Получение связей продукта и технологии", response = List.class)
-    public ResponseEntity<List<ProductDTO>> getProductsWithTech() {
-        return ResponseEntity.status(HttpStatus.OK).body(productTechRelationService.getProductsWithTech());
+    @DeleteMapping("/{techId}/{productId}")
+    @ApiOperation(value = "Удаление связи технологии и продукта", response = ResponseEntity.class)
+    public ResponseEntity deleteRelation(@PathVariable Integer techId,
+                                      @PathVariable Integer productId) {
+        productTechRelationService.deleteRelation(techId, productId);
+        return new ResponseEntity(HttpStatus.OK);
     }
+
 }

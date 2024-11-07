@@ -6,4 +6,5 @@ import java.util.List;
 public interface TechProductRepository extends JpaRepository<TechProduct, Long> {
     List<TechProduct> findAllByTechId(Integer techId);
     TechProduct findByTechIdAndProduct(Integer techId, Product product);
+    void deleteByTechIdAndProductId(Integer techId, Integer productId);
 }

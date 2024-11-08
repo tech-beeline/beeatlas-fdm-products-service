@@ -14,6 +14,7 @@ public class ProductTechMapper {
     public List<ProductDTO> mapToDto(List<Product> products) {
         if (products != null && !products.isEmpty()) {
             return products.stream()
+                    .filter(product -> product.getTechProducts() != null && !product.getTechProducts().isEmpty())
                     .map(product -> ProductDTO.builder()
                             .productId(product.getId())
                             .alias(product.getAlias())

@@ -34,10 +34,11 @@ public class ProductTechRelationController {
         productTechRelationService.addRelation(techId, productTechRelationDTO);
         return new ResponseEntity(HttpStatus.OK);
     }
+
     @DeleteMapping("/{techId}/{productId}")
     @ApiOperation(value = "Удаление связи технологии и продукта", response = ResponseEntity.class)
     public ResponseEntity deleteRelation(@PathVariable Integer techId,
-                                      @PathVariable Integer productId) {
+                                         @PathVariable Integer productId) {
         productTechRelationService.deleteRelation(techId, productId);
         return new ResponseEntity(HttpStatus.OK);
     }

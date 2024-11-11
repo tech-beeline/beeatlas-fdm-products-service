@@ -32,12 +32,12 @@ public class ProductService {
     }
 
     public Product getProductByCode(String code) {
-        if (code.equals("\n") || code.equals(" \n")) {
+        if (code == null || code.equals("\n") || code.equals(" \n")) {
             throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
         }
         Product product = productRepository.findByAlias(code);
         if (product == null) {
-            throw new EntityNotFoundException((String.format("Пользователь c alias '%s' не найден", code)));
+            throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
         return product;
     }

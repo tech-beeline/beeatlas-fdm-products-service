@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
 
 @Data
@@ -9,6 +10,7 @@ import lombok.*;
 @Builder
 public class TechDTO {
 
-    private Integer id;
+    @JsonProperty("tech_id")
+    private Integer techId;
     private String label;
 }

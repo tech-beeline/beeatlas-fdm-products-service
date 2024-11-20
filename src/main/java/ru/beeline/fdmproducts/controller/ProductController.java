@@ -62,8 +62,14 @@ public class ProductController {
     }
 
     @GetMapping("/product/api-secret/{api-key}")
-    @ApiOperation(value = "Получение api secret записи")
+    @ApiOperation(value = "Получение api secret из таблицы product")
     public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
         return productService.getProductByApiKey(apiKey);
+    }
+
+    @GetMapping("/service/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы service")
+    public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getServiceSecretByApiKey(apiKey);
     }
 }

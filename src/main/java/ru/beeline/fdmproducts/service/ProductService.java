@@ -5,11 +5,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.ServiceEntity;
 import ru.beeline.fdmproducts.domain.UserProduct;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.repository.ProductRepository;
+import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
 import java.util.ArrayList;
@@ -21,11 +23,14 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProductService {
     private final UserProductRepository userProductRepository;
+    private final ServiceEntityRepository serviceEntityRepository;
     private final ProductRepository productRepository;
 
-    public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository) {
+    public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository,
+                          ServiceEntityRepository serviceEntityRepository) {
         this.userProductRepository = userProductRepository;
         this.productRepository = productRepository;
+        this.serviceEntityRepository = serviceEntityRepository;
     }
 
     public List<Product> getProductsByUser(Integer userId) {
@@ -140,9 +145,7 @@ public class ProductService {
     }
 
     public ApiSecretDTO getProductByApiKey(String apiKey) {
-        if (apiKey == null) {
-            throw new IllegalArgumentException("Параметр api-key не должен быть пустым.");
-        }
+        apiKeyValidate(apiKey);
         Product product = productRepository.findByStructurizrApiKey(apiKey);
         if (product == null) {
             throw new EntityNotFoundException((String.format("Продукт c api-key '%s' не найден", apiKey)));
@@ -151,5 +154,23 @@ public class ProductService {
                 .id(product.getId())
                 .apiSecret(product.getStructurizrApiSecret())
                 .build();
+    }
+
+    public ApiSecretDTO getServiceSecretByApiKey(String apiKey) {
+        apiKeyValidate(apiKey);
+        ServiceEntity serviceEntity = serviceEntityRepository.findByApiKey(apiKey);
+        if (serviceEntity == null) {
+            throw new EntityNotFoundException((String.format("Продукт c api-key '%s' не найден", apiKey)));
+        }
+        return ApiSecretDTO.builder()
+                .id(serviceEntity.getId())
+                .apiSecret(serviceEntity.getApiSecret())
+                .build();
+    }
+
+    private void apiKeyValidate (String apiKey){
+        if (apiKey == null) {
+            throw new IllegalArgumentException("Параметр api-key не должен быть пустым.");
+        }
     }
 }

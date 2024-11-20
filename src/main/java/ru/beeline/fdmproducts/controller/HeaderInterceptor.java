@@ -27,7 +27,8 @@ public class HeaderInterceptor implements HandlerInterceptor {
             if (request.getRequestURI().contains("/tech")
                     || request.getRequestURI().contains("/api/v1/product")
                     || request.getRequestURI().contains("/api/v1/user/product")
-                    || request.getRequestURI().matches("/api/v1/user/\\w+/products")) {
+                    || request.getRequestURI().matches("/api/v1/user/\\w+/products")
+                    || request.getRequestURI().contains("/api/v1/service")) {
                 return true;
             }
             Map<String, Object> headers = new HashMap<>();

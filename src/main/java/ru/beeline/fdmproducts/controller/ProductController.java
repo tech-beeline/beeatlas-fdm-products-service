@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -71,5 +72,13 @@ public class ProductController {
     @ApiOperation(value = "Получение api secret из таблицы service")
     public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
         return productService.getServiceSecretByApiKey(apiKey);
+    }
+
+    @PutMapping("/product/{code}/relations")
+    @ApiOperation(value = "Ре")                                         //название метода
+    public ResponseEntity putProducts1(@PathVariable String code,
+                                      @RequestBody List<ContainerDTO> containerDTO) {
+        productService.createOrUpdate1(containerDTO, code);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

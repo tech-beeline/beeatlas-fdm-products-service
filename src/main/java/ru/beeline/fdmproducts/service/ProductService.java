@@ -5,7 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
-//import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.client.CapabilityClient;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
@@ -23,21 +23,22 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProductService {
 
-//    @Autowired
-//    CapabilityClient capabilityClient;
+    @Autowired
+    private CapabilityClient capabilityClient;
     private final UserProductRepository userProductRepository;
     private final ServiceEntityRepository serviceEntityRepository;
     private final ProductRepository productRepository;
     private final ContainerRepository containerRepository;
     private final InterfaceRepository interfaceRepository;
     private final OperationRepository operationRepository;
+    private final ParameterRepository parameterRepository;
     private final SlaRepository slaRepository;
 
 
     public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository,
                           ServiceEntityRepository serviceEntityRepository, ContainerRepository containerRepository,
                           InterfaceRepository interfaceRepository, OperationRepository operationRepository,
-                          SlaRepository slaRepository) {
+                          SlaRepository slaRepository, ParameterRepository parameterRepository) {
         this.userProductRepository = userProductRepository;
         this.productRepository = productRepository;
         this.serviceEntityRepository = serviceEntityRepository;
@@ -45,6 +46,7 @@ public class ProductService {
         this.interfaceRepository = interfaceRepository;
         this.operationRepository = operationRepository;
         this.slaRepository = slaRepository;
+        this.parameterRepository = parameterRepository;
     }
 
     public List<Product> getProductsByUser(Integer userId) {
@@ -188,7 +190,7 @@ public class ProductService {
         }
     }
 
-    public void createOrUpdate1(List<ContainerDTO> containerDTOList, String code) {
+    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOList, String code) {
         Product product = getProductByCode(code);
         for (ContainerDTO containerDTO : containerDTOList) {
             Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
@@ -204,7 +206,7 @@ public class ProductService {
             } else {
                 ContainerProduct container = optionalContainer.get();
                 if (!container.getName().equals(containerDTO.getName()) ||
-                        !container.getVersion().equals(containerDTO.getVersion())) {
+                        !container.getVersion().equals(containerDTO.getVersion())) {  // может иф убрать?
                     container.setName(containerDTO.getName());
                     container.setVersion(containerDTO.getVersion());
                     container.setUpdatedDate(new Date());
@@ -214,23 +216,28 @@ public class ProductService {
 
             }
             // для каждого интерфейса контейнера:
+            List<Interface> existingOrCreatedInterface = new ArrayList<>();
             for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
                 Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
                 Integer interfaceId = null;
                 if (optionalInterface.isEmpty()) {
-//                    SearchCapabilityDTO searchCapabilityDTO = capabilityClient.getCapabilities(interfaceDTO.getCode());
+                    List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
+                    if (searchCapabilityDTOS.isEmpty()) {
+                        throw new EntityNotFoundException("tcId from capability service not found");
+                    }
                     Interface newInterface = Interface.builder()
                             .name(interfaceDTO.getName())
                             .code(interfaceDTO.getCode())
                             .version(interfaceDTO.getVersion())
                             .specLink(interfaceDTO.getSpecLink())
                             .protocol(interfaceDTO.getProtocol())
-//                            .tcId(searchCapabilityDTO.getId())
+                            .tcId(searchCapabilityDTOS.get(0).getId())
                             .containerId(containerId)
                             .createdDate(new Date())
                             .build();
                     interfaceRepository.save(newInterface);
                     interfaceId = newInterface.getId();
+                    existingOrCreatedInterface.add(newInterface);
                 } else {
                     Interface getInterface = optionalInterface.get();
                     getInterface.setName(interfaceDTO.getName());
@@ -242,11 +249,13 @@ public class ProductService {
                     getInterface.setDeletedDate(null);
                     interfaceId = getInterface.getId();
                     interfaceRepository.save(getInterface);
+                    existingOrCreatedInterface.add(getInterface);
                 }
+                List<Operation> existingOrCreatedOperation = new ArrayList<>();
                 for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
                     Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
-                    Integer operationId=null;
-                    if (optionalOperation.isEmpty()){
+                    Integer operationId = null;
+                    if (optionalOperation.isEmpty()) {
                         Operation operation = Operation.builder()
                                 .name(methodDTO.getName())
                                 .description(methodDTO.getDescription())
@@ -255,20 +264,21 @@ public class ProductService {
                                 .createdDate(new Date())
                                 .build();
                         operationRepository.save(operation);
-                        operationId=operation.getId();
-                    }else{
-                        Operation operation = optionalOperation.get();
-                        operation.setName(methodDTO.getName());
-                        operation.setDescription(methodDTO.getDescription());
-                        operation.setReturnType(methodDTO.getReturnType());
-                        operation.setUpdatedDate(new Date());
-                        operation.setDeleteDate(null);
-                        operationRepository.save(operation);
+                        existingOrCreatedOperation.add(operation);
                         operationId = operation.getId();
+                    } else {
+                        Operation updateOperation = optionalOperation.get();
+                        updateOperation.setName(methodDTO.getName());
+                        updateOperation.setDescription(methodDTO.getDescription());
+                        updateOperation.setReturnType(methodDTO.getReturnType());
+                        updateOperation.setUpdatedDate(new Date());
+                        updateOperation.setDeletedDate(null);
+                        operationRepository.save(updateOperation);
+                        operationId = updateOperation.getId();
+                        existingOrCreatedOperation.add(updateOperation);
                     }
-
                     Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
-                    if(optionalSla.isEmpty()){
+                    if (optionalSla.isEmpty()) {
                         Sla sla = Sla.builder()
                                 .operationId(operationId)
                                 .rps(methodDTO.getSla().getRps())
@@ -276,24 +286,57 @@ public class ProductService {
                                 .errorRate(methodDTO.getSla().getErrorRate())
                                 .build();
                         slaRepository.save(sla);
-                    }else{
-                        Sla sla= optionalSla.get();
+                    } else {
+                        Sla sla = optionalSla.get();
                         sla.setRps(methodDTO.getSla().getRps());
                         sla.setLatency(methodDTO.getSla().getLatency());
                         sla.setErrorRate(methodDTO.getSla().getErrorRate());
                         slaRepository.save(sla);
                     }
-                    List<ParameterDTO> parameters= methodDTO.getParameters();
-                    for(ParameterDTO parameterDTO: parameters){
-
-
+                    List<ParameterDTO> parameters = methodDTO.getParameters();
+                    List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+                    for (ParameterDTO parameterDTO : parameters) {
+                        Optional<Parameter> optionalParameter =
+                                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
+                                        parameterDTO.getName(), parameterDTO.getType());
+                        if (optionalParameter.isEmpty()) {
+                            Parameter parameter = Parameter.builder()
+                                    .operationId(operationId)
+                                    .parameterName(parameterDTO.getName())
+                                    .parameterType(parameterDTO.getType())
+                                    .createdDate(new Date())
+                                    .build();
+                            parameterRepository.save(parameter);
+                            existingOrCreatedParameters.add(parameter);
+                        } else {
+                            existingOrCreatedParameters.add(optionalParameter.get());
+                        }
 
                     }
+                    List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
 
+                    allParameters.stream()
+                            .filter(parameter -> !existingOrCreatedParameters.contains(parameter))
+                            .forEach(parameter -> {
+                                parameter.setDeletedDate(new Date());
+                                parameterRepository.save(parameter);
+                            });
                 }
+                List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
+                allOperations.stream()
+                        .filter(operation -> !existingOrCreatedOperation.contains(operation))
+                        .forEach(operation -> {
+                            operation.setDeletedDate(new Date());
+                            operationRepository.save(operation);
+                        });
             }
-
+            List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
+            allInterfaces.stream()
+                    .filter(interfaceObj -> !existingOrCreatedInterface.contains(interfaceObj))
+                    .forEach(interfaceObj -> {
+                        interfaceObj.setDeletedDate(new Date());
+                        interfaceRepository.save(interfaceObj);
+                    });
         }
     }
-
 }

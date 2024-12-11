@@ -75,10 +75,10 @@ public class ProductController {
     }
 
     @PutMapping("/product/{code}/relations")
-    @ApiOperation(value = "Ре")                                         //название метода
-    public ResponseEntity putProducts1(@PathVariable String code,
-                                      @RequestBody List<ContainerDTO> containerDTO) {
-        productService.createOrUpdate1(containerDTO, code);
+    @ApiOperation(value = "")                                         //название метода
+    public ResponseEntity putProductRelations(@PathVariable String code,
+                                              @RequestBody List<ContainerDTO> containerDTO) {
+        productService.createOrUpdateProductRelations(containerDTO, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

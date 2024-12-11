@@ -42,6 +42,6 @@ public class Operation {
     @Column(name = "updated_date")
     private Date updatedDate;
 
-    @Column(name = "delete_date")
-    private Date deleteDate;
+    @Column(name = "deleted_date")
+    private Date deletedDate;
 }

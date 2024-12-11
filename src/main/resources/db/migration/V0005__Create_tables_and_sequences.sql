@@ -6,15 +6,14 @@
 
 /* Drop Sequences for Autonumber Columns */
 
-DROP SEQUENCE IF EXISTS seq_container_id;
-DROP SEQUENCE IF EXISTS seq_interface_id;
-DROP SEQUENCE IF EXISTS seq_operation_id;
-DROP SEQUENCE IF EXISTS seq_parameter_id;
-DROP SEQUENCE IF EXISTS seq_sla_id;
+DROP SEQUENCE IF EXISTS seq_container_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_interface_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_operation_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_parameter_id CASCADE;
+DROP SEQUENCE IF EXISTS seq_sla_id CASCADE;
 
 /* Drop Tables */
 
-DROP TABLE IF EXISTS containers_interface CASCADE;
 DROP TABLE IF EXISTS containers_product CASCADE;
 DROP TABLE IF EXISTS interface CASCADE;
 DROP TABLE IF EXISTS operation CASCADE;
@@ -73,7 +72,7 @@ CREATE TABLE operation
     return_type varchar(100) NULL,
     created_date timestamp without time zone NULL,
     updated_date timestamp without time zone NULL,
-    delete_date timestamp without time zone NULL
+    deleted_date timestamp without time zone NULL
 );
 
 CREATE TABLE parameter
@@ -147,22 +146,22 @@ ALTER TABLE status_interface ADD CONSTRAINT pk_status_interface
 /* Create Foreign Key Constraints */
 
 ALTER TABLE containers_product ADD CONSTRAINT fk_containers_product_product
-    FOREIGN KEY (product_id) REFERENCES product (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (product_id) REFERENCES product.product (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE interface ADD CONSTRAINT fk_interface_containers_product
-    FOREIGN KEY (container_id) REFERENCES containers_product (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (container_id) REFERENCES containers_product (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE interface ADD CONSTRAINT fk_interface_realization_type
-    FOREIGN KEY (type_id) REFERENCES realization_type (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (type_id) REFERENCES realization_type (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE interface ADD CONSTRAINT fk_interface_status_interface
-    FOREIGN KEY (status_id) REFERENCES status_interface (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (status_id) REFERENCES status_interface (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE operation ADD CONSTRAINT fk_operation_method_interface
-    FOREIGN KEY (interface_id) REFERENCES interface (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (interface_id) REFERENCES interface (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE parameter ADD CONSTRAINT fk_parameter_method
-    FOREIGN KEY (operation_id) REFERENCES operation (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (operation_id) REFERENCES operation (id) ON DELETE NO ACTION ON UPDATE NO ACTION;
 
 ALTER TABLE sla ADD CONSTRAINT fk_sla_operation
-    FOREIGN KEY (operation_id) REFERENCES operation (id) ON DELETE No Action ON UPDATE No Action;
+    FOREIGN KEY (operation_id) REFERENCES operation (id) ON DELETE NO ACTION ON UPDATE NO ACTION;

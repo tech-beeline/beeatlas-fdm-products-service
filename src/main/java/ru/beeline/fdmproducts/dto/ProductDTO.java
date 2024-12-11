@@ -1,6 +1,7 @@
 package ru.beeline.fdmproducts.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
 
 import java.util.List;
@@ -10,6 +11,7 @@ import java.util.List;
 @AllArgsConstructor
 @ToString
 @Builder
+@JsonPropertyOrder({"productId", "alias", "tech"})
 public class ProductDTO {
 
     @JsonProperty("product_id")

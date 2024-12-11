@@ -19,7 +19,7 @@ public class ProductTechMapper {
                             .productId(product.getId())
                             .alias(product.getAlias())
                             .tech(product.getTechProducts().stream().map(techProduct -> TechDTO.builder()
-                                    .id(techProduct.getId())
+                                    .id(techProduct.getTechId())
                                     .label("")
                                     .build()).collect(Collectors.toList()))
                             .build())

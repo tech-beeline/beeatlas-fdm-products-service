@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -58,5 +59,17 @@ public class ProductController {
                                            @RequestBody List<String> aliasLIst) {
         productService.postUserProduct(aliasLIst, id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/product/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы product")
+    public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getProductByApiKey(apiKey);
+    }
+
+    @GetMapping("/service/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы service")
+    public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getServiceSecretByApiKey(apiKey);
     }
 }

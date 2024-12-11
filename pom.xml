@@ -10,7 +10,7 @@
     </parent>
     <groupId>ru.beeline</groupId>
     <artifactId>fdm-products</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.6</version>
     <name>fdm-products</name>
     <description>fdm-products</description>
     <properties>
@@ -114,6 +114,18 @@
             <version>0.0.14</version>
         </dependency>
     </dependencies>
+    <distributionManagement>
+        <repository>
+            <id>releases</id>
+            <name>libs-release</name>
+            <url>https://nexus.vimpelcom.ru/repository/eafdmmart__mvn</url>
+        </repository>
+        <snapshotRepository>
+            <id>snapshots</id>
+            <name>libs-snapshot</name>
+            <url>https://nexus.vimpelcom.ru/repository/eafdmmart__mvn</url>
+        </snapshotRepository>
+    </distributionManagement>
     <build>
         <plugins>
             <plugin>

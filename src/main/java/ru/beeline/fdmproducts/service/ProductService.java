@@ -11,6 +11,7 @@ import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,11 +32,18 @@ public class ProductService {
     }
 
     public Product getProductByCode(String code) {
+        if (code == null || code.equals("\n") || code.equals(" \n")) {
+            throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
+        }
         Product product = productRepository.findByAlias(code);
         if (product == null) {
-            throw new EntityNotFoundException((String.format("404 Пользователь c alias '%s' не найден", code)));
+            throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
         return product;
+    }
+
+    public List<Product> findAll() {
+        return productRepository.findAll();
     }
 
     public void createOrUpdate(ProductPutDto productPutDto, String code) {
@@ -75,9 +83,35 @@ public class ProductService {
         }
     }
 
+    public void postUserProduct(List<String> aliasList, String id) {
+        if (aliasList.isEmpty()) {
+            throw new IllegalArgumentException("400: Массив пустой. ");
+        }
+        Integer userId = Integer.valueOf(id);
+        List<String> notFoundAliases = new ArrayList<>();
+        for (String alias : aliasList) {
+            Product product = productRepository.findByAlias(alias);
+            if (product != null) {
+                if (!userProductRepository.existsByUserIdAndProductId(userId, product.getId())) {
+                    UserProduct userProduct = UserProduct.builder()
+                            .userId(userId)
+                            .product(product)
+                            .build();
+                    userProductRepository.save(userProduct);
+                }
+            } else {
+                notFoundAliases.add(alias);
+            }
+            if (notFoundAliases.size() == aliasList.size()) {
+                throw new IllegalArgumentException("Ни один из продуктов не найден.");
+
+            }
+        }
+    }
+
     public void validateProductPutDto(ProductPutDto productPutDto) {
         StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getName() == null) {
+        if (productPutDto.getName() == null || productPutDto.getName().equals("")) {
             errMsg.append("Отсутствует обязательное поле name");
         }
         if (!errMsg.toString().isEmpty()) {
@@ -87,16 +121,16 @@ public class ProductService {
 
     public void validatePatchProductPutDto(ProductPutDto productPutDto) {
         StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getStructurizrWorkspaceName() == null) {
+        if (productPutDto.getStructurizrWorkspaceName() == null || productPutDto.getStructurizrWorkspaceName().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrWorkspaceName");
         }
-        if (productPutDto.getStructurizrApiKey() == null) {
+        if (productPutDto.getStructurizrApiKey() == null || productPutDto.getStructurizrApiKey().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiKey");
         }
-        if (productPutDto.getStructurizrApiSecret() == null) {
+        if (productPutDto.getStructurizrApiSecret() == null || productPutDto.getStructurizrApiSecret().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiSecret");
         }
-        if (productPutDto.getStructurizrApiUrl() == null) {
+        if (productPutDto.getStructurizrApiUrl() == null || productPutDto.getStructurizrApiUrl().equals("")) {
             errMsg.append("Отсутствует обязательное поле structurizrApiUrl");
         }
         if (!errMsg.toString().isEmpty()) {

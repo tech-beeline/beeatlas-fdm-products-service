@@ -3,6 +3,7 @@ package ru.beeline.fdmproducts.domain;
 import lombok.*;
 
 import javax.persistence.*;
+import java.util.List;
 
 @Builder
 @Getter
@@ -41,4 +42,7 @@ public class Product {
 
     @Column(name = "structurizr_api_url")
     private String structurizrApiUrl;
+
+    @OneToMany(mappedBy = "product")
+    private List<TechProduct> techProducts;
 }

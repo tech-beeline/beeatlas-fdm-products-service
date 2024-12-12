@@ -11,6 +11,10 @@ import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.service.ProductService;
+import ru.beeline.fdmlib.dto.product.ProductPutDto;
+import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;

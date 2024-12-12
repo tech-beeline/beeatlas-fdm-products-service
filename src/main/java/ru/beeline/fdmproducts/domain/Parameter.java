@@ -17,7 +17,7 @@ import java.util.Date;
 public class Parameter {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "operation_id_generator")
-    @SequenceGenerator(name = "operation_id_generator", sequenceName = "seq_operation_id", allocationSize = 1)
+    @SequenceGenerator(name = "operation_id_generator", sequenceName = "seq_parameter_id", allocationSize = 1)
     @Column(name = "id")
     private Integer id;
 

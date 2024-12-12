@@ -16,8 +16,8 @@ import java.util.Date;
 @Table(name = "containers_product")
 public class ContainerProduct {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "containers_product_id_generator")
-    @SequenceGenerator(name = "containers_product_generator", sequenceName = "seq_containers_product_id", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "containers_product_generator")
+    @SequenceGenerator(name = "containers_product_generator", sequenceName = "seq_container_id", allocationSize = 1)
     @Column(name = "id")
     private Integer id;
 
@@ -36,7 +36,7 @@ public class ContainerProduct {
     @Column(name = "created_date")
     private Date createdDate;
 
-    @Column(name = "updated_date ")
+    @Column(name = "updated_date")
     private Date updatedDate;
 
     @Column(name = "deleted_date")

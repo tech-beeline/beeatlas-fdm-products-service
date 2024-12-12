@@ -66,7 +66,7 @@ CREATE TABLE operation
 (
     id integer NOT NULL DEFAULT NEXTVAL('seq_operation_id'::regclass),
     interface_id integer NULL,
-    name varchar(50) NULL,
+    name varchar(100) NULL,
     description varchar(250) NULL,
     type varchar(50) NULL,
     return_type varchar(100) NULL,
@@ -80,7 +80,7 @@ CREATE TABLE parameter
     id integer NOT NULL DEFAULT NEXTVAL('seq_parameter_id'::regclass),
     operation_id integer NULL,
     parameter_name varchar(100) NULL,
-    parameter_type varchar(50) NULL,
+    parameter_type varchar(100) NULL,
     created_date timestamp without time zone NULL,
     deleted_date timestamp without time zone NULL
 );

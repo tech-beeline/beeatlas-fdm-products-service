@@ -48,7 +48,7 @@ public class Interface {
     @Column(name = "tc_id")
     private Integer tcId;
 
-    @Column(name = "container_id ")
+    @Column(name = "container_id")
     private Integer containerId;
 
     @Column(name = "created_date")
@@ -57,6 +57,6 @@ public class Interface {
     @Column(name = "deleted_date")
     private Date deletedDate;
 
-    @Column(name = "updated_date ")
+    @Column(name = "updated_date")
     private Date updatedDate;
 }

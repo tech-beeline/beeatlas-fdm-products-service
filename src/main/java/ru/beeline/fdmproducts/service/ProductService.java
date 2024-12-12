@@ -190,153 +190,325 @@ public class ProductService {
         }
     }
 
+//    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOList, String code) {
+//        Product product = getProductByCode(code);
+//        for (ContainerDTO containerDTO : containerDTOList) {
+//            Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
+//            Integer containerId = null;
+//            if (optionalContainer.isEmpty()) {
+//                ContainerProduct containerProduct = ContainerProduct.builder()
+//                        .name(containerDTO.getName())
+//                        .version(containerDTO.getVersion())
+//                        .createdDate(new Date())
+//                        .build();
+//                containerRepository.save(containerProduct);    // запомнить id контейнера - родит
+//                containerId = containerProduct.getId();
+//            } else {
+//                ContainerProduct container = optionalContainer.get();
+//                if (!container.getName().equals(containerDTO.getName()) ||
+//                        !container.getVersion().equals(containerDTO.getVersion())) {
+//                    container.setName(containerDTO.getName());
+//                    container.setVersion(containerDTO.getVersion());
+//                    container.setUpdatedDate(new Date());
+//                    containerRepository.save(container);
+//                    containerId = container.getId();
+//                }
+//
+//            }
+//            // для каждого интерфейса контейнера:
+//            List<Interface> existingOrCreatedInterface = new ArrayList<>();
+//            for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
+//                Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
+//                Integer interfaceId = null;
+//                if (optionalInterface.isEmpty()) {
+//                    List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
+//                    if (searchCapabilityDTOS.isEmpty()) {
+//                        throw new EntityNotFoundException("tcId from capability service not found");
+//                    }
+//                    Interface newInterface = Interface.builder()
+//                            .name(interfaceDTO.getName())
+//                            .code(interfaceDTO.getCode())
+//                            .version(interfaceDTO.getVersion())
+//                            .specLink(interfaceDTO.getSpecLink())
+//                            .protocol(interfaceDTO.getProtocol())
+//                            .tcId(searchCapabilityDTOS.get(0).getId())
+//                            .containerId(containerId)
+//                            .createdDate(new Date())
+//                            .build();
+//                    interfaceRepository.save(newInterface);
+//                    interfaceId = newInterface.getId();
+//                    existingOrCreatedInterface.add(newInterface);
+//                } else {
+//                    Interface getInterface = optionalInterface.get();
+//                    getInterface.setName(interfaceDTO.getName());
+//                    getInterface.setCode(interfaceDTO.getCode());
+//                    getInterface.setVersion(interfaceDTO.getVersion());
+//                    getInterface.setSpecLink(interfaceDTO.getSpecLink());
+//                    getInterface.setProtocol(interfaceDTO.getProtocol());
+//                    getInterface.setUpdatedDate(new Date());
+//                    getInterface.setDeletedDate(null);
+//                    interfaceId = getInterface.getId();
+//                    interfaceRepository.save(getInterface);
+//                    existingOrCreatedInterface.add(getInterface);
+//                }
+//                List<Operation> existingOrCreatedOperation = new ArrayList<>();
+//                for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
+//                    Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
+//                    Integer operationId = null;
+//                    if (optionalOperation.isEmpty()) {
+//                        Operation operation = Operation.builder()
+//                                .name(methodDTO.getName())
+//                                .description(methodDTO.getDescription())
+//                                .returnType(methodDTO.getReturnType())
+//                                .interfaceId(interfaceId)
+//                                .createdDate(new Date())
+//                                .build();
+//                        operationRepository.save(operation);
+//                        existingOrCreatedOperation.add(operation);
+//                        operationId = operation.getId();
+//                    } else {
+//                        Operation updateOperation = optionalOperation.get();
+//                        updateOperation.setName(methodDTO.getName());
+//                        updateOperation.setDescription(methodDTO.getDescription());
+//                        updateOperation.setReturnType(methodDTO.getReturnType());
+//                        updateOperation.setUpdatedDate(new Date());
+//                        updateOperation.setDeletedDate(null);
+//                        operationRepository.save(updateOperation);
+//                        operationId = updateOperation.getId();
+//                        existingOrCreatedOperation.add(updateOperation);
+//                    }
+//                    Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
+//                    if (optionalSla.isEmpty()) {
+//                        Sla sla = Sla.builder()
+//                                .operationId(operationId)
+//                                .rps(methodDTO.getSla().getRps())
+//                                .latency(methodDTO.getSla().getLatency())
+//                                .errorRate(methodDTO.getSla().getErrorRate())
+//                                .build();
+//                        slaRepository.save(sla);
+//                    } else {
+//                        Sla sla = optionalSla.get();
+//                        sla.setRps(methodDTO.getSla().getRps());
+//                        sla.setLatency(methodDTO.getSla().getLatency());
+//                        sla.setErrorRate(methodDTO.getSla().getErrorRate());
+//                        slaRepository.save(sla);
+//                    }
+//                    List<ParameterDTO> parameters = methodDTO.getParameters();
+//                    List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+//                    for (ParameterDTO parameterDTO : parameters) {
+//                        Optional<Parameter> optionalParameter =
+//                                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
+//                                        parameterDTO.getName(), parameterDTO.getType());
+//                        if (optionalParameter.isEmpty()) {
+//                            Parameter parameter = Parameter.builder()
+//                                    .operationId(operationId)
+//                                    .parameterName(parameterDTO.getName())
+//                                    .parameterType(parameterDTO.getType())
+//                                    .createdDate(new Date())
+//                                    .build();
+//                            parameterRepository.save(parameter);
+//                            existingOrCreatedParameters.add(parameter);
+//                        } else {
+//                            existingOrCreatedParameters.add(optionalParameter.get());
+//                        }
+//
+//                    }
+//                    List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
+//
+//                    allParameters.stream()
+//                            .filter(parameter -> !existingOrCreatedParameters.contains(parameter))
+//                            .forEach(parameter -> {
+//                                parameter.setDeletedDate(new Date());
+//                                parameterRepository.save(parameter);
+//                            });
+//                }
+//                List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
+//                allOperations.stream()
+//                        .filter(operation -> !existingOrCreatedOperation.contains(operation))
+//                        .forEach(operation -> {
+//                            operation.setDeletedDate(new Date());
+//                            operationRepository.save(operation);
+//                        });
+//            }
+//            List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
+//            allInterfaces.stream()
+//                    .filter(interfaceObj -> !existingOrCreatedInterface.contains(interfaceObj))
+//                    .forEach(interfaceObj -> {
+//                        interfaceObj.setDeletedDate(new Date());
+//                        interfaceRepository.save(interfaceObj);
+//                    });
+//        }
+//    }
+
     public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOList, String code) {
         Product product = getProductByCode(code);
         for (ContainerDTO containerDTO : containerDTOList) {
-            Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
-            Integer containerId = null;
-            if (optionalContainer.isEmpty()) {
-                ContainerProduct containerProduct = ContainerProduct.builder()
-                        .name(containerDTO.getName())
-                        .version(containerDTO.getVersion())
-                        .createdDate(new Date())
-                        .build();
-                containerRepository.save(containerProduct);    // запомнить id контейнера - родит
-                containerId = containerProduct.getId();
-            } else {
-                ContainerProduct container = optionalContainer.get();
-                if (!container.getName().equals(containerDTO.getName()) ||
-                        !container.getVersion().equals(containerDTO.getVersion())) {  // может иф убрать?
-                    container.setName(containerDTO.getName());
-                    container.setVersion(containerDTO.getVersion());
-                    container.setUpdatedDate(new Date());
-                    containerRepository.save(container);
-                    containerId = container.getId();
-                }
+            ContainerProduct container = createOrUpdateContainer(containerDTO);
+            Integer containerId = container.getId();
 
-            }
-            // для каждого интерфейса контейнера:
             List<Interface> existingOrCreatedInterface = new ArrayList<>();
             for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
-                Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
-                Integer interfaceId = null;
-                if (optionalInterface.isEmpty()) {
-                    List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
-                    if (searchCapabilityDTOS.isEmpty()) {
-                        throw new EntityNotFoundException("tcId from capability service not found");
-                    }
-                    Interface newInterface = Interface.builder()
-                            .name(interfaceDTO.getName())
-                            .code(interfaceDTO.getCode())
-                            .version(interfaceDTO.getVersion())
-                            .specLink(interfaceDTO.getSpecLink())
-                            .protocol(interfaceDTO.getProtocol())
-                            .tcId(searchCapabilityDTOS.get(0).getId())
-                            .containerId(containerId)
-                            .createdDate(new Date())
-                            .build();
-                    interfaceRepository.save(newInterface);
-                    interfaceId = newInterface.getId();
-                    existingOrCreatedInterface.add(newInterface);
-                } else {
-                    Interface getInterface = optionalInterface.get();
-                    getInterface.setName(interfaceDTO.getName());
-                    getInterface.setCode(interfaceDTO.getCode());
-                    getInterface.setVersion(interfaceDTO.getVersion());
-                    getInterface.setSpecLink(interfaceDTO.getSpecLink());
-                    getInterface.setProtocol(interfaceDTO.getProtocol());
-                    getInterface.setUpdatedDate(new Date());
-                    getInterface.setDeletedDate(null);
-                    interfaceId = getInterface.getId();
-                    interfaceRepository.save(getInterface);
-                    existingOrCreatedInterface.add(getInterface);
-                }
+                Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
+                Integer interfaceId = createdOrUpdatedInterface.getId();
+                existingOrCreatedInterface.add(createdOrUpdatedInterface);
+
                 List<Operation> existingOrCreatedOperation = new ArrayList<>();
                 for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
-                    Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
-                    Integer operationId = null;
-                    if (optionalOperation.isEmpty()) {
-                        Operation operation = Operation.builder()
-                                .name(methodDTO.getName())
-                                .description(methodDTO.getDescription())
-                                .returnType(methodDTO.getReturnType())
-                                .interfaceId(interfaceId)
-                                .createdDate(new Date())
-                                .build();
-                        operationRepository.save(operation);
-                        existingOrCreatedOperation.add(operation);
-                        operationId = operation.getId();
-                    } else {
-                        Operation updateOperation = optionalOperation.get();
-                        updateOperation.setName(methodDTO.getName());
-                        updateOperation.setDescription(methodDTO.getDescription());
-                        updateOperation.setReturnType(methodDTO.getReturnType());
-                        updateOperation.setUpdatedDate(new Date());
-                        updateOperation.setDeletedDate(null);
-                        operationRepository.save(updateOperation);
-                        operationId = updateOperation.getId();
-                        existingOrCreatedOperation.add(updateOperation);
-                    }
-                    Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
-                    if (optionalSla.isEmpty()) {
-                        Sla sla = Sla.builder()
-                                .operationId(operationId)
-                                .rps(methodDTO.getSla().getRps())
-                                .latency(methodDTO.getSla().getLatency())
-                                .errorRate(methodDTO.getSla().getErrorRate())
-                                .build();
-                        slaRepository.save(sla);
-                    } else {
-                        Sla sla = optionalSla.get();
-                        sla.setRps(methodDTO.getSla().getRps());
-                        sla.setLatency(methodDTO.getSla().getLatency());
-                        sla.setErrorRate(methodDTO.getSla().getErrorRate());
-                        slaRepository.save(sla);
-                    }
+                    Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
+                    Integer operationId = createdOrUpdatedOperation.getId();
+                    existingOrCreatedOperation.add(createdOrUpdatedOperation);
+
+                    createOrUpdateSla(methodDTO, operationId);
+
                     List<ParameterDTO> parameters = methodDTO.getParameters();
                     List<Parameter> existingOrCreatedParameters = new ArrayList<>();
                     for (ParameterDTO parameterDTO : parameters) {
-                        Optional<Parameter> optionalParameter =
-                                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
-                                        parameterDTO.getName(), parameterDTO.getType());
-                        if (optionalParameter.isEmpty()) {
-                            Parameter parameter = Parameter.builder()
-                                    .operationId(operationId)
-                                    .parameterName(parameterDTO.getName())
-                                    .parameterType(parameterDTO.getType())
-                                    .createdDate(new Date())
-                                    .build();
-                            parameterRepository.save(parameter);
-                            existingOrCreatedParameters.add(parameter);
-                        } else {
-                            existingOrCreatedParameters.add(optionalParameter.get());
-                        }
-
+                        Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
+                        existingOrCreatedParameters.add(createdOrUpdatedParameter);
                     }
                     List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
-
-                    allParameters.stream()
-                            .filter(parameter -> !existingOrCreatedParameters.contains(parameter))
-                            .forEach(parameter -> {
-                                parameter.setDeletedDate(new Date());
-                                parameterRepository.save(parameter);
-                            });
+                    markAsDeleted(existingOrCreatedParameters, allParameters);
                 }
                 List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
-                allOperations.stream()
-                        .filter(operation -> !existingOrCreatedOperation.contains(operation))
-                        .forEach(operation -> {
-                            operation.setDeletedDate(new Date());
-                            operationRepository.save(operation);
-                        });
+                markAsDeleted(existingOrCreatedOperation, allOperations);
             }
             List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
-            allInterfaces.stream()
-                    .filter(interfaceObj -> !existingOrCreatedInterface.contains(interfaceObj))
-                    .forEach(interfaceObj -> {
-                        interfaceObj.setDeletedDate(new Date());
-                        interfaceRepository.save(interfaceObj);
-                    });
+            markAsDeleted(existingOrCreatedInterface, allInterfaces);
         }
+    }
+
+    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO) {
+        Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
+        if (optionalContainer.isEmpty()) {
+            ContainerProduct containerProduct = ContainerProduct.builder()
+                    .name(containerDTO.getName())
+                    .code(containerDTO.getCode())
+                    .version(containerDTO.getVersion())
+                    .createdDate(new Date())
+                    .build();
+            containerRepository.save(containerProduct);
+            return containerProduct;
+        } else {
+            ContainerProduct container = optionalContainer.get();
+            if (!container.getName().equals(containerDTO.getName()) ||
+                    !container.getVersion().equals(containerDTO.getVersion())) {
+                container.setName(containerDTO.getName());
+                container.setVersion(containerDTO.getVersion());
+                container.setUpdatedDate(new Date());
+                containerRepository.save(container);
+            }
+            return container;
+        }
+    }
+
+    private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
+        Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
+        if (optionalInterface.isEmpty()) {
+            List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
+            if (searchCapabilityDTOS.isEmpty()) {
+                throw new EntityNotFoundException("tcId from capability service not found");
+            }
+            Interface newInterface = Interface.builder()
+                    .name(interfaceDTO.getName())
+                    .code(interfaceDTO.getCode())
+                    .version(interfaceDTO.getVersion())
+                    .specLink(interfaceDTO.getSpecLink())
+                    .protocol(interfaceDTO.getProtocol())
+                    .tcId(searchCapabilityDTOS.get(0).getId())
+                    .containerId(containerId)
+                    .createdDate(new Date())
+                    .build();
+            interfaceRepository.save(newInterface);
+            return newInterface;
+        } else {
+            Interface getInterface = optionalInterface.get();
+            getInterface.setName(interfaceDTO.getName());
+            getInterface.setCode(interfaceDTO.getCode());
+            getInterface.setVersion(interfaceDTO.getVersion());
+            getInterface.setSpecLink(interfaceDTO.getSpecLink());
+            getInterface.setProtocol(interfaceDTO.getProtocol());
+            getInterface.setUpdatedDate(new Date());
+            getInterface.setDeletedDate(null);
+            interfaceRepository.save(getInterface);
+            return getInterface;
+        }
+    }
+
+    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
+        Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
+        if (optionalOperation.isEmpty()) {
+            Operation operation = Operation.builder()
+                    .name(methodDTO.getName())
+                    .description(methodDTO.getDescription())
+                    .returnType(methodDTO.getReturnType())
+                    .interfaceId(interfaceId)
+                    .createdDate(new Date())
+                    .build();
+            operationRepository.save(operation);
+            return operation;
+        } else {
+            Operation updateOperation = optionalOperation.get();
+            updateOperation.setName(methodDTO.getName());
+            updateOperation.setDescription(methodDTO.getDescription());
+            updateOperation.setReturnType(methodDTO.getReturnType());
+            updateOperation.setUpdatedDate(new Date());
+            updateOperation.setDeletedDate(null);
+            operationRepository.save(updateOperation);
+            return updateOperation;
+        }
+    }
+
+    private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
+        Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
+        if (optionalSla.isEmpty()) {
+            Sla sla = Sla.builder()
+                    .operationId(operationId)
+                    .rps(methodDTO.getSla().getRps())
+                    .latency(methodDTO.getSla().getLatency())
+                    .errorRate(methodDTO.getSla().getErrorRate())
+                    .build();
+            slaRepository.save(sla);
+        } else {
+            Sla sla = optionalSla.get();
+            sla.setRps(methodDTO.getSla().getRps());
+            sla.setLatency(methodDTO.getSla().getLatency());
+            sla.setErrorRate(methodDTO.getSla().getErrorRate());
+            slaRepository.save(sla);
+        }
+    }
+
+    private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
+        Optional<Parameter> optionalParameter =
+                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
+                        parameterDTO.getName(), parameterDTO.getType());
+        if (optionalParameter.isEmpty()) {
+            Parameter parameter = Parameter.builder()
+                    .operationId(operationId)
+                    .parameterName(parameterDTO.getName())
+                    .parameterType(parameterDTO.getType())
+                    .createdDate(new Date())
+                    .build();
+            parameterRepository.save(parameter);
+            return parameter;
+        } else {
+            return optionalParameter.get();
+        }
+    }
+
+    private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
+        allEntities.stream()
+                .filter(entity -> !existingEntities.contains(entity))
+                .forEach(entity -> {
+                    if (entity instanceof Parameter) {
+                        ((Parameter) entity).setDeletedDate(new Date());
+                        parameterRepository.save((Parameter) entity);
+                    } else if (entity instanceof Operation) {
+                        ((Operation) entity).setDeletedDate(new Date());
+                        operationRepository.save((Operation) entity);
+                    } else if (entity instanceof Interface) {
+                        ((Interface) entity).setDeletedDate(new Date());
+                        interfaceRepository.save((Interface) entity);
+                    }
+                });
     }
 }

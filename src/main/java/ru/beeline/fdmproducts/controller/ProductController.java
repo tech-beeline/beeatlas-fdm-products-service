@@ -11,10 +11,6 @@ import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.service.ProductService;
-import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.ApiSecretDTO;
-import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -79,7 +75,7 @@ public class ProductController {
     }
 
     @PutMapping("/product/{code}/relations")
-    @ApiOperation(value = "")                                         //название метода
+    @ApiOperation(value = "Создание и обновление связей продукта")
     public ResponseEntity putProductRelations(@PathVariable String code,
                                               @RequestBody List<ContainerDTO> containerDTO) {
         productService.createOrUpdateProductRelations(containerDTO, code);

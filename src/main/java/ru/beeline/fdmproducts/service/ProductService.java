@@ -14,18 +14,6 @@ import ru.beeline.fdmproducts.repository.*;
 
 import java.util.ArrayList;
 import java.util.Date;
-import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.domain.ServiceEntity;
-import ru.beeline.fdmproducts.domain.UserProduct;
-import ru.beeline.fdmproducts.dto.ApiSecretDTO;
-import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.exception.ValidationException;
-import ru.beeline.fdmproducts.repository.ProductRepository;
-import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
-import ru.beeline.fdmproducts.repository.UserProductRepository;
-
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -202,160 +190,10 @@ public class ProductService {
         }
     }
 
-//    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOList, String code) {
-//        Product product = getProductByCode(code);
-//        for (ContainerDTO containerDTO : containerDTOList) {
-//            Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
-//            Integer containerId = null;
-//            if (optionalContainer.isEmpty()) {
-//                ContainerProduct containerProduct = ContainerProduct.builder()
-//                        .name(containerDTO.getName())
-//                        .version(containerDTO.getVersion())
-//                        .createdDate(new Date())
-//                        .build();
-//                containerRepository.save(containerProduct);    // запомнить id контейнера - родит
-//                containerId = containerProduct.getId();
-//            } else {
-//                ContainerProduct container = optionalContainer.get();
-//                if (!container.getName().equals(containerDTO.getName()) ||
-//                        !container.getVersion().equals(containerDTO.getVersion())) {
-//                    container.setName(containerDTO.getName());
-//                    container.setVersion(containerDTO.getVersion());
-//                    container.setUpdatedDate(new Date());
-//                    containerRepository.save(container);
-//                    containerId = container.getId();
-//                }
-//
-//            }
-//            // для каждого интерфейса контейнера:
-//            List<Interface> existingOrCreatedInterface = new ArrayList<>();
-//            for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
-//                Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
-//                Integer interfaceId = null;
-//                if (optionalInterface.isEmpty()) {
-//                    List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
-//                    if (searchCapabilityDTOS.isEmpty()) {
-//                        throw new EntityNotFoundException("tcId from capability service not found");
-//                    }
-//                    Interface newInterface = Interface.builder()
-//                            .name(interfaceDTO.getName())
-//                            .code(interfaceDTO.getCode())
-//                            .version(interfaceDTO.getVersion())
-//                            .specLink(interfaceDTO.getSpecLink())
-//                            .protocol(interfaceDTO.getProtocol())
-//                            .tcId(searchCapabilityDTOS.get(0).getId())
-//                            .containerId(containerId)
-//                            .createdDate(new Date())
-//                            .build();
-//                    interfaceRepository.save(newInterface);
-//                    interfaceId = newInterface.getId();
-//                    existingOrCreatedInterface.add(newInterface);
-//                } else {
-//                    Interface getInterface = optionalInterface.get();
-//                    getInterface.setName(interfaceDTO.getName());
-//                    getInterface.setCode(interfaceDTO.getCode());
-//                    getInterface.setVersion(interfaceDTO.getVersion());
-//                    getInterface.setSpecLink(interfaceDTO.getSpecLink());
-//                    getInterface.setProtocol(interfaceDTO.getProtocol());
-//                    getInterface.setUpdatedDate(new Date());
-//                    getInterface.setDeletedDate(null);
-//                    interfaceId = getInterface.getId();
-//                    interfaceRepository.save(getInterface);
-//                    existingOrCreatedInterface.add(getInterface);
-//                }
-//                List<Operation> existingOrCreatedOperation = new ArrayList<>();
-//                for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
-//                    Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
-//                    Integer operationId = null;
-//                    if (optionalOperation.isEmpty()) {
-//                        Operation operation = Operation.builder()
-//                                .name(methodDTO.getName())
-//                                .description(methodDTO.getDescription())
-//                                .returnType(methodDTO.getReturnType())
-//                                .interfaceId(interfaceId)
-//                                .createdDate(new Date())
-//                                .build();
-//                        operationRepository.save(operation);
-//                        existingOrCreatedOperation.add(operation);
-//                        operationId = operation.getId();
-//                    } else {
-//                        Operation updateOperation = optionalOperation.get();
-//                        updateOperation.setName(methodDTO.getName());
-//                        updateOperation.setDescription(methodDTO.getDescription());
-//                        updateOperation.setReturnType(methodDTO.getReturnType());
-//                        updateOperation.setUpdatedDate(new Date());
-//                        updateOperation.setDeletedDate(null);
-//                        operationRepository.save(updateOperation);
-//                        operationId = updateOperation.getId();
-//                        existingOrCreatedOperation.add(updateOperation);
-//                    }
-//                    Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
-//                    if (optionalSla.isEmpty()) {
-//                        Sla sla = Sla.builder()
-//                                .operationId(operationId)
-//                                .rps(methodDTO.getSla().getRps())
-//                                .latency(methodDTO.getSla().getLatency())
-//                                .errorRate(methodDTO.getSla().getErrorRate())
-//                                .build();
-//                        slaRepository.save(sla);
-//                    } else {
-//                        Sla sla = optionalSla.get();
-//                        sla.setRps(methodDTO.getSla().getRps());
-//                        sla.setLatency(methodDTO.getSla().getLatency());
-//                        sla.setErrorRate(methodDTO.getSla().getErrorRate());
-//                        slaRepository.save(sla);
-//                    }
-//                    List<ParameterDTO> parameters = methodDTO.getParameters();
-//                    List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-//                    for (ParameterDTO parameterDTO : parameters) {
-//                        Optional<Parameter> optionalParameter =
-//                                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
-//                                        parameterDTO.getName(), parameterDTO.getType());
-//                        if (optionalParameter.isEmpty()) {
-//                            Parameter parameter = Parameter.builder()
-//                                    .operationId(operationId)
-//                                    .parameterName(parameterDTO.getName())
-//                                    .parameterType(parameterDTO.getType())
-//                                    .createdDate(new Date())
-//                                    .build();
-//                            parameterRepository.save(parameter);
-//                            existingOrCreatedParameters.add(parameter);
-//                        } else {
-//                            existingOrCreatedParameters.add(optionalParameter.get());
-//                        }
-//
-//                    }
-//                    List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
-//
-//                    allParameters.stream()
-//                            .filter(parameter -> !existingOrCreatedParameters.contains(parameter))
-//                            .forEach(parameter -> {
-//                                parameter.setDeletedDate(new Date());
-//                                parameterRepository.save(parameter);
-//                            });
-//                }
-//                List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
-//                allOperations.stream()
-//                        .filter(operation -> !existingOrCreatedOperation.contains(operation))
-//                        .forEach(operation -> {
-//                            operation.setDeletedDate(new Date());
-//                            operationRepository.save(operation);
-//                        });
-//            }
-//            List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
-//            allInterfaces.stream()
-//                    .filter(interfaceObj -> !existingOrCreatedInterface.contains(interfaceObj))
-//                    .forEach(interfaceObj -> {
-//                        interfaceObj.setDeletedDate(new Date());
-//                        interfaceRepository.save(interfaceObj);
-//                    });
-//        }
-//    }
-
-    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOList, String code) {
+    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
         Product product = getProductByCode(code);
-        for (ContainerDTO containerDTO : containerDTOList) {
-            ContainerProduct container = createOrUpdateContainer(containerDTO);
+        for (ContainerDTO containerDTO : containerDTOS) {
+            ContainerProduct container = createOrUpdateContainer(containerDTO, product);
             Integer containerId = container.getId();
 
             List<Interface> existingOrCreatedInterface = new ArrayList<>();
@@ -369,12 +207,10 @@ public class ProductService {
                     Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
                     Integer operationId = createdOrUpdatedOperation.getId();
                     existingOrCreatedOperation.add(createdOrUpdatedOperation);
-
                     createOrUpdateSla(methodDTO, operationId);
-
-                    List<ParameterDTO> parameters = methodDTO.getParameters();
+                    List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
                     List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                    for (ParameterDTO parameterDTO : parameters) {
+                    for (ParameterDTO parameterDTO : parameterDTOS) {
                         Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
                         existingOrCreatedParameters.add(createdOrUpdatedParameter);
                     }
@@ -389,10 +225,11 @@ public class ProductService {
         }
     }
 
-    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO) {
-        Optional<ContainerProduct> optionalContainer = containerRepository.findByCode(containerDTO.getCode());
-        if (optionalContainer.isEmpty()) {
+    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
+        Optional<ContainerProduct> optionalContainerProduct = containerRepository.findByCode(containerDTO.getCode());
+        if (optionalContainerProduct.isEmpty()) {
             ContainerProduct containerProduct = ContainerProduct.builder()
+                    .productId(product.getId())
                     .name(containerDTO.getName())
                     .code(containerDTO.getCode())
                     .version(containerDTO.getVersion())
@@ -401,9 +238,10 @@ public class ProductService {
             containerRepository.save(containerProduct);
             return containerProduct;
         } else {
-            ContainerProduct container = optionalContainer.get();
+            ContainerProduct container = optionalContainerProduct.get();
             if (!container.getName().equals(containerDTO.getName()) ||
                     !container.getVersion().equals(containerDTO.getVersion())) {
+                container.setProductId(product.getId());
                 container.setName(containerDTO.getName());
                 container.setVersion(containerDTO.getVersion());
                 container.setUpdatedDate(new Date());
@@ -415,11 +253,11 @@ public class ProductService {
 
     private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
         Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
+        List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
+        if (searchCapabilityDTOS.isEmpty()) {
+            throw new EntityNotFoundException("tcId from capability service not found");
+        }
         if (optionalInterface.isEmpty()) {
-            List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
-            if (searchCapabilityDTOS.isEmpty()) {
-                throw new EntityNotFoundException("tcId from capability service not found");
-            }
             Interface newInterface = Interface.builder()
                     .name(interfaceDTO.getName())
                     .code(interfaceDTO.getCode())
@@ -434,6 +272,8 @@ public class ProductService {
             return newInterface;
         } else {
             Interface getInterface = optionalInterface.get();
+            getInterface.setContainerId(containerId);
+            getInterface.setTcId(searchCapabilityDTOS.get(0).getId());
             getInterface.setName(interfaceDTO.getName());
             getInterface.setCode(interfaceDTO.getCode());
             getInterface.setVersion(interfaceDTO.getVersion());
@@ -508,157 +348,32 @@ public class ProductService {
     }
 
     private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
+        List<Parameter> parametersToDelete = new ArrayList<>();
+        List<Operation> operationsToDelete = new ArrayList<>();
+        List<Interface> interfacesToDelete = new ArrayList<>();
         allEntities.stream()
                 .filter(entity -> !existingEntities.contains(entity))
                 .forEach(entity -> {
                     if (entity instanceof Parameter) {
-                        ((Parameter) entity).setDeletedDate(new Date());
-                        parameterRepository.save((Parameter) entity);
+                        parametersToDelete.add((Parameter) entity);
                     } else if (entity instanceof Operation) {
-                        ((Operation) entity).setDeletedDate(new Date());
-                        operationRepository.save((Operation) entity);
+                        operationsToDelete.add((Operation) entity);
                     } else if (entity instanceof Interface) {
-                        ((Interface) entity).setDeletedDate(new Date());
-                        interfaceRepository.save((Interface) entity);
+                        interfacesToDelete.add((Interface) entity);
                     }
                 });
-    }
-}
-
-    public Product getProductByCode(String code) {
-        if (code == null || code.equals("\n") || code.equals(" \n")) {
-            throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
+        if (!parametersToDelete.isEmpty()) {
+            parametersToDelete.forEach(parameter -> parameter.setDeletedDate(new Date()));
+            parameterRepository.saveAll(parametersToDelete);
         }
-        Product product = productRepository.findByAlias(code);
-        if (product == null) {
-            throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
+        if (!operationsToDelete.isEmpty()) {
+            operationsToDelete.forEach(operation -> operation.setDeletedDate(new Date()));
+            operationRepository.saveAll(operationsToDelete);
         }
-        return product;
-    }
-
-    public List<Product> findAll() {
-        return productRepository.findAll();
-    }
-
-    public void createOrUpdate(ProductPutDto productPutDto, String code) {
-        validateProductPutDto(productPutDto);
-        Product product = productRepository.findByAlias(code);
-        if (product == null) {
-            product = new Product();
-            product.setAlias(code);
-            product.setName(productPutDto.getName());
-            product.setDescription(productPutDto.getDescription());
-            product.setGitUrl(productPutDto.getGitUrl());
-        }
-        if (productPutDto.getName() != null) {
-            product.setName(productPutDto.getName());
-        }
-        if (productPutDto.getDescription() != null) {
-            product.setDescription(productPutDto.getDescription());
-        }
-        if (productPutDto.getGitUrl() != null) {
-            product.setGitUrl(productPutDto.getGitUrl());
-        }
-
-        productRepository.save(product);
-    }
-
-    public void patchProduct(ProductPutDto productPutDto, String code) {
-        validatePatchProductPutDto(productPutDto);
-        Product product = productRepository.findByAlias(code);
-        if (product == null) {
-            throw new EntityNotFoundException((String.format("404 Пользователь c alias '%s' не найден", code)));
-        } else {
-            product.setStructurizrWorkspaceName(productPutDto.getStructurizrWorkspaceName());
-            product.setStructurizrApiKey(productPutDto.getStructurizrApiKey());
-            product.setStructurizrApiSecret(productPutDto.getStructurizrApiSecret());
-            product.setStructurizrApiUrl(productPutDto.getStructurizrApiUrl());
-            productRepository.save(product);
+        if (!interfacesToDelete.isEmpty()) {
+            interfacesToDelete.forEach(interfaceEntity -> interfaceEntity.setDeletedDate(new Date()));
+            interfaceRepository.saveAll(interfacesToDelete);
         }
     }
 
-    public void postUserProduct(List<String> aliasList, String id) {
-        if (aliasList.isEmpty()) {
-            throw new IllegalArgumentException("400: Массив пустой. ");
-        }
-        Integer userId = Integer.valueOf(id);
-        List<String> notFoundAliases = new ArrayList<>();
-        for (String alias : aliasList) {
-            Product product = productRepository.findByAlias(alias);
-            if (product != null) {
-                if (!userProductRepository.existsByUserIdAndProductId(userId, product.getId())) {
-                    UserProduct userProduct = UserProduct.builder()
-                            .userId(userId)
-                            .product(product)
-                            .build();
-                    userProductRepository.save(userProduct);
-                }
-            } else {
-                notFoundAliases.add(alias);
-            }
-            if (notFoundAliases.size() == aliasList.size()) {
-                throw new IllegalArgumentException("Ни один из продуктов не найден.");
-
-            }
-        }
-    }
-
-    public void validateProductPutDto(ProductPutDto productPutDto) {
-        StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getName() == null || productPutDto.getName().equals("")) {
-            errMsg.append("Отсутствует обязательное поле name");
-        }
-        if (!errMsg.toString().isEmpty()) {
-            throw new ValidationException(errMsg.toString());
-        }
-    }
-
-    public void validatePatchProductPutDto(ProductPutDto productPutDto) {
-        StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getStructurizrWorkspaceName() == null || productPutDto.getStructurizrWorkspaceName().equals("")) {
-            errMsg.append("Отсутствует обязательное поле structurizrWorkspaceName");
-        }
-        if (productPutDto.getStructurizrApiKey() == null || productPutDto.getStructurizrApiKey().equals("")) {
-            errMsg.append("Отсутствует обязательное поле structurizrApiKey");
-        }
-        if (productPutDto.getStructurizrApiSecret() == null || productPutDto.getStructurizrApiSecret().equals("")) {
-            errMsg.append("Отсутствует обязательное поле structurizrApiSecret");
-        }
-        if (productPutDto.getStructurizrApiUrl() == null || productPutDto.getStructurizrApiUrl().equals("")) {
-            errMsg.append("Отсутствует обязательное поле structurizrApiUrl");
-        }
-        if (!errMsg.toString().isEmpty()) {
-            throw new ValidationException(errMsg.toString());
-        }
-    }
-
-    public ApiSecretDTO getProductByApiKey(String apiKey) {
-        apiKeyValidate(apiKey);
-        Product product = productRepository.findByStructurizrApiKey(apiKey);
-        if (product == null) {
-            throw new EntityNotFoundException((String.format("Продукт c api-key '%s' не найден", apiKey)));
-        }
-        return ApiSecretDTO.builder()
-                .id(product.getId())
-                .apiSecret(product.getStructurizrApiSecret())
-                .build();
-    }
-
-    public ApiSecretDTO getServiceSecretByApiKey(String apiKey) {
-        apiKeyValidate(apiKey);
-        ServiceEntity serviceEntity = serviceEntityRepository.findByApiKey(apiKey);
-        if (serviceEntity == null) {
-            throw new EntityNotFoundException((String.format("Продукт c api-key '%s' не найден", apiKey)));
-        }
-        return ApiSecretDTO.builder()
-                .id(serviceEntity.getId())
-                .apiSecret(serviceEntity.getApiSecret())
-                .build();
-    }
-
-    private void apiKeyValidate (String apiKey){
-        if (apiKey == null) {
-            throw new IllegalArgumentException("Параметр api-key не должен быть пустым.");
-        }
-    }
 }

@@ -6,11 +6,35 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
-import ru.beeline.fdmproducts.domain.*;
-import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.domain.ContainerProduct;
+import ru.beeline.fdmproducts.domain.Interface;
+import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Parameter;
+import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.ServiceEntity;
+import ru.beeline.fdmproducts.domain.Sla;
+import ru.beeline.fdmproducts.domain.UserProduct;
+import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.dto.ContainerDTO;
+import ru.beeline.fdmproducts.dto.InterfaceDTO;
+import ru.beeline.fdmproducts.dto.MethodDTO;
+import ru.beeline.fdmproducts.dto.ParameterDTO;
+import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
-import ru.beeline.fdmproducts.repository.*;
+import ru.beeline.fdmproducts.mapper.ContainerMapper;
+import ru.beeline.fdmproducts.mapper.InterfaceMapper;
+import ru.beeline.fdmproducts.mapper.OperationMapper;
+import ru.beeline.fdmproducts.mapper.ParameterMapper;
+import ru.beeline.fdmproducts.mapper.SlaMapper;
+import ru.beeline.fdmproducts.repository.ContainerRepository;
+import ru.beeline.fdmproducts.repository.InterfaceRepository;
+import ru.beeline.fdmproducts.repository.OperationRepository;
+import ru.beeline.fdmproducts.repository.ParameterRepository;
+import ru.beeline.fdmproducts.repository.ProductRepository;
+import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
+import ru.beeline.fdmproducts.repository.SlaRepository;
+import ru.beeline.fdmproducts.repository.UserProductRepository;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,6 +46,21 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class ProductService {
+
+    @Autowired
+    private ContainerMapper containerMapper;
+
+    @Autowired
+    private InterfaceMapper interfaceMapper;
+
+    @Autowired
+    private OperationMapper operationMapper;
+
+    @Autowired
+    private SlaMapper slaMapper;
+
+    @Autowired
+    private ParameterMapper parameterMapper;
 
     @Autowired
     private CapabilityClient capabilityClient;
@@ -226,25 +265,19 @@ public class ProductService {
     }
 
     private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
+        if (containerDTO.getCode() == null) {
+            throw new IllegalArgumentException("Container code is empty");
+        }
         Optional<ContainerProduct> optionalContainerProduct = containerRepository.findByCode(containerDTO.getCode());
         if (optionalContainerProduct.isEmpty()) {
-            ContainerProduct containerProduct = ContainerProduct.builder()
-                    .productId(product.getId())
-                    .name(containerDTO.getName())
-                    .code(containerDTO.getCode())
-                    .version(containerDTO.getVersion())
-                    .createdDate(new Date())
-                    .build();
+            ContainerProduct containerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
             containerRepository.save(containerProduct);
             return containerProduct;
         } else {
             ContainerProduct container = optionalContainerProduct.get();
             if (!container.getName().equals(containerDTO.getName()) ||
                     !container.getVersion().equals(containerDTO.getVersion())) {
-                container.setProductId(product.getId());
-                container.setName(containerDTO.getName());
-                container.setVersion(containerDTO.getVersion());
-                container.setUpdatedDate(new Date());
+                containerMapper.updateContainerProduct(container, containerDTO, product);
                 containerRepository.save(container);
             }
             return container;
@@ -252,59 +285,38 @@ public class ProductService {
     }
 
     private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
+        if (interfaceDTO.getCapabilityCode() == null) {
+            throw new IllegalArgumentException("Capability Code is empty");
+        }
         Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
         if (searchCapabilityDTOS.isEmpty()) {
             throw new EntityNotFoundException("tcId from capability service not found");
         }
         if (optionalInterface.isEmpty()) {
-            Interface newInterface = Interface.builder()
-                    .name(interfaceDTO.getName())
-                    .code(interfaceDTO.getCode())
-                    .version(interfaceDTO.getVersion())
-                    .specLink(interfaceDTO.getSpecLink())
-                    .protocol(interfaceDTO.getProtocol())
-                    .tcId(searchCapabilityDTOS.get(0).getId())
-                    .containerId(containerId)
-                    .createdDate(new Date())
-                    .build();
+            Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, searchCapabilityDTOS);
             interfaceRepository.save(newInterface);
             return newInterface;
         } else {
             Interface getInterface = optionalInterface.get();
-            getInterface.setContainerId(containerId);
-            getInterface.setTcId(searchCapabilityDTOS.get(0).getId());
-            getInterface.setName(interfaceDTO.getName());
-            getInterface.setCode(interfaceDTO.getCode());
-            getInterface.setVersion(interfaceDTO.getVersion());
-            getInterface.setSpecLink(interfaceDTO.getSpecLink());
-            getInterface.setProtocol(interfaceDTO.getProtocol());
-            getInterface.setUpdatedDate(new Date());
-            getInterface.setDeletedDate(null);
+            interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, searchCapabilityDTOS);
             interfaceRepository.save(getInterface);
             return getInterface;
         }
     }
 
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
+        if (methodDTO.getName() == null) {
+            throw new IllegalArgumentException("Methods name is empty");
+        }
         Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
         if (optionalOperation.isEmpty()) {
-            Operation operation = Operation.builder()
-                    .name(methodDTO.getName())
-                    .description(methodDTO.getDescription())
-                    .returnType(methodDTO.getReturnType())
-                    .interfaceId(interfaceId)
-                    .createdDate(new Date())
-                    .build();
+            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
             operationRepository.save(operation);
             return operation;
         } else {
             Operation updateOperation = optionalOperation.get();
-            updateOperation.setName(methodDTO.getName());
-            updateOperation.setDescription(methodDTO.getDescription());
-            updateOperation.setReturnType(methodDTO.getReturnType());
-            updateOperation.setUpdatedDate(new Date());
-            updateOperation.setDeletedDate(null);
+            operationMapper.updateOperation(updateOperation, methodDTO);
             operationRepository.save(updateOperation);
             return updateOperation;
         }
@@ -312,21 +324,14 @@ public class ProductService {
 
     private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
         Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
+        Sla sla;
         if (optionalSla.isEmpty()) {
-            Sla sla = Sla.builder()
-                    .operationId(operationId)
-                    .rps(methodDTO.getSla().getRps())
-                    .latency(methodDTO.getSla().getLatency())
-                    .errorRate(methodDTO.getSla().getErrorRate())
-                    .build();
-            slaRepository.save(sla);
+            sla = slaMapper.convertToSla(methodDTO, operationId);
         } else {
-            Sla sla = optionalSla.get();
-            sla.setRps(methodDTO.getSla().getRps());
-            sla.setLatency(methodDTO.getSla().getLatency());
-            sla.setErrorRate(methodDTO.getSla().getErrorRate());
-            slaRepository.save(sla);
+            sla = optionalSla.get();
+            slaMapper.updateSla(sla, methodDTO);
         }
+        slaRepository.save(sla);
     }
 
     private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
@@ -334,12 +339,7 @@ public class ProductService {
                 parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
                         parameterDTO.getName(), parameterDTO.getType());
         if (optionalParameter.isEmpty()) {
-            Parameter parameter = Parameter.builder()
-                    .operationId(operationId)
-                    .parameterName(parameterDTO.getName())
-                    .parameterType(parameterDTO.getType())
-                    .createdDate(new Date())
-                    .build();
+            Parameter parameter = parameterMapper.convertToParameter(parameterDTO, operationId);
             parameterRepository.save(parameter);
             return parameter;
         } else {

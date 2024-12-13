@@ -1,36 +1,91 @@
 package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
+import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.domain.ContainerProduct;
+import ru.beeline.fdmproducts.domain.Interface;
+import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Parameter;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.ServiceEntity;
+import ru.beeline.fdmproducts.domain.Sla;
 import ru.beeline.fdmproducts.domain.UserProduct;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.dto.ContainerDTO;
+import ru.beeline.fdmproducts.dto.InterfaceDTO;
+import ru.beeline.fdmproducts.dto.MethodDTO;
+import ru.beeline.fdmproducts.dto.ParameterDTO;
+import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
+import ru.beeline.fdmproducts.mapper.ContainerMapper;
+import ru.beeline.fdmproducts.mapper.InterfaceMapper;
+import ru.beeline.fdmproducts.mapper.OperationMapper;
+import ru.beeline.fdmproducts.mapper.ParameterMapper;
+import ru.beeline.fdmproducts.mapper.SlaMapper;
+import ru.beeline.fdmproducts.repository.ContainerRepository;
+import ru.beeline.fdmproducts.repository.InterfaceRepository;
+import ru.beeline.fdmproducts.repository.OperationRepository;
+import ru.beeline.fdmproducts.repository.ParameterRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
+import ru.beeline.fdmproducts.repository.SlaRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Transactional
 @Service
 @Slf4j
 public class ProductService {
+
+    @Autowired
+    private ContainerMapper containerMapper;
+
+    @Autowired
+    private InterfaceMapper interfaceMapper;
+
+    @Autowired
+    private OperationMapper operationMapper;
+
+    @Autowired
+    private SlaMapper slaMapper;
+
+    @Autowired
+    private ParameterMapper parameterMapper;
+
+    @Autowired
+    private CapabilityClient capabilityClient;
     private final UserProductRepository userProductRepository;
     private final ServiceEntityRepository serviceEntityRepository;
     private final ProductRepository productRepository;
+    private final ContainerRepository containerRepository;
+    private final InterfaceRepository interfaceRepository;
+    private final OperationRepository operationRepository;
+    private final ParameterRepository parameterRepository;
+    private final SlaRepository slaRepository;
+
 
     public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository,
-                          ServiceEntityRepository serviceEntityRepository) {
+                          ServiceEntityRepository serviceEntityRepository, ContainerRepository containerRepository,
+                          InterfaceRepository interfaceRepository, OperationRepository operationRepository,
+                          SlaRepository slaRepository, ParameterRepository parameterRepository) {
         this.userProductRepository = userProductRepository;
         this.productRepository = productRepository;
         this.serviceEntityRepository = serviceEntityRepository;
+        this.containerRepository = containerRepository;
+        this.interfaceRepository = interfaceRepository;
+        this.operationRepository = operationRepository;
+        this.slaRepository = slaRepository;
+        this.parameterRepository = parameterRepository;
     }
 
     public List<Product> getProductsByUser(Integer userId) {
@@ -168,9 +223,157 @@ public class ProductService {
                 .build();
     }
 
-    private void apiKeyValidate (String apiKey){
+    private void apiKeyValidate(String apiKey) {
         if (apiKey == null) {
             throw new IllegalArgumentException("Параметр api-key не должен быть пустым.");
         }
     }
+
+    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
+        Product product = getProductByCode(code);
+        for (ContainerDTO containerDTO : containerDTOS) {
+            ContainerProduct container = createOrUpdateContainer(containerDTO, product);
+            Integer containerId = container.getId();
+
+            List<Interface> existingOrCreatedInterface = new ArrayList<>();
+            for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
+                Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
+                Integer interfaceId = createdOrUpdatedInterface.getId();
+                existingOrCreatedInterface.add(createdOrUpdatedInterface);
+
+                List<Operation> existingOrCreatedOperation = new ArrayList<>();
+                for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
+                    Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
+                    Integer operationId = createdOrUpdatedOperation.getId();
+                    existingOrCreatedOperation.add(createdOrUpdatedOperation);
+                    createOrUpdateSla(methodDTO, operationId);
+                    List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
+                    List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+                    for (ParameterDTO parameterDTO : parameterDTOS) {
+                        Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
+                        existingOrCreatedParameters.add(createdOrUpdatedParameter);
+                    }
+                    List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
+                    markAsDeleted(existingOrCreatedParameters, allParameters);
+                }
+                List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
+                markAsDeleted(existingOrCreatedOperation, allOperations);
+            }
+            List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
+            markAsDeleted(existingOrCreatedInterface, allInterfaces);
+        }
+    }
+
+    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
+        if (containerDTO.getCode() == null) {
+            throw new IllegalArgumentException("Container code is empty");
+        }
+        Optional<ContainerProduct> optionalContainerProduct = containerRepository.findByCode(containerDTO.getCode());
+        if (optionalContainerProduct.isEmpty()) {
+            ContainerProduct containerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
+            containerRepository.save(containerProduct);
+            return containerProduct;
+        } else {
+            ContainerProduct container = optionalContainerProduct.get();
+            if (!container.getName().equals(containerDTO.getName()) ||
+                    !container.getVersion().equals(containerDTO.getVersion())) {
+                containerMapper.updateContainerProduct(container, containerDTO, product);
+                containerRepository.save(container);
+            }
+            return container;
+        }
+    }
+
+    private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
+        if (interfaceDTO.getCapabilityCode() == null) {
+            throw new IllegalArgumentException("Capability Code is empty");
+        }
+        Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
+        List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
+        if (searchCapabilityDTOS.isEmpty()) {
+            throw new EntityNotFoundException("tcId from capability service not found");
+        }
+        if (optionalInterface.isEmpty()) {
+            Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, searchCapabilityDTOS);
+            interfaceRepository.save(newInterface);
+            return newInterface;
+        } else {
+            Interface getInterface = optionalInterface.get();
+            interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, searchCapabilityDTOS);
+            interfaceRepository.save(getInterface);
+            return getInterface;
+        }
+    }
+
+    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
+        if (methodDTO.getName() == null) {
+            throw new IllegalArgumentException("Methods name is empty");
+        }
+        Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
+        if (optionalOperation.isEmpty()) {
+            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
+            operationRepository.save(operation);
+            return operation;
+        } else {
+            Operation updateOperation = optionalOperation.get();
+            operationMapper.updateOperation(updateOperation, methodDTO);
+            operationRepository.save(updateOperation);
+            return updateOperation;
+        }
+    }
+
+    private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
+        Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
+        Sla sla;
+        if (optionalSla.isEmpty()) {
+            sla = slaMapper.convertToSla(methodDTO, operationId);
+        } else {
+            sla = optionalSla.get();
+            slaMapper.updateSla(sla, methodDTO);
+        }
+        slaRepository.save(sla);
+    }
+
+    private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
+        Optional<Parameter> optionalParameter =
+                parameterRepository.findByOperationIdAndParameterNameAndParameterType(operationId,
+                        parameterDTO.getName(), parameterDTO.getType());
+        if (optionalParameter.isEmpty()) {
+            Parameter parameter = parameterMapper.convertToParameter(parameterDTO, operationId);
+            parameterRepository.save(parameter);
+            return parameter;
+        } else {
+            return optionalParameter.get();
+        }
+    }
+
+    private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
+        List<Parameter> parametersToDelete = new ArrayList<>();
+        List<Operation> operationsToDelete = new ArrayList<>();
+        List<Interface> interfacesToDelete = new ArrayList<>();
+        allEntities.stream()
+                .filter(entity -> !existingEntities.contains(entity))
+                .forEach(entity -> {
+                    if (entity instanceof Parameter) {
+                        parametersToDelete.add((Parameter) entity);
+                    } else if (entity instanceof Operation) {
+                        operationsToDelete.add((Operation) entity);
+                    } else if (entity instanceof Interface) {
+                        interfacesToDelete.add((Interface) entity);
+                    }
+                });
+        if (!parametersToDelete.isEmpty()) {
+            parametersToDelete.forEach(parameter -> parameter.setDeletedDate(new Date()));
+            parameterRepository.saveAll(parametersToDelete);
+        }
+        if (!operationsToDelete.isEmpty()) {
+            operationsToDelete.forEach(operation -> operation.setDeletedDate(new Date()));
+            operationRepository.saveAll(operationsToDelete);
+        }
+        if (!interfacesToDelete.isEmpty()) {
+            interfacesToDelete.forEach(interfaceEntity -> interfaceEntity.setDeletedDate(new Date()));
+            interfaceRepository.saveAll(interfacesToDelete);
+        }
+    }
+
 }

@@ -375,5 +375,4 @@ public class ProductService {
             interfaceRepository.saveAll(interfacesToDelete);
         }
     }
-
 }

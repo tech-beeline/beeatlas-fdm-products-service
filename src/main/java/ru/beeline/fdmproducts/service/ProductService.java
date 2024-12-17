@@ -286,7 +286,7 @@ public class ProductService {
 
     private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
         if (interfaceDTO.getCapabilityCode() == null) {
-            throw new IllegalArgumentException("Capability Code is empty");
+            throw new IllegalArgumentException("Capability code is empty");
         }
         Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
@@ -375,5 +375,4 @@ public class ProductService {
             interfaceRepository.saveAll(interfacesToDelete);
         }
     }
-
 }

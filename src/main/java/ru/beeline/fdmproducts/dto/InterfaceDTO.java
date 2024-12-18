@@ -16,8 +16,8 @@ public class InterfaceDTO {
     private String name;
     private String code;
     private String version;
+    @JsonProperty("specification")
     private String specLink;
-    private String specification;
     private String capabilityCode;
     private String protocol;
     private List <MethodDTO> methods;

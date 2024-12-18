@@ -232,17 +232,25 @@ public class ProductService {
     public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
         Product product = getProductByCode(code);
         for (ContainerDTO containerDTO : containerDTOS) {
+            String list = "Container";
+            validateField(containerDTO.getName(), list,"name");
+            validateField(containerDTO.getCode(), list,"code");
             ContainerProduct container = createOrUpdateContainer(containerDTO, product);
             Integer containerId = container.getId();
 
             List<Interface> existingOrCreatedInterface = new ArrayList<>();
             for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
+                list="Interface";
+                validateField(interfaceDTO.getName(), list,"name");
+                validateField(interfaceDTO.getCode(), list,"code");
                 Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
                 Integer interfaceId = createdOrUpdatedInterface.getId();
                 existingOrCreatedInterface.add(createdOrUpdatedInterface);
 
                 List<Operation> existingOrCreatedOperation = new ArrayList<>();
                 for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
+                    list="Method";
+                    validateField(methodDTO.getName(), list,"name");
                     Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
                     Integer operationId = createdOrUpdatedOperation.getId();
                     existingOrCreatedOperation.add(createdOrUpdatedOperation);
@@ -250,6 +258,9 @@ public class ProductService {
                     List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
                     List<Parameter> existingOrCreatedParameters = new ArrayList<>();
                     for (ParameterDTO parameterDTO : parameterDTOS) {
+                        list="Parameter";
+                        validateField(parameterDTO.getName(), list,"name");
+                        validateField(parameterDTO.getType(), list,"type");
                         Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
                         existingOrCreatedParameters.add(createdOrUpdatedParameter);
                     }
@@ -264,10 +275,13 @@ public class ProductService {
         }
     }
 
-    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
-        if (containerDTO.getCode() == null) {
-            throw new IllegalArgumentException("Container code is empty");
+    private void validateField(String fieldValue, String entityName, String fieldName) {
+        if (fieldValue == null || fieldValue.isEmpty()) {
+            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s", entityName, fieldName));
         }
+    }
+
+    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
         Optional<ContainerProduct> optionalContainerProduct = containerRepository.findByCode(containerDTO.getCode());
         if (optionalContainerProduct.isEmpty()) {
             ContainerProduct containerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
@@ -306,9 +320,6 @@ public class ProductService {
     }
 
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
-        if (methodDTO.getName() == null) {
-            throw new IllegalArgumentException("Methods name is empty");
-        }
         Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
         if (optionalOperation.isEmpty()) {
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);

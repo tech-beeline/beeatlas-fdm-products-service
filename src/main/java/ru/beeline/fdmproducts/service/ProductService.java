@@ -233,45 +233,47 @@ public class ProductService {
         Product product = getProductByCode(code);
         for (ContainerDTO containerDTO : containerDTOS) {
             String list = "Container";
-            validateField(containerDTO.getName(), list,"name");
-            validateField(containerDTO.getCode(), list,"code");
+            validateField(containerDTO.getName(), list, "name");
+            validateField(containerDTO.getCode(), list, "code");
             ContainerProduct container = createOrUpdateContainer(containerDTO, product);
             Integer containerId = container.getId();
+            if (containerDTO.getInterfaces() != null && !containerDTO.getInterfaces().isEmpty()) {
 
-            List<Interface> existingOrCreatedInterface = new ArrayList<>();
-            for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
-                list="Interface";
-                validateField(interfaceDTO.getName(), list,"name");
-                validateField(interfaceDTO.getCode(), list,"code");
-                Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
-                Integer interfaceId = createdOrUpdatedInterface.getId();
-                existingOrCreatedInterface.add(createdOrUpdatedInterface);
+                List<Interface> existingOrCreatedInterface = new ArrayList<>();
+                for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
+                    list = "Interface";
+                    validateField(interfaceDTO.getName(), list, "name");
+                    validateField(interfaceDTO.getCode(), list, "code");
+                    Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
+                    Integer interfaceId = createdOrUpdatedInterface.getId();
+                    existingOrCreatedInterface.add(createdOrUpdatedInterface);
 
-                List<Operation> existingOrCreatedOperation = new ArrayList<>();
-                for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
-                    list="Method";
-                    validateField(methodDTO.getName(), list,"name");
-                    Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
-                    Integer operationId = createdOrUpdatedOperation.getId();
-                    existingOrCreatedOperation.add(createdOrUpdatedOperation);
-                    createOrUpdateSla(methodDTO, operationId);
-                    List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
-                    List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                    for (ParameterDTO parameterDTO : parameterDTOS) {
-                        list="Parameter";
-                        validateField(parameterDTO.getName(), list,"name");
-                        validateField(parameterDTO.getType(), list,"type");
-                        Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
-                        existingOrCreatedParameters.add(createdOrUpdatedParameter);
+                    List<Operation> existingOrCreatedOperation = new ArrayList<>();
+                    for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
+                        list = "Method";
+                        validateField(methodDTO.getName(), list, "name");
+                        Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
+                        Integer operationId = createdOrUpdatedOperation.getId();
+                        existingOrCreatedOperation.add(createdOrUpdatedOperation);
+                        createOrUpdateSla(methodDTO, operationId);
+                        List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
+                        List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+                        for (ParameterDTO parameterDTO : parameterDTOS) {
+                            list = "Parameter";
+                            validateField(parameterDTO.getName(), list, "name");
+                            validateField(parameterDTO.getType(), list, "type");
+                            Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
+                            existingOrCreatedParameters.add(createdOrUpdatedParameter);
+                        }
+                        List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
+                        markAsDeleted(existingOrCreatedParameters, allParameters);
                     }
-                    List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
-                    markAsDeleted(existingOrCreatedParameters, allParameters);
+                    List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
+                    markAsDeleted(existingOrCreatedOperation, allOperations);
                 }
-                List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
-                markAsDeleted(existingOrCreatedOperation, allOperations);
+                List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
+                markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
-            List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
-            markAsDeleted(existingOrCreatedInterface, allInterfaces);
         }
     }
 
@@ -313,22 +315,33 @@ public class ProductService {
             return newInterface;
         } else {
             Interface getInterface = optionalInterface.get();
-            interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, searchCapabilityDTOS);
-            interfaceRepository.save(getInterface);
+            if (!equalsInterfaces(getInterface, interfaceDTO, searchCapabilityDTOS.get(0).getId())) {
+                interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, searchCapabilityDTOS);
+                interfaceRepository.save(getInterface);
+            }
             return getInterface;
         }
     }
 
+    private Boolean equalsInterfaces(Interface getInterface, InterfaceDTO interfaceDTO, Integer searchCapabilityDTO) {
+        return getInterface.getName().equals(interfaceDTO.getName()) && getInterface.getVersion().equals(interfaceDTO.getVersion()) &&
+                getInterface.getSpecLink().equals(interfaceDTO.getSpecLink()) && getInterface.getTcId().equals(searchCapabilityDTO) &&
+                getInterface.getProtocol().equals(interfaceDTO.getProtocol());
+    }
+
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
-        Optional<Operation> optionalOperation = operationRepository.findByName(methodDTO.getName());
+        Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(), interfaceId);
         if (optionalOperation.isEmpty()) {
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
             operationRepository.save(operation);
             return operation;
         } else {
             Operation updateOperation = optionalOperation.get();
-            operationMapper.updateOperation(updateOperation, methodDTO);
-            operationRepository.save(updateOperation);
+            if (!methodDTO.getDescription().equals(updateOperation.getDescription()) &&
+                    !methodDTO.getReturnType().equals(updateOperation.getReturnType())) {
+                operationMapper.updateOperation(updateOperation, methodDTO);
+                operationRepository.save(updateOperation);
+            }
             return updateOperation;
         }
     }

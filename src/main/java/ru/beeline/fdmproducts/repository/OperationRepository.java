@@ -8,7 +8,7 @@ import java.util.Optional;
 
 public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
-    Optional<Operation> findByName(String name);
+    Optional<Operation> findByNameAndInterfaceId(String name, Integer interfaceId);
 
     List<Operation> findByInterfaceIdAndDeletedDateIsNull(Integer id);
 }

@@ -8,6 +8,7 @@ import java.util.Optional;
 
 public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
 
-    Optional<Interface> findByCode(String code);
+    Optional<Interface> findByCodeAndContainerId(String code, Integer containerId);
+
     List<Interface> findByContainerIdAndDeletedDateIsNull(Integer containerId);
 }

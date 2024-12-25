@@ -304,7 +304,7 @@ public class ProductService {
         if (interfaceDTO.getCapabilityCode() == null) {
             throw new IllegalArgumentException("Capability code is empty");
         }
-        Optional<Interface> optionalInterface = interfaceRepository.findByCode(interfaceDTO.getCode());
+        Optional<Interface> optionalInterface = interfaceRepository.findByCodeAndContainerId(interfaceDTO.getCode(), containerId);
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
         if (searchCapabilityDTOS.isEmpty()) {
             throw new EntityNotFoundException("tcId from capability service not found");

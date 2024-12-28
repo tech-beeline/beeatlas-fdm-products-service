@@ -337,7 +337,7 @@ public class ProductService {
             return operation;
         } else {
             Operation updateOperation = optionalOperation.get();
-            if (!methodDTO.getDescription().equals(updateOperation.getDescription()) &&
+            if (!methodDTO.getDescription().equals(updateOperation.getDescription()) ||
                     !methodDTO.getReturnType().equals(updateOperation.getReturnType())) {
                 operationMapper.updateOperation(updateOperation, methodDTO);
                 operationRepository.save(updateOperation);

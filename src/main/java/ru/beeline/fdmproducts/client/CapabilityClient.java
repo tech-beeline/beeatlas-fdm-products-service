@@ -33,7 +33,8 @@ public class CapabilityClient {
             headers.add("SOURCE", "Sparx");
             HttpEntity<String> entity = new HttpEntity<>(headers);
 
-            List<SearchCapabilityDTO> result = restTemplate.exchange(capabilityServerUrl + "/api/v1/find?search=" + code,
+            List<SearchCapabilityDTO> result = restTemplate.exchange(capabilityServerUrl +
+                            "/api/v1/find?search=" + code + "&findBy=TECH_CAPABILITY",
                     HttpMethod.GET, entity, new ParameterizedTypeReference<List<SearchCapabilityDTO>>() {
                     }).getBody();
 

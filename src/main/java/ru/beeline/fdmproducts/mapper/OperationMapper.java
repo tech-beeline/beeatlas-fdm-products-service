@@ -23,6 +23,5 @@ public class OperationMapper {
         operation.setDescription(methodDTO.getDescription());
         operation.setReturnType(methodDTO.getReturnType());
         operation.setUpdatedDate(new Date());
-        operation.setDeletedDate(null);
     }
 }

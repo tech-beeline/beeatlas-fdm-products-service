@@ -39,6 +39,7 @@ import ru.beeline.fdmproducts.repository.UserProductRepository;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -247,26 +248,30 @@ public class ProductService {
                     Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
                     Integer interfaceId = createdOrUpdatedInterface.getId();
                     existingOrCreatedInterface.add(createdOrUpdatedInterface);
-
                     List<Operation> existingOrCreatedOperation = new ArrayList<>();
-                    for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
-                        list = "Method";
-                        validateField(methodDTO.getName(), list, "name");
-                        Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
-                        Integer operationId = createdOrUpdatedOperation.getId();
-                        existingOrCreatedOperation.add(createdOrUpdatedOperation);
-                        createOrUpdateSla(methodDTO, operationId);
-                        List<ParameterDTO> parameterDTOS = methodDTO.getParameters();
-                        List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                        for (ParameterDTO parameterDTO : parameterDTOS) {
-                            list = "Parameter";
-                            validateField(parameterDTO.getName(), list, "name");
-                            validateField(parameterDTO.getType(), list, "type");
-                            Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
-                            existingOrCreatedParameters.add(createdOrUpdatedParameter);
+                    if (interfaceDTO.getMethods() != null) {
+                        for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
+                            list = "Method";
+                            validateField(methodDTO.getName(), list, "name");
+                            Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
+                            Integer operationId = createdOrUpdatedOperation.getId();
+                            existingOrCreatedOperation.add(createdOrUpdatedOperation);
+                            if (methodDTO.getSla() != null) {
+                                createOrUpdateSla(methodDTO, operationId);
+                            }
+                            List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+                            if (methodDTO.getParameters() != null) {
+                                for (ParameterDTO parameterDTO : methodDTO.getParameters()) {
+                                    list = "Parameter";
+                                    validateField(parameterDTO.getName(), list, "name");
+                                    validateField(parameterDTO.getType(), list, "type");
+                                    Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
+                                    existingOrCreatedParameters.add(createdOrUpdatedParameter);
+                                }
+                            }
+                            List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
+                            markAsDeleted(existingOrCreatedParameters, allParameters);
                         }
-                        List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
-                        markAsDeleted(existingOrCreatedParameters, allParameters);
                     }
                     List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
                     markAsDeleted(existingOrCreatedOperation, allOperations);
@@ -306,26 +311,37 @@ public class ProductService {
         }
         Optional<Interface> optionalInterface = interfaceRepository.findByCodeAndContainerId(interfaceDTO.getCode(), containerId);
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
-        if (searchCapabilityDTOS.isEmpty()) {
-            throw new EntityNotFoundException("tcId from capability service not found");
+        Integer tcId = null;
+        if (!searchCapabilityDTOS.isEmpty()) {
+            SearchCapabilityDTO searchCapabilityDTO = searchCapabilityDTOS.get(0);
+            if (searchCapabilityDTO.getCode().equals(interfaceDTO.getCapabilityCode())) {
+                tcId = searchCapabilityDTO.getId();
+            }
         }
         if (optionalInterface.isEmpty()) {
-            Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, searchCapabilityDTOS);
+            Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, tcId);
             interfaceRepository.save(newInterface);
             return newInterface;
         } else {
             Interface getInterface = optionalInterface.get();
-            if (!equalsInterfaces(getInterface, interfaceDTO, searchCapabilityDTOS.get(0).getId())) {
-                interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, searchCapabilityDTOS);
+            if (getInterface.getDeletedDate() != null) {
+                getInterface.setDeletedDate(null);
+                getInterface.setUpdatedDate(new Date());
+                interfaceRepository.save(getInterface);
+            }
+            if (!equalsInterfaces(getInterface, interfaceDTO, tcId)) {
+                interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, tcId);
                 interfaceRepository.save(getInterface);
             }
             return getInterface;
         }
     }
 
-    private Boolean equalsInterfaces(Interface getInterface, InterfaceDTO interfaceDTO, Integer searchCapabilityDTO) {
-        return getInterface.getName().equals(interfaceDTO.getName()) && getInterface.getVersion().equals(interfaceDTO.getVersion()) &&
-                getInterface.getSpecLink().equals(interfaceDTO.getSpecLink()) && getInterface.getTcId().equals(searchCapabilityDTO) &&
+    private Boolean equalsInterfaces(Interface getInterface, InterfaceDTO interfaceDTO, Integer tcId) {
+        return getInterface.getName().equals(interfaceDTO.getName()) &&
+                getInterface.getVersion().equals(interfaceDTO.getVersion()) &&
+                getInterface.getSpecLink().equals(interfaceDTO.getSpecLink()) &&
+                Objects.equals(getInterface.getTcId(), tcId) &&
                 getInterface.getProtocol().equals(interfaceDTO.getProtocol());
     }
 
@@ -337,6 +353,11 @@ public class ProductService {
             return operation;
         } else {
             Operation updateOperation = optionalOperation.get();
+            if (updateOperation.getDeletedDate() != null) {
+                updateOperation.setDeletedDate(null);
+                updateOperation.setUpdatedDate(new Date());
+                operationRepository.save(updateOperation);
+            }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) ||
                     !methodDTO.getReturnType().equals(updateOperation.getReturnType())) {
                 operationMapper.updateOperation(updateOperation, methodDTO);
@@ -367,6 +388,9 @@ public class ProductService {
             parameterRepository.save(parameter);
             return parameter;
         } else {
+            Parameter updateParameter = optionalParameter.get();
+            updateParameter.setDeletedDate(null);
+            parameterRepository.save(updateParameter);
             return optionalParameter.get();
         }
     }

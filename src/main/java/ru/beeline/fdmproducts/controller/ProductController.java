@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
+import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
@@ -29,7 +30,8 @@ public class ProductController {
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId,
+                request.getHeader(USER_ROLES_HEADER)));
     }
 
     @GetMapping("/product/{code}")

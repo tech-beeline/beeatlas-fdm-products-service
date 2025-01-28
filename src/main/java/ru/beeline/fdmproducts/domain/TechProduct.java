@@ -1,4 +1,5 @@
 package ru.beeline.fdmproducts.domain;
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.*;
 
 import javax.persistence.*;
@@ -20,6 +21,7 @@ public class TechProduct {
     @Column(name = "tech_id")
     private Integer techId;
 
+    @JsonBackReference
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;

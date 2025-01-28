@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
 import javax.persistence.*;
@@ -43,6 +44,7 @@ public class Product {
     @Column(name = "structurizr_api_url")
     private String structurizrApiUrl;
 
+    @JsonManagedReference
     @OneToMany(mappedBy = "product")
     private List<TechProduct> techProducts;
 }

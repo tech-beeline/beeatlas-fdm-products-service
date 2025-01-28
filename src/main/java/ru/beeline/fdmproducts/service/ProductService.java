@@ -37,6 +37,7 @@ import ru.beeline.fdmproducts.repository.SlaRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Objects;
@@ -89,8 +90,13 @@ public class ProductService {
         this.parameterRepository = parameterRepository;
     }
 
-    public List<Product> getProductsByUser(Integer userId) {
-        return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
+    public List<Product> getProductsByUser(Integer userId, String userRoles) {
+        List<String> roles = Arrays.asList(userRoles.split(","));
+        if (roles.contains("ADMINISTRATOR")) {
+            return productRepository.findAll();
+        } else {
+            return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
+        }
     }
 
     public Product getProductByCode(String code) {

@@ -91,7 +91,9 @@ public class ProductService {
     }
 
     public List<Product> getProductsByUser(Integer userId, String userRoles) {
-        List<String> roles = Arrays.asList(userRoles.split(","));
+        List<String> roles = Arrays.stream(userRoles.split(","))
+                .map(role -> role.replaceAll("^\"|\"$", ""))
+                .collect(Collectors.toList());
         if (roles.contains("ADMINISTRATOR")) {
             return productRepository.findAll();
         } else {

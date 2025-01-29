@@ -8,12 +8,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
+import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
@@ -27,7 +30,8 @@ public class ProductController {
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId,
+                request.getHeader(USER_ROLES_HEADER)));
     }
 
     @GetMapping("/product/{code}")
@@ -57,6 +61,26 @@ public class ProductController {
     public ResponseEntity postUserProducts(@PathVariable String id,
                                            @RequestBody List<String> aliasLIst) {
         productService.postUserProduct(aliasLIst, id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/product/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы product")
+    public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getProductByApiKey(apiKey);
+    }
+
+    @GetMapping("/service/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы service")
+    public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getServiceSecretByApiKey(apiKey);
+    }
+
+    @PutMapping("/product/{code}/relations")
+    @ApiOperation(value = "Создание и обновление связей продукта")
+    public ResponseEntity putProductRelations(@PathVariable String code,
+                                              @RequestBody List<ContainerDTO> containerDTO) {
+        productService.createOrUpdateProductRelations(containerDTO, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

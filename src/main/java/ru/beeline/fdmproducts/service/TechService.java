@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.TechProduct;
+import ru.beeline.fdmproducts.dto.GetProductDTO;
 import ru.beeline.fdmproducts.repository.TechProductRepository;
 
 import java.util.List;
@@ -20,8 +21,12 @@ public class TechService {
         this.techProductRepository = techProductRepository;
     }
 
-    public List<Product> getProductsByTechId(Integer techId) {
-        return techProductRepository.findAllByTechId(techId).stream().map(TechProduct::getProduct).collect(Collectors.toList());
+    public List<GetProductDTO> getProductsByTechId(Integer techId) {
+        return techProductRepository.findAllByTechId(techId).stream().map(techProduct -> GetProductDTO.builder()
+                .id(techProduct.getProduct().getId())
+                .name(techProduct.getProduct().getName())
+                .alias(techProduct.getProduct().getAlias())
+                .build()).collect(Collectors.toList());
     }
 
     public void saveOrNone(Integer techId, Product product) {

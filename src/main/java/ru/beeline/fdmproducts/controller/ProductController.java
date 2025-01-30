@@ -30,7 +30,7 @@ public class ProductController {
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId);
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
     }
 
     @GetMapping("/user/product/admin")
@@ -40,55 +40,55 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUserAdmin(userId,
                 request.getHeader(USER_ROLES_HEADER)));
     }
-}
 
-@GetMapping("/product/{code}")
-@ApiOperation(value = "Получить продукт по alias", response = Product.class)
-public Product getProductsByCode(@PathVariable String code) {
-    return productService.getProductByCode(code);
-}
 
-@PutMapping("/product/{code}")
-@ApiOperation(value = "Редактирование продукта")
-public ResponseEntity putProducts(@PathVariable String code,
-                                  @RequestBody ProductPutDto productPutDto) {
-    productService.createOrUpdate(productPutDto, code);
-    return new ResponseEntity<>(HttpStatus.OK);
-}
+    @GetMapping("/product/{code}")
+    @ApiOperation(value = "Получить продукт по alias", response = Product.class)
+    public Product getProductsByCode(@PathVariable String code) {
+        return productService.getProductByCode(code);
+    }
 
-@PatchMapping("product/{code}/workspace")
-@ApiOperation(value = "Добавление атрибутов к продукту")
-public ResponseEntity patchProducts(@PathVariable String code,
-                                    @RequestBody ProductPutDto productPutDto) {
-    productService.patchProduct(productPutDto, code);
-    return new ResponseEntity<>(HttpStatus.OK);
-}
+    @PutMapping("/product/{code}")
+    @ApiOperation(value = "Редактирование продукта")
+    public ResponseEntity putProducts(@PathVariable String code,
+                                      @RequestBody ProductPutDto productPutDto) {
+        productService.createOrUpdate(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
-@PostMapping("/user/{id}/products")
-@ApiOperation(value = "Создание связи пользователя и продукта")
-public ResponseEntity postUserProducts(@PathVariable String id,
-                                       @RequestBody List<String> aliasLIst) {
-    productService.postUserProduct(aliasLIst, id);
-    return new ResponseEntity<>(HttpStatus.OK);
-}
+    @PatchMapping("product/{code}/workspace")
+    @ApiOperation(value = "Добавление атрибутов к продукту")
+    public ResponseEntity patchProducts(@PathVariable String code,
+                                        @RequestBody ProductPutDto productPutDto) {
+        productService.patchProduct(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
-@GetMapping("/product/api-secret/{api-key}")
-@ApiOperation(value = "Получение api secret из таблицы product")
-public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
-    return productService.getProductByApiKey(apiKey);
-}
+    @PostMapping("/user/{id}/products")
+    @ApiOperation(value = "Создание связи пользователя и продукта")
+    public ResponseEntity postUserProducts(@PathVariable String id,
+                                           @RequestBody List<String> aliasLIst) {
+        productService.postUserProduct(aliasLIst, id);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 
-@GetMapping("/service/api-secret/{api-key}")
-@ApiOperation(value = "Получение api secret из таблицы service")
-public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
-    return productService.getServiceSecretByApiKey(apiKey);
-}
+    @GetMapping("/product/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы product")
+    public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getProductByApiKey(apiKey);
+    }
 
-@PutMapping("/product/{code}/relations")
-@ApiOperation(value = "Создание и обновление связей продукта")
-public ResponseEntity putProductRelations(@PathVariable String code,
-                                          @RequestBody List<ContainerDTO> containerDTO) {
-    productService.createOrUpdateProductRelations(containerDTO, code);
-    return new ResponseEntity<>(HttpStatus.OK);
-}
+    @GetMapping("/service/api-secret/{api-key}")
+    @ApiOperation(value = "Получение api secret из таблицы service")
+    public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
+        return productService.getServiceSecretByApiKey(apiKey);
+    }
+
+    @PutMapping("/product/{code}/relations")
+    @ApiOperation(value = "Создание и обновление связей продукта")
+    public ResponseEntity putProductRelations(@PathVariable String code,
+                                              @RequestBody List<ContainerDTO> containerDTO) {
+        productService.createOrUpdateProductRelations(containerDTO, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

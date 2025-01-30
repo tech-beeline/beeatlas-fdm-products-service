@@ -92,14 +92,14 @@ public class ProductService {
 
     //кастыль на администратора, в хедеры вернул всепродукты
     public List<Product> getProductsByUser(Integer userId) {
-        return getProductsByUser(userId, "some");
+        return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
     }
 
-    public List<Product> getProductsByUser(Integer userId, String userRoles) {
+    public List<Product> getProductsByUserAdmin(Integer userId, String userRoles) {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
                 .collect(Collectors.toList());
-        if (roles.contains("ADMINISTRATOR")) {
+        if (roles.contains("ADMINISTRATOR") ) {
             return productRepository.findAll();
         } else {
             return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());

@@ -28,10 +28,15 @@ public class ProductController {
 
     @GetMapping("/user/product")
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
-    public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
+    public ResponseEntity<List<Product>> getProducts(HttpServletRequest request,
+                                                     @RequestParam(value = "ignoreRole", required = false, defaultValue = "false") boolean ignoreRole) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId,
-                request.getHeader(USER_ROLES_HEADER)));
+        if (ignoreRole) {
+            return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+        } else {
+            return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId,
+                    request.getHeader(USER_ROLES_HEADER)));
+        }
     }
 
     @GetMapping("/product/{code}")

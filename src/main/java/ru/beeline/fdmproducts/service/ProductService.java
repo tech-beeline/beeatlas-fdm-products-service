@@ -90,6 +90,11 @@ public class ProductService {
         this.parameterRepository = parameterRepository;
     }
 
+    //кастыль на администратора, в хедеры вернул всепродукты
+    public List<Product> getProductsByUser(Integer userId) {
+        return getProductsByUser(userId, "some");
+    }
+
     public List<Product> getProductsByUser(Integer userId, String userRoles) {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))

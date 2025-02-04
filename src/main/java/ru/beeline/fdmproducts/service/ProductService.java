@@ -90,11 +90,16 @@ public class ProductService {
         this.parameterRepository = parameterRepository;
     }
 
-    public List<Product> getProductsByUser(Integer userId, String userRoles) {
+    //кастыль на администратора, в хедеры вернул всепродукты
+    public List<Product> getProductsByUser(Integer userId) {
+        return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
+    }
+
+    public List<Product> getProductsByUserAdmin(Integer userId, String userRoles) {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
                 .collect(Collectors.toList());
-        if (roles.contains("ADMINISTRATOR")) {
+        if (roles.contains("ADMINISTRATOR") ) {
             return productRepository.findAll();
         } else {
             return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
@@ -105,7 +110,7 @@ public class ProductService {
         if (code == null || code.equals("\n") || code.equals(" \n")) {
             throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
         }
-        Product product = productRepository.findByAlias(code);
+        Product product = productRepository.findByAliasCaseInsensitive(code);
         if (product == null) {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
@@ -118,7 +123,7 @@ public class ProductService {
 
     public void createOrUpdate(ProductPutDto productPutDto, String code) {
         validateProductPutDto(productPutDto);
-        Product product = productRepository.findByAlias(code);
+        Product product = productRepository.findByAliasCaseInsensitive(code);
         if (product == null) {
             product = new Product();
             product.setAlias(code);
@@ -141,7 +146,7 @@ public class ProductService {
 
     public void patchProduct(ProductPutDto productPutDto, String code) {
         validatePatchProductPutDto(productPutDto);
-        Product product = productRepository.findByAlias(code);
+        Product product = productRepository.findByAliasCaseInsensitive(code);
         if (product == null) {
             throw new EntityNotFoundException((String.format("404 Пользователь c alias '%s' не найден", code)));
         } else {
@@ -160,7 +165,7 @@ public class ProductService {
         Integer userId = Integer.valueOf(id);
         List<String> notFoundAliases = new ArrayList<>();
         for (String alias : aliasList) {
-            Product product = productRepository.findByAlias(alias);
+            Product product = productRepository.findByAliasCaseInsensitive(alias);
             if (product != null) {
                 if (!userProductRepository.existsByUserIdAndProductId(userId, product.getId())) {
                     UserProduct userProduct = UserProduct.builder()

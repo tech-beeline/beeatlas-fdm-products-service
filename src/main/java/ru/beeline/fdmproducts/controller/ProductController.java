@@ -30,9 +30,17 @@ public class ProductController {
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId,
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    }
+
+    @GetMapping("/user/product/admin")
+    @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
+    public ResponseEntity<List<Product>> getProductsAdmin(HttpServletRequest request) {
+        Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUserAdmin(userId,
                 request.getHeader(USER_ROLES_HEADER)));
     }
+
 
     @GetMapping("/product/{code}")
     @ApiOperation(value = "Получить продукт по alias", response = Product.class)

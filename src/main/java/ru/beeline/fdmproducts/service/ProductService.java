@@ -2,6 +2,7 @@ package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
@@ -13,19 +14,24 @@ import ru.beeline.fdmproducts.domain.Parameter;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.ServiceEntity;
 import ru.beeline.fdmproducts.domain.Sla;
+import ru.beeline.fdmproducts.domain.TechProduct;
 import ru.beeline.fdmproducts.domain.UserProduct;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
+import ru.beeline.fdmproducts.dto.GetProductTechDto;
+import ru.beeline.fdmproducts.dto.GetProductsDTO;
 import ru.beeline.fdmproducts.dto.InterfaceDTO;
 import ru.beeline.fdmproducts.dto.MethodDTO;
 import ru.beeline.fdmproducts.dto.ParameterDTO;
 import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
+import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.ContainerMapper;
 import ru.beeline.fdmproducts.mapper.InterfaceMapper;
 import ru.beeline.fdmproducts.mapper.OperationMapper;
 import ru.beeline.fdmproducts.mapper.ParameterMapper;
+import ru.beeline.fdmproducts.mapper.ProductTechMapper;
 import ru.beeline.fdmproducts.mapper.SlaMapper;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
@@ -34,12 +40,14 @@ import ru.beeline.fdmproducts.repository.ParameterRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
 import ru.beeline.fdmproducts.repository.SlaRepository;
+import ru.beeline.fdmproducts.repository.TechProductRepository;
 import ru.beeline.fdmproducts.repository.UserProductRepository;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -51,6 +59,9 @@ public class ProductService {
 
     @Autowired
     private ContainerMapper containerMapper;
+
+    @Autowired
+    private ProductTechMapper productTechMapper;
 
     @Autowired
     private InterfaceMapper interfaceMapper;
@@ -74,12 +85,14 @@ public class ProductService {
     private final OperationRepository operationRepository;
     private final ParameterRepository parameterRepository;
     private final SlaRepository slaRepository;
+    private final TechProductRepository techProductRepository;
 
 
     public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository,
                           ServiceEntityRepository serviceEntityRepository, ContainerRepository containerRepository,
                           InterfaceRepository interfaceRepository, OperationRepository operationRepository,
-                          SlaRepository slaRepository, ParameterRepository parameterRepository) {
+                          SlaRepository slaRepository, ParameterRepository parameterRepository,
+                          TechProductRepository techProductRepository) {
         this.userProductRepository = userProductRepository;
         this.productRepository = productRepository;
         this.serviceEntityRepository = serviceEntityRepository;
@@ -88,6 +101,7 @@ public class ProductService {
         this.operationRepository = operationRepository;
         this.slaRepository = slaRepository;
         this.parameterRepository = parameterRepository;
+        this.techProductRepository = techProductRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -99,7 +113,7 @@ public class ProductService {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
                 .collect(Collectors.toList());
-        if (roles.contains("ADMINISTRATOR") ) {
+        if (roles.contains("ADMINISTRATOR")) {
             return productRepository.findAll();
         } else {
             return userProductRepository.findAllByUserId(userId).stream().map(UserProduct::getProduct).collect(Collectors.toList());
@@ -434,6 +448,29 @@ public class ProductService {
         if (!interfacesToDelete.isEmpty()) {
             interfacesToDelete.forEach(interfaceEntity -> interfaceEntity.setDeletedDate(new Date()));
             interfaceRepository.saveAll(interfacesToDelete);
+        }
+    }
+
+    public List<GetProductTechDto> getAllProductsAndTechRelations() {
+        try {
+            List<TechProduct> techProducts = techProductRepository.findAll();
+            Map<Integer, List<GetProductsDTO>> productsDTOByTechId = techProducts.stream()
+                    .filter(techProduct -> techProduct.getProduct() != null)
+                    .collect(Collectors.groupingBy(
+                            TechProduct::getTechId,
+                            Collectors.mapping(techProduct -> productTechMapper.mapToGetProductsDTO(techProduct.getProduct()), Collectors.toList())
+                    ));
+            List<GetProductTechDto> productTechDtoList = productsDTOByTechId.entrySet().stream()
+                    .map(entry -> GetProductTechDto.builder()
+                            .techId(entry.getKey())
+                            .products(entry.getValue())
+                            .build())
+                    .collect(Collectors.toList());
+            return productTechDtoList;
+        } catch (DataAccessException e) {
+            throw new DatabaseConnectionException("Database is currently unavailable. Please try again later");
+        } catch (Exception e) {
+            throw new RuntimeException("Error processing products and tech relations");
         }
     }
 }

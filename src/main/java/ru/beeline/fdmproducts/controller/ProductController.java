@@ -10,6 +10,7 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
+import ru.beeline.fdmproducts.dto.GetProductTechDto;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -90,5 +91,11 @@ public class ProductController {
                                               @RequestBody List<ContainerDTO> containerDTO) {
         productService.createOrUpdateProductRelations(containerDTO, code);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/products/relations/tech")
+    @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
+    public List<GetProductTechDto> getAllProductsAndTechRelations() {
+        return productService.getAllProductsAndTechRelations();
     }
 }

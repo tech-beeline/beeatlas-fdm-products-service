@@ -10,7 +10,7 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
-import ru.beeline.fdmproducts.dto.GetProductTechDto;
+import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -41,7 +41,6 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUserAdmin(userId,
                 request.getHeader(USER_ROLES_HEADER)));
     }
-
 
     @GetMapping("/product/{code}")
     @ApiOperation(value = "Получить продукт по alias", response = Product.class)

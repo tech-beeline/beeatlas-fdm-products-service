@@ -11,6 +11,7 @@ import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
+import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -96,5 +97,17 @@ public class ProductController {
     @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
     public List<GetProductTechDto> getAllProductsAndTechRelations() {
         return productService.getAllProductsAndTechRelations();
+    }
+
+    @PostMapping("/product/{alias}/fitness-function/{source_id}")
+    @ApiOperation(value = "Публикация результатов фитнесс-функций")
+    public ResponseEntity postFitnessFunctions(
+            @PathVariable String alias,
+            @PathVariable("source_id") Integer sourceId,
+            @RequestBody List<FitnessFunctionDTO> requests) {
+
+        productService.postFitnessFunctions(alias, sourceId, requests);
+        return new ResponseEntity<>(HttpStatus.CREATED);
+
     }
 }

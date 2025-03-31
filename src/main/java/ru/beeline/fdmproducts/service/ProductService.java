@@ -1,55 +1,24 @@
 package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.client.CapabilityClient;
-import ru.beeline.fdmproducts.domain.ContainerProduct;
-import ru.beeline.fdmproducts.domain.Interface;
-import ru.beeline.fdmproducts.domain.Operation;
-import ru.beeline.fdmproducts.domain.Parameter;
-import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.domain.ServiceEntity;
-import ru.beeline.fdmproducts.domain.Sla;
-import ru.beeline.fdmproducts.domain.TechProduct;
-import ru.beeline.fdmproducts.domain.UserProduct;
-import ru.beeline.fdmproducts.dto.ApiSecretDTO;
-import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
-import ru.beeline.fdmproducts.dto.InterfaceDTO;
-import ru.beeline.fdmproducts.dto.MethodDTO;
-import ru.beeline.fdmproducts.dto.ParameterDTO;
-import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
+import ru.beeline.fdmlib.dto.product.ProductPutDto;
+import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.domain.*;
+import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.exception.BadRequestException;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
-import ru.beeline.fdmproducts.mapper.ContainerMapper;
-import ru.beeline.fdmproducts.mapper.InterfaceMapper;
-import ru.beeline.fdmproducts.mapper.OperationMapper;
-import ru.beeline.fdmproducts.mapper.ParameterMapper;
-import ru.beeline.fdmproducts.mapper.ProductTechMapper;
-import ru.beeline.fdmproducts.mapper.SlaMapper;
-import ru.beeline.fdmproducts.repository.ContainerRepository;
-import ru.beeline.fdmproducts.repository.InterfaceRepository;
-import ru.beeline.fdmproducts.repository.OperationRepository;
-import ru.beeline.fdmproducts.repository.ParameterRepository;
-import ru.beeline.fdmproducts.repository.ProductRepository;
-import ru.beeline.fdmproducts.repository.ServiceEntityRepository;
-import ru.beeline.fdmproducts.repository.SlaRepository;
-import ru.beeline.fdmproducts.repository.TechProductRepository;
-import ru.beeline.fdmproducts.repository.UserProductRepository;
+import ru.beeline.fdmproducts.mapper.*;
+import ru.beeline.fdmproducts.repository.*;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -57,26 +26,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ProductService {
 
-    @Autowired
-    private ContainerMapper containerMapper;
-
-    @Autowired
-    private ProductTechMapper productTechMapper;
-
-    @Autowired
-    private InterfaceMapper interfaceMapper;
-
-    @Autowired
-    private OperationMapper operationMapper;
-
-    @Autowired
-    private SlaMapper slaMapper;
-
-    @Autowired
-    private ParameterMapper parameterMapper;
-
-    @Autowired
-    private CapabilityClient capabilityClient;
+    private final ContainerMapper containerMapper;
+    private final ProductTechMapper productTechMapper;
+    private final InterfaceMapper interfaceMapper;
+    private final OperationMapper operationMapper;
+    private final SlaMapper slaMapper;
+    private final ParameterMapper parameterMapper;
+    private final CapabilityClient capabilityClient;
     private final UserProductRepository userProductRepository;
     private final ServiceEntityRepository serviceEntityRepository;
     private final ProductRepository productRepository;
@@ -86,22 +42,49 @@ public class ProductService {
     private final ParameterRepository parameterRepository;
     private final SlaRepository slaRepository;
     private final TechProductRepository techProductRepository;
+    private final LocalFitnessFunctionRepository fitnessFunctionRepository;
+    private final LocalAssessmentRepository assessmentRepository;
+    private final LocalAssessmentCheckRepository assessmentCheckRepository;
 
-
-    public ProductService(UserProductRepository userProductRepository, ProductRepository productRepository,
-                          ServiceEntityRepository serviceEntityRepository, ContainerRepository containerRepository,
-                          InterfaceRepository interfaceRepository, OperationRepository operationRepository,
-                          SlaRepository slaRepository, ParameterRepository parameterRepository,
-                          TechProductRepository techProductRepository) {
+    public ProductService(ContainerMapper containerMapper,
+                          ProductTechMapper productTechMapper,
+                          InterfaceMapper interfaceMapper,
+                          OperationMapper operationMapper,
+                          SlaMapper slaMapper,
+                          ParameterMapper parameterMapper,
+                          CapabilityClient capabilityClient,
+                          UserProductRepository userProductRepository,
+                          ServiceEntityRepository serviceEntityRepository,
+                          ProductRepository productRepository,
+                          ContainerRepository containerRepository,
+                          InterfaceRepository interfaceRepository,
+                          OperationRepository operationRepository,
+                          SlaRepository slaRepository,
+                          ParameterRepository parameterRepository,
+                          TechProductRepository techProductRepository,
+                          LocalFitnessFunctionRepository fitnessFunctionRepository,
+                          LocalAssessmentRepository assessmentRepository,
+                          LocalAssessmentCheckRepository assessmentCheckRepository
+                          ) {
+        this.containerMapper = containerMapper;
+        this.productTechMapper = productTechMapper;
+        this.interfaceMapper = interfaceMapper;
+        this.operationMapper = operationMapper;
+        this.slaMapper = slaMapper;
+        this.parameterMapper = parameterMapper;
+        this.capabilityClient = capabilityClient;
         this.userProductRepository = userProductRepository;
-        this.productRepository = productRepository;
         this.serviceEntityRepository = serviceEntityRepository;
+        this.productRepository = productRepository;
         this.containerRepository = containerRepository;
         this.interfaceRepository = interfaceRepository;
         this.operationRepository = operationRepository;
         this.slaRepository = slaRepository;
         this.parameterRepository = parameterRepository;
         this.techProductRepository = techProductRepository;
+        this.fitnessFunctionRepository = fitnessFunctionRepository;
+        this.assessmentRepository = assessmentRepository;
+        this.assessmentCheckRepository = assessmentCheckRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -473,4 +456,40 @@ public class ProductService {
             throw new RuntimeException("Error processing products and tech relations");
         }
     }
+
+    public void postFitnessFunctions(String alias, Integer sourceId, List<FitnessFunctionDTO> requests) {
+        validateRequest(requests);
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        if(product == null){
+            throw new EntityNotFoundException("Missing product");
+        }
+        LocalAssessment assessment = new LocalAssessment();
+        assessment.setSourceId(sourceId);
+        assessment.setProduct(product);
+        assessment.setCreatedTime(LocalDateTime.now());
+        LocalAssessment finalAssessment = assessmentRepository.save(assessment);
+        requests.forEach(request -> processAssessmentCheck(request, finalAssessment));
+    }
+
+    private void validateRequest(List<FitnessFunctionDTO> requests) {
+        boolean hasErrors = requests.stream()
+                .anyMatch(req -> req.getCode() == null || req.getIsCheck() == null);
+
+        if (hasErrors) {
+            throw new BadRequestException("Missing required fields");
+        }
+    }
+
+    private void processAssessmentCheck(FitnessFunctionDTO request, LocalAssessment assessment) {
+        fitnessFunctionRepository.findByCode(request.getCode())
+                .ifPresent(fitnessFunction -> {
+                    LocalAssessmentCheck check = new LocalAssessmentCheck();
+                    check.setFitnessFunction(fitnessFunction);
+                    check.setAssessment(assessment);
+                    check.setIsCheck(request.getIsCheck());
+                    check.setResultDetails(request.getResultDetails());
+                    assessmentCheckRepository.save(check);
+                });
+    }
+
 }

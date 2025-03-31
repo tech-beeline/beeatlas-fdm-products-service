@@ -10,6 +10,5 @@ import ru.beeline.fdmproducts.domain.Product;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE LOWER(p.alias) = LOWER(:code)")
     Product findByAliasCaseInsensitive(@Param("code") String code);
-
     Product findByStructurizrApiKey(String apiKey);
 }

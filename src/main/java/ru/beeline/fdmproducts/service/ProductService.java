@@ -32,6 +32,8 @@ public class ProductService {
     private final OperationMapper operationMapper;
     private final SlaMapper slaMapper;
     private final ParameterMapper parameterMapper;
+    private final AssessmentMapper assessmentMapper;
+    private final FitnessFunctionMapper fitnessFunctionMapper;
     private final CapabilityClient capabilityClient;
     private final UserProductRepository userProductRepository;
     private final ServiceEntityRepository serviceEntityRepository;
@@ -52,6 +54,8 @@ public class ProductService {
                           OperationMapper operationMapper,
                           SlaMapper slaMapper,
                           ParameterMapper parameterMapper,
+                          AssessmentMapper assessmentMapper,
+                          FitnessFunctionMapper fitnessFunctionMapper,
                           CapabilityClient capabilityClient,
                           UserProductRepository userProductRepository,
                           ServiceEntityRepository serviceEntityRepository,
@@ -65,13 +69,15 @@ public class ProductService {
                           LocalFitnessFunctionRepository fitnessFunctionRepository,
                           LocalAssessmentRepository assessmentRepository,
                           LocalAssessmentCheckRepository assessmentCheckRepository
-                          ) {
+    ) {
         this.containerMapper = containerMapper;
         this.productTechMapper = productTechMapper;
         this.interfaceMapper = interfaceMapper;
         this.operationMapper = operationMapper;
         this.slaMapper = slaMapper;
         this.parameterMapper = parameterMapper;
+        this.assessmentMapper = assessmentMapper;
+        this.fitnessFunctionMapper = fitnessFunctionMapper;
         this.capabilityClient = capabilityClient;
         this.userProductRepository = userProductRepository;
         this.serviceEntityRepository = serviceEntityRepository;
@@ -460,15 +466,30 @@ public class ProductService {
     public void postFitnessFunctions(String alias, Integer sourceId, List<FitnessFunctionDTO> requests) {
         validateRequest(requests);
         Product product = productRepository.findByAliasCaseInsensitive(alias);
-        if(product == null){
+        if (product == null) {
             throw new EntityNotFoundException("Missing product");
         }
-        LocalAssessment assessment = new LocalAssessment();
-        assessment.setSourceId(sourceId);
-        assessment.setProduct(product);
-        assessment.setCreatedTime(LocalDateTime.now());
-        LocalAssessment finalAssessment = assessmentRepository.save(assessment);
-        requests.forEach(request -> processAssessmentCheck(request, finalAssessment));
+        LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder().sourceId(sourceId).product(product).createdTime(LocalDateTime.now()).build());
+        requests.forEach(request -> processAssessmentCheck(request, assessment));
+    }
+
+    public AssessmentResponseDTO getFitnessFunctions(String alias, Integer sourceId) {
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        if (product == null) {
+            throw new EntityNotFoundException("Missing product");
+        }
+        LocalAssessment assessment;
+        if (sourceId != null) {
+            assessment = assessmentRepository.findByProductIdAndSourceId(product.getId(), sourceId)
+                    .orElseThrow(() -> new EntityNotFoundException("Assessment not found"));
+        } else {
+            List<LocalAssessment> assessments = assessmentRepository.findLatestByProductId(product.getId());
+            if (assessments.isEmpty()) {
+                throw new EntityNotFoundException("Assessment not found");
+            }
+            assessment = assessments.get(0);
+        }
+        return assessmentMapper.mapToAssessmentResponseDTO(assessment, product);
     }
 
     private void validateRequest(List<FitnessFunctionDTO> requests) {

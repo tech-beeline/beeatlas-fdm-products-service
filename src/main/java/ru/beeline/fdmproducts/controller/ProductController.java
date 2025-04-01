@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
+import ru.beeline.fdmproducts.dto.AssessmentResponseDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
@@ -109,5 +110,15 @@ public class ProductController {
         productService.postFitnessFunctions(alias, sourceId, requests);
         return new ResponseEntity<>(HttpStatus.CREATED);
 
+    }
+
+    @GetMapping("/product/{alias}/fitness-function/{source_id}")
+    @ApiOperation(value = "Получение результатов фитнесс-функций")
+    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
+            @PathVariable String alias,
+            @PathVariable(name = "source_id", required = false) Integer sourceId) {
+
+        AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId);
+        return ResponseEntity.ok(response);
     }
 }

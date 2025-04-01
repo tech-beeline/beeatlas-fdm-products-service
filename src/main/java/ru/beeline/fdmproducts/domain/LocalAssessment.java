@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Builder
 @Data
@@ -14,7 +16,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(name = "local_assessment")
-public class LocalAssessment {
+public class    LocalAssessment {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "assessment_id_generator")
     @SequenceGenerator(name = "assessment_id_generator", sequenceName = "seq_assessment_id", allocationSize = 1)
@@ -30,4 +32,7 @@ public class LocalAssessment {
 
     @Column(name = "created_time")
     private LocalDateTime createdTime;
+
+    @OneToMany(mappedBy = "assessment", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<LocalAssessmentCheck> checks = new ArrayList<>();
 }

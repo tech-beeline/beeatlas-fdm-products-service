@@ -28,7 +28,7 @@ public class ProductTechRelationService {
     }
 
     public List<ProductDTO> getProductsWithTech() {
-        return productTechMapper.mapToDto(productService.findAll());
+        return productTechMapper.mapToDto(productService.findAllWithTechProductNotDeleted());
     }
 
     public void deleteRelation(Integer techId, Integer productId) {

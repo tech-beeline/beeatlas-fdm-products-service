@@ -120,8 +120,8 @@ public class ProductService {
         return product;
     }
 
-    public List<Product> findAll() {
-        return productRepository.findAll();
+    public List<Product> findAllWithTechProductNotDeleted() {
+        return productRepository.findAllWithTechProductNotDeleted();
     }
 
     public void createOrUpdate(ProductPutDto productPutDto, String code) {

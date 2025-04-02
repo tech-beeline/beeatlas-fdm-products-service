@@ -3,6 +3,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.*;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 
 @Builder
 @Getter
@@ -25,4 +26,16 @@ public class TechProduct {
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
+
+    @Column(name = "source")
+    private String source;
+
+    @Column(name = "created_date")
+    private LocalDateTime createdDate;
+
+    @Column(name = "deleted_date")
+    private LocalDateTime deletedDate;
+
+    @Column(name = "last_modified_date")
+    private LocalDateTime lastModifiedDate;
 }

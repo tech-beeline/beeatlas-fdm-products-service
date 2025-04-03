@@ -112,11 +112,11 @@ public class ProductController {
 
     }
 
-    @GetMapping("/product/{alias}/fitness-function/{source_id}")
+    @GetMapping("/product/{alias}/fitness-function")
     @ApiOperation(value = "Получение результатов фитнесс-функций")
     public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
             @PathVariable String alias,
-            @PathVariable(name = "source_id", required = false) Integer sourceId) {
+            @RequestParam(name = "source_id", required = false) Integer sourceId) {
 
         AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId);
         return ResponseEntity.ok(response);

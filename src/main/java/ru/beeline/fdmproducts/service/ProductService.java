@@ -10,7 +10,6 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
-import ru.beeline.fdmproducts.exception.BadRequestException;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
@@ -497,7 +496,7 @@ public class ProductService {
                 .anyMatch(req -> req.getCode() == null || req.getIsCheck() == null);
 
         if (hasErrors) {
-            throw new BadRequestException("Missing required fields");
+            throw new IllegalArgumentException("Missing required fields");
         }
     }
 

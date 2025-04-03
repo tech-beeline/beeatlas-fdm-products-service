@@ -512,4 +512,7 @@ public class ProductService {
                 });
     }
 
+    public List<String> getMnemonics() {
+        return productRepository.findAllAliasesWithTechProductNotDeleted();
+    }
 }

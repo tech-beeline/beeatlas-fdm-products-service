@@ -16,4 +16,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")
     List<Product> findAllWithTechProductNotDeleted();
+
+    @Query("SELECT p.alias FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")
+    List<String> findAllAliasesWithTechProductNotDeleted();
 }

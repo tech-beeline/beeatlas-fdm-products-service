@@ -121,4 +121,10 @@ public class ProductController {
         AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/products/mnemonic")
+    @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
+    public List<String> getAllMnemonics() {
+        return productService.getMnemonics();
+    }
 }

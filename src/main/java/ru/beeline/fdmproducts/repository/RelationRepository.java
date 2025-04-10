@@ -10,5 +10,4 @@ import java.util.List;
 public interface RelationRepository extends JpaRepository<Relation, Integer> {
     List<Relation> findByParentCmdbId(String parentCmdbId);
 
-    List<Relation> findByChildCmdbId(String childCmdbId);
 }

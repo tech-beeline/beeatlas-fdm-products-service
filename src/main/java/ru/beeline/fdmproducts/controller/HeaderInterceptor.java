@@ -30,6 +30,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")
                     || request.getRequestURI().contains("/api/v1/product")
+                    || request.getRequestURI().contains("/api/v1/infra")
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")
                     || request.getRequestURI().contains("/api/v1/service")) {

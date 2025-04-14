@@ -11,7 +11,7 @@ import ru.beeline.fdmproducts.service.InfraService;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
-@RequestMapping("/infra")
+@RequestMapping("/api/v1/infra")
 @Api(value = "Infra API", tags = "infra")
 public class InfraController {
     @Autowired

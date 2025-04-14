@@ -18,10 +18,10 @@ public class InfraController {
     private InfraService infraService;
 
 
-    @PostMapping("/{product}")
+    @PostMapping
     @ApiOperation("Синхронизация инфраструктуры продукта")
     public ResponseEntity<Void> syncInfrastructure(
-            @PathVariable String product,
+            @RequestParam String product,
             @RequestBody InfraRequestDTO request) {
 
         infraService.syncInfrastructure(product, request);

@@ -30,6 +30,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")
                     || request.getRequestURI().contains("/api/v1/product")
+                    || request.getRequestURI().contains("/api/v1/infra")
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")
                     || request.getRequestURI().contains("/api/v1/service")) {
@@ -40,7 +41,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
             while (headerNames.hasMoreElements()) {
                 String headerName = headerNames.nextElement();
                 String headerValue = request.getHeader(headerName);
-                logger.info(headerName + ": " + headerValue);
+                logger.debug(headerName + ": " + headerValue);
             }
             logger.info(USER_ID_HEADER + request.getHeader(USER_ID_HEADER));
             headers.put(USER_ID_HEADER, request.getHeader(USER_ID_HEADER).toString());

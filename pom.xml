@@ -10,7 +10,7 @@
     </parent>
     <groupId>ru.beeline</groupId>
     <artifactId>fdm-products</artifactId>
-    <version>0.0.11</version>
+    <version>1.0.0</version>
     <name>fdm-products</name>
     <description>fdm-products</description>
     <properties>
@@ -111,7 +111,7 @@
         <dependency>
             <groupId>ru.beeline</groupId>
             <artifactId>fdm-lib</artifactId>
-            <version>0.0.14</version>
+            <version>0.0.20</version>
         </dependency>
     </dependencies>
     <distributionManagement>

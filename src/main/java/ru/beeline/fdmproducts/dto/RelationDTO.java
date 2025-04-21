@@ -10,8 +10,7 @@ import java.util.List;
 @AllArgsConstructor
 @ToString
 @Builder
-public class GetProductTechDto {
-
-    private Integer techId;
-    private List<GetProductsDTO> products;
+public class RelationDTO {
+    private String cmdbId;
+    private List<String> children;
 }

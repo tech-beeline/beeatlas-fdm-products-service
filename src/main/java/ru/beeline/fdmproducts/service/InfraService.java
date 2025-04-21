@@ -47,6 +47,7 @@ public class InfraService {
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         existingInfras.stream()
                 .filter(infra -> !processedCmdbIds.contains(infra.getCmdbId()))
+                .filter(infra -> infra.getDeletedDate() == null)
                 .forEach(infra -> infra.setDeletedDate(LocalDateTime.now()));
         infraRepository.saveAll(existingInfras);
 
@@ -55,7 +56,7 @@ public class InfraService {
 
         processInfras(request.getInfra(), product, existingInfraMap);
 
-        processRelations(request.getRelations(), product, existingInfraMap);
+        processRelations(request.getRelations(), existingInfraMap);
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
@@ -145,7 +146,7 @@ public class InfraService {
         }
     }
 
-    private void processRelations(List<RelationDTO> relations, Product product, Map<String, Infra> existingInfraMap) {
+    private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
         for (RelationDTO relationDTO : relations) {
             Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
 

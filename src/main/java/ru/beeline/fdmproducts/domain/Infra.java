@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Builder
@@ -22,7 +23,7 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_infra_cmdb_id", columnList = "cmdb_id", unique = true)
         }
 )
-public class Infra {
+public class Infra implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_infra_id")
     @SequenceGenerator(name = "seq_infra_id", sequenceName = "product.seq_infra_id", allocationSize = 1)

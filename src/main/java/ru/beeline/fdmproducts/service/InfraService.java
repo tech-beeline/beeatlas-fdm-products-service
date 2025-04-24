@@ -112,6 +112,7 @@ public class InfraService {
         List<String> processedKeys = properties.stream().map(PropertyDTO::getKey).toList();
         existingProperties.stream()
                 .filter(property -> !processedKeys.contains(property.getName()))
+                .filter(property -> property.getDeletedDate() == null)
                 .forEach(property -> property.setDeletedDate(LocalDateTime.now()));
         propertyRepository.saveAll(existingProperties);
 
@@ -162,6 +163,7 @@ public class InfraService {
 
         existingRelations.stream()
                 .filter(child -> !processedChildrenIds.contains(child.getChild().getCmdbId()))
+                .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
         relationRepository.saveAll(existingRelations);
 

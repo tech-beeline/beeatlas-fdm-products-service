@@ -37,6 +37,7 @@ public class InfraService {
     private RelationRepository relationRepository;
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
+        log.info("start of the Product Infrastructure Synchronization method");
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
 
         if (product == null) {
@@ -57,6 +58,7 @@ public class InfraService {
         processInfras(request.getInfra(), product, existingInfraMap);
 
         processRelations(request.getRelations(), existingInfraMap);
+        log.info("The syncInfrastructure method is completed");
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
@@ -71,6 +73,7 @@ public class InfraService {
 
             processProperties(infra, infraDTO.getProperties());
         }
+        log.info("The processInfras method is completed");
     }
 
     private Infra createNewInfra(InfraDTO dto, Product product) {
@@ -155,6 +158,7 @@ public class InfraService {
                 processRelation(infra, relationDTO);
             }
         }
+        log.info("The processRelations method is completed");
     }
 
     private void processRelation(final Infra infra, RelationDTO relationDTO) {

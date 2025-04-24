@@ -7,6 +7,9 @@ env:
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/dev/fdm#capabilityserver"
   JWKS: "vault:eafdmmart/data/dev/fdm#jwks"
 
+podAnnotations:
+  vault.security.banzaicloud.io/vault-addr: "https://vault-test.vimpelcom.ru/"
+
 ingress:
   annotations:
     nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type, authorization

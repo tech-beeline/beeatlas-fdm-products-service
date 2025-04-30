@@ -85,6 +85,7 @@ public class InfraService {
                 .infraProducts(new HashSet<>())
                 .createdDate(LocalDateTime.now())
                 .build();
+        infraRepository.save(newInfra);
         InfraProduct infraProduct = InfraProduct.builder()
                 .createdDate(LocalDateTime.now())
                 .infra(newInfra)

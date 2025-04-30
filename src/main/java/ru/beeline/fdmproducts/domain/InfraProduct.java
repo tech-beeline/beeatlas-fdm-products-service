@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,11 +28,13 @@ public class InfraProduct implements Serializable {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
+    @Column(name = "product_id", nullable = false)
+    @JsonIgnore
     private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "infra_id", nullable = false)
+    @Column(name = "infra_id", nullable = false)
+    @JsonIgnore
     private Infra infra;
 
     @Column(name = "created_date", nullable = false)

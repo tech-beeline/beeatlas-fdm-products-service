@@ -28,12 +28,12 @@ public class InfraProduct implements Serializable {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @Column(name = "product_id", nullable = false)
+    @JoinColumn(name = "product_id", nullable = false)
     @JsonIgnore
     private Product product;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @Column(name = "infra_id", nullable = false)
+    @JoinColumn(name = "infra_id", nullable = false)
     @JsonIgnore
     private Infra infra;
 

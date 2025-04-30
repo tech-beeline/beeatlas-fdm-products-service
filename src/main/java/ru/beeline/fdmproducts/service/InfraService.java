@@ -4,19 +4,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmproducts.domain.Infra;
-import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.domain.Property;
-import ru.beeline.fdmproducts.domain.Relation;
+import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.InfraDTO;
 import ru.beeline.fdmproducts.dto.InfraRequestDTO;
 import ru.beeline.fdmproducts.dto.PropertyDTO;
 import ru.beeline.fdmproducts.dto.RelationDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.repository.InfraRepository;
-import ru.beeline.fdmproducts.repository.ProductRepository;
-import ru.beeline.fdmproducts.repository.PropertyRepository;
-import ru.beeline.fdmproducts.repository.RelationRepository;
+import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -35,6 +29,8 @@ public class InfraService {
     private PropertyRepository propertyRepository;
     @Autowired
     private RelationRepository relationRepository;
+    @Autowired
+    private InfraProductRepository infraProductRepository;
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method");
@@ -44,15 +40,20 @@ public class InfraService {
             throw new EntityNotFoundException("Продукт не найден");
         }
 
-        List<Infra> existingInfras = infraRepository.findByProductId(product.getId());
+        List<InfraProduct> existingInfraProducts = infraProductRepository.findByProductId(product.getId());
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
-        existingInfras.stream()
+        existingInfraProducts.stream()
+                .map(InfraProduct::getInfra)
                 .filter(infra -> !processedCmdbIds.contains(infra.getCmdbId()))
                 .filter(infra -> infra.getDeletedDate() == null)
-                .forEach(infra -> infra.setDeletedDate(LocalDateTime.now()));
-        infraRepository.saveAll(existingInfras);
+                .forEach(infra -> {
+                            infra.setDeletedDate(LocalDateTime.now());
+                            infra.getInfraProducts().forEach(infraProduct -> infraProduct.setDeletedDate(LocalDateTime.now()));
+                        }
+                );
+        infraProductRepository.saveAll(existingInfraProducts);
 
-        Map<String, Infra> existingInfraMap = existingInfras.stream()
+        Map<String, Infra> existingInfraMap = existingInfraProducts.stream().map(InfraProduct::getInfra)
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
 
         processInfras(request.getInfra(), product, existingInfraMap);
@@ -81,11 +82,17 @@ public class InfraService {
                 .name(dto.getName())
                 .type(dto.getType())
                 .cmdbId(dto.getCmdbId())
-                .product(product)
+                .infraProducts(new HashSet<>())
                 .createdDate(LocalDateTime.now())
                 .build();
+        InfraProduct infraProduct = InfraProduct.builder()
+                .createdDate(LocalDateTime.now())
+                .infra(newInfra)
+                .product(product)
+                .build();
+        newInfra.getInfraProducts().add(infraProduct);
+        return infraProductRepository.save(infraProduct).getInfra();
 
-        return infraRepository.save(newInfra);
     }
 
     private void updateExistingInfra(Infra infra, InfraDTO dto) {

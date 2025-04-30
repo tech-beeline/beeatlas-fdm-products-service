@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 @Builder
 @Data
@@ -18,20 +20,17 @@ import java.time.LocalDateTime;
         name = "infra",
         schema = "product",
         indexes = {
-                @Index(name = "idx_infra_product_id", columnList = "product_id"),
                 @Index(name = "idx_infra_type", columnList = "type"),
                 @Index(name = "idx_infra_cmdb_id", columnList = "cmdb_id", unique = true)
-        }
+        },
+        uniqueConstraints = @UniqueConstraint(columnNames = {"cmdb_id"})
 )
 public class Infra implements Serializable {
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_infra_id")
     @SequenceGenerator(name = "seq_infra_id", sequenceName = "product.seq_infra_id", allocationSize = 1)
     private Integer id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
 
     @Column(nullable = false)
     private String name;
@@ -49,4 +48,16 @@ public class Infra implements Serializable {
 
     @Column(name = "cmdb_id", unique = true)
     private String cmdbId;
+
+    @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<InfraProduct> infraProducts = new HashSet<>();
+
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Relation> childrenRelations = new HashSet<>();
+
+    @OneToMany(mappedBy = "child", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Relation> parentRelations = new HashSet<>();
+
+    @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Property> properties = new HashSet<>();
 }

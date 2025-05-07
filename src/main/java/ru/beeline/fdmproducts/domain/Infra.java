@@ -9,6 +9,7 @@ import javax.persistence.*;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Builder
@@ -60,4 +61,17 @@ public class Infra implements Serializable {
 
     @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Property> properties = new HashSet<>();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Infra infra = (Infra) o;
+        return Objects.equals(id, infra.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }

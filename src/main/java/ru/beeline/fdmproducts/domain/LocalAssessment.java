@@ -23,8 +23,11 @@ public class    LocalAssessment {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "source_id", nullable = false)
+    @Column(name = "source_id")
     private Integer sourceId;
+
+    @Column(name = "source_type_id")
+    private Integer sourceTypeId;
 
     @ManyToOne
     @JoinColumn(name = "product_id", nullable = false)

@@ -6,12 +6,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.AssessmentResponseDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
-import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
@@ -100,14 +100,16 @@ public class ProductController {
         return productService.getAllProductsAndTechRelations();
     }
 
-    @PostMapping("/product/{alias}/fitness-function/{source_id}")
+    @PostMapping("/product/{alias}/fitness-function/{source_type}")
     @ApiOperation(value = "Публикация результатов фитнесс-функций")
     public ResponseEntity postFitnessFunctions(
             @PathVariable String alias,
-            @PathVariable("source_id") Integer sourceId,
-            @RequestBody List<FitnessFunctionDTO> requests) {
+            @PathVariable("source_type") String sourceType,
+            @RequestBody List<FitnessFunctionDTO> requests,
+            @RequestParam(value = "source_id",
+                    required = false) Integer sourceId) {
 
-        productService.postFitnessFunctions(alias, sourceId, requests);
+        productService.postFitnessFunctions(alias, sourceType, requests, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
 
     }

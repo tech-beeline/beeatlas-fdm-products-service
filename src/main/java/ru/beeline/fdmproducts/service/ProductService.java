@@ -47,6 +47,8 @@ public class ProductService {
     private final LocalAssessmentRepository assessmentRepository;
     private final LocalAssessmentCheckRepository assessmentCheckRepository;
 
+    private final EnumSourceTypeRepository enumSourceTypeRepository;
+
     public ProductService(ContainerMapper containerMapper,
                           ProductTechMapper productTechMapper,
                           InterfaceMapper interfaceMapper,
@@ -67,7 +69,8 @@ public class ProductService {
                           TechProductRepository techProductRepository,
                           LocalFitnessFunctionRepository fitnessFunctionRepository,
                           LocalAssessmentRepository assessmentRepository,
-                          LocalAssessmentCheckRepository assessmentCheckRepository
+                          LocalAssessmentCheckRepository assessmentCheckRepository,
+                          EnumSourceTypeRepository enumSourceTypeRepository
     ) {
         this.containerMapper = containerMapper;
         this.productTechMapper = productTechMapper;
@@ -90,6 +93,7 @@ public class ProductService {
         this.fitnessFunctionRepository = fitnessFunctionRepository;
         this.assessmentRepository = assessmentRepository;
         this.assessmentCheckRepository = assessmentCheckRepository;
+        this.enumSourceTypeRepository = enumSourceTypeRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -462,13 +466,28 @@ public class ProductService {
         }
     }
 
-    public void postFitnessFunctions(String alias, Integer sourceId, List<FitnessFunctionDTO> requests) {
+    public void postFitnessFunctions(String alias, String sourceType, List<FitnessFunctionDTO> requests, Integer sourceId) {
         validateRequest(requests);
         Product product = productRepository.findByAliasCaseInsensitive(alias);
         if (product == null) {
             throw new EntityNotFoundException("Missing product");
         }
-        LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder().sourceId(sourceId).product(product).createdTime(LocalDateTime.now()).build());
+        EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
+                .orElseThrow(() -> new IllegalArgumentException("Невозможный источник."));
+        if (enumSourceType.getIdentifySource() && sourceId == null) {
+            throw new IllegalArgumentException("Для уазанного источника обязательна передача идентификатора.");
+        }
+        Optional<LocalAssessment> existingAssessment =
+                assessmentRepository.findBySourceIdAndProduct(sourceId, product);
+        if (existingAssessment.isPresent()) {
+            throw new IllegalArgumentException("Оценка для данного источника и продукта уже существует.");
+        }
+        LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder()
+                .sourceId(sourceId)
+                .product(product)
+                .sourceTypeId(enumSourceType.getId())
+                .createdTime(LocalDateTime.now())
+                .build());
         requests.forEach(request -> processAssessmentCheck(request, assessment));
     }
 

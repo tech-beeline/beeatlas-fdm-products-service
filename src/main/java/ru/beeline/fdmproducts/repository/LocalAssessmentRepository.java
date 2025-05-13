@@ -4,7 +4,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import ru.beeline.fdmproducts.domain.LocalAssessment;
-import ru.beeline.fdmproducts.domain.LocalFitnessFunction;
+import ru.beeline.fdmproducts.domain.Product;
 
 import java.util.List;
 import java.util.Optional;
@@ -17,4 +17,6 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
 
     @Query("SELECT la FROM LocalAssessment la WHERE la.product.id = :productId ORDER BY la.createdTime DESC")
     List<LocalAssessment> findLatestByProductId(@Param("productId") Integer productId);
+
+    Optional<LocalAssessment> findBySourceIdAndProduct(Integer sourceId, Product product);
 }

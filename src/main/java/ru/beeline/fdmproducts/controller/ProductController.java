@@ -118,9 +118,10 @@ public class ProductController {
     @ApiOperation(value = "Получение результатов фитнесс-функций")
     public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
             @PathVariable String alias,
-            @RequestParam(name = "source_id", required = false) Integer sourceId) {
+            @RequestParam(name = "source_id", required = false) Integer sourceId,
+            @RequestParam(name = "source_type", required = false) String sourceType ) {
 
-        AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId);
+        AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
         return ResponseEntity.ok(response);
     }
 

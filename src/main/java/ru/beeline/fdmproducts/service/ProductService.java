@@ -491,15 +491,32 @@ public class ProductService {
         requests.forEach(request -> processAssessmentCheck(request, assessment));
     }
 
-    public AssessmentResponseDTO getFitnessFunctions(String alias, Integer sourceId) {
+    public AssessmentResponseDTO getFitnessFunctions(String alias, Integer sourceId, String sourceType) {
         Product product = productRepository.findByAliasCaseInsensitive(alias);
         if (product == null) {
             throw new EntityNotFoundException("Missing product");
         }
         LocalAssessment assessment;
-        if (sourceId != null) {
-            assessment = assessmentRepository.findByProductIdAndSourceId(product.getId(), sourceId)
-                    .orElseThrow(() -> new EntityNotFoundException("Assessment not found"));
+        if (sourceType != null && !sourceType.isEmpty()) {
+            EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
+                    .orElseThrow(() -> new IllegalArgumentException("Невозможный источник."));
+            if (enumSourceType.getIdentifySource()) {
+                if (sourceId == null) {
+                    throw new IllegalArgumentException("Для уазанного источника обязательна передача идентификатора.");
+                } else {
+                    assessment = assessmentRepository
+                            .findBySourceIdAndProductIdAndSourceTypeId(sourceId, product.getId(), enumSourceType.getId())
+                            .orElseThrow(() -> new EntityNotFoundException(String.format("Запись в таблице local_assessment с sourceId: %s, " +
+                                    "SourceTypeId: %s, productId: %s не найдена", sourceId, enumSourceType.getId(), product.getId())));
+                    return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
+                }
+            } else {
+                assessment = assessmentRepository
+                        .findLatestBySourceTypeIdAndProductId(enumSourceType.getId(), product.getId())
+                        .orElseThrow(() -> new EntityNotFoundException(String.format("Запись в таблице local_assessment с SourceTypeId: %s," +
+                                " productId: %s не найдена", enumSourceType.getId(), product.getId())));
+                return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
+            }
         } else {
             List<LocalAssessment> assessments = assessmentRepository.findLatestByProductId(product.getId());
             if (assessments.isEmpty()) {
@@ -507,7 +524,7 @@ public class ProductService {
             }
             assessment = assessments.get(0);
         }
-        return assessmentMapper.mapToAssessmentResponseDTO(assessment, product);
+        return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
     }
 
     private void validateRequest(List<FitnessFunctionDTO> requests) {

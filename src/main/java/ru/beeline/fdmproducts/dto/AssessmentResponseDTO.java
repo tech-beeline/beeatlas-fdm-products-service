@@ -12,7 +12,7 @@ import java.util.List;
 @Builder
 public class AssessmentResponseDTO {
     private Integer assessmentId;
-    private Integer sourceId;
+    private SourceDTO source;
     private LocalDateTime createdDate;
     private Integer productId;
     private List<FitnessFunctionResponseDTO> fitnessFunctions;

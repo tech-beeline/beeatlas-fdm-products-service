@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Optional;
 
 public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment, Integer> {
-    @Query("SELECT la FROM LocalAssessment la WHERE la.product.id = :productId AND la.sourceId = :sourceId")
-    Optional<LocalAssessment> findByProductIdAndSourceId(
-            @Param("productId") Integer productId,
-            @Param("sourceId") Integer sourceId);
 
     @Query("SELECT la FROM LocalAssessment la WHERE la.product.id = :productId ORDER BY la.createdTime DESC")
     List<LocalAssessment> findLatestByProductId(@Param("productId") Integer productId);
 
     Optional<LocalAssessment> findBySourceIdAndProduct(Integer sourceId, Product product);
+
+    Optional<LocalAssessment> findBySourceIdAndProductIdAndSourceTypeId(Integer sourceId, Integer productId, Integer SourceTypeId);
+
+    Optional<LocalAssessment> findLatestBySourceTypeIdAndProductId(Integer sourceId, Integer productId);
 }

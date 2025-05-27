@@ -22,15 +22,10 @@ public class RelationService {
     private RelationRepository relationRepository;
 
     public Relation createRelation(String parentCmdbId, String childCmdbId) {
-        Infra parent = infraRepository.findByCmdbId(parentCmdbId)
-                .orElseThrow(() -> new EntityNotFoundException("Parent infra not found"));
-
-        Infra child = infraRepository.findByCmdbId(childCmdbId)
-                .orElseThrow(() -> new EntityNotFoundException("Child infra not found"));
 
         Relation relation = Relation.builder()
-                .parent(parent)
-                .child(child)
+                .parentId(parentCmdbId)
+                .childId(childCmdbId)
                 .createdDate(LocalDateTime.now())
                 .build();
 

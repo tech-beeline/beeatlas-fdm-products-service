@@ -1,9 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.persistence.*;
 import java.io.Serializable;
@@ -52,12 +49,6 @@ public class Infra implements Serializable {
 
     @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<InfraProduct> infraProducts = new HashSet<>();
-
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Relation> childrenRelations = new HashSet<>();
-
-    @OneToMany(mappedBy = "child", cascade = CascadeType.ALL, orphanRemoval = true)
-    private Set<Relation> parentRelations = new HashSet<>();
 
     @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Property> properties = new HashSet<>();

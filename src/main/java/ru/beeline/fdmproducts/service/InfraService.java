@@ -153,6 +153,7 @@ public class InfraService {
     private void updateExistingProperty(Property property, PropertyDTO propDTO) {
         if (!Objects.equals(property.getValue(), propDTO.getValue())) {
             property.setValue(propDTO.getValue());
+            property.setDeletedDate(null);
             property.setLastModifiedDate(LocalDateTime.now());
             propertyRepository.save(property);
         }
@@ -170,17 +171,17 @@ public class InfraService {
     }
 
     private void processRelation(final Infra infra, RelationDTO relationDTO) {
-        List<Relation> existingRelations = relationRepository.findByParentCmdbId(infra.getCmdbId());
+        List<Relation> existingRelations = relationRepository.findByParentId(infra.getCmdbId());
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
 
         existingRelations.stream()
-                .filter(child -> !processedChildrenIds.contains(child.getChild().getCmdbId()))
+                .filter(child -> !processedChildrenIds.contains(child.getChildId()))
                 .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
         relationRepository.saveAll(existingRelations);
 
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
-                .collect(Collectors.toMap(rel -> rel.getChild().getCmdbId(), Function.identity()));
+                .collect(Collectors.toMap(rel -> rel.getChildId(), Function.identity()));
 
         processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
@@ -188,9 +189,10 @@ public class InfraService {
     }
 
     private void createNewRelation(Infra parentInfra, Infra childInfra) {
+
         Relation newRelation = Relation.builder()
-                .parent(parentInfra)
-                .child(childInfra)
+                .parentId(parentInfra.getCmdbId())
+                .childId(childInfra.getCmdbId())
                 .createdDate(LocalDateTime.now())
                 .build();
 

@@ -24,13 +24,11 @@ public class Relation {
     @SequenceGenerator(name = "seq_relations_id", sequenceName = "product.seq_relations_id", allocationSize = 1)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id", referencedColumnName = "cmdb_id", nullable = false)
-    private Infra parent;
+    @Column(name = "parent_id", nullable = false)
+    private String parentId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "child_id", referencedColumnName = "cmdb_id", nullable = false)
-    private Infra child;
+    @Column(name = "child_id", nullable = false)
+    private String childId;
 
     @Column(name = "created_date", nullable = false)
     private LocalDateTime createdDate;

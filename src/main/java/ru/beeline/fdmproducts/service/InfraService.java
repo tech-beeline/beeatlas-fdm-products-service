@@ -92,6 +92,7 @@ public class InfraService {
         System.out.println("cmdb= " + newInfra.getCmdbId());
         log.info("createNewInfra cmdb=", dto.getCmdbId());
         newInfra = infraRepository.save(newInfra);
+        infraRepository.flush();
         InfraProduct infraProduct = InfraProduct.builder()
                 .createdDate(LocalDateTime.now())
                 .infra(newInfra)
@@ -122,6 +123,7 @@ public class InfraService {
             infra.setLastModifiedDate(LocalDateTime.now());
             log.info("update infra name or type");
             infraRepository.save(infra);
+            infraRepository.flush();
         }
     }
 

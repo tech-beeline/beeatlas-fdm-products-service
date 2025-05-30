@@ -135,6 +135,7 @@ public class InfraService {
                 .filter(property -> !processedKeys.contains(property.getName()))
                 .filter(property -> property.getDeletedDate() == null)
                 .forEach(property -> property.setDeletedDate(LocalDateTime.now()));
+        log.info("save all prop");
         propertyRepository.saveAll(existingProperties);
 
         for (PropertyDTO propDTO : properties) {
@@ -156,7 +157,7 @@ public class InfraService {
                 .value(propDTO.getValue())
                 .createdDate(LocalDateTime.now())
                 .build();
-
+        log.info("create prop");
         propertyRepository.save(newProperty);
     }
 
@@ -165,6 +166,7 @@ public class InfraService {
             property.setValue(propDTO.getValue());
             property.setDeletedDate(null);
             property.setLastModifiedDate(LocalDateTime.now());
+            log.info("update prop");
             propertyRepository.save(property);
         }
     }

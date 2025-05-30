@@ -89,6 +89,7 @@ public class InfraService {
                 .infraProducts(new HashSet<>())
                 .createdDate(LocalDateTime.now())
                 .build();
+        System.out.println("cmdb= " + newInfra.getCmdbId());
         log.info("createNewInfra cmdb=", dto.getCmdbId());
         infraRepository.save(newInfra);
         InfraProduct infraProduct = InfraProduct.builder()

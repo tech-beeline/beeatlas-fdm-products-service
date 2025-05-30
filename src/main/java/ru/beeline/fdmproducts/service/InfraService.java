@@ -77,6 +77,7 @@ public class InfraService {
                     existingInfraMap.put(infraDTO.getCmdbId(), infra);
                 } else {
                     updateExistingInfra(optionalInfra.get(), infraDTO);
+                    existingInfraMap.put(infraDTO.getCmdbId(), infra);
                 }
             } else {
                 updateExistingInfra(infra, infraDTO);

@@ -43,7 +43,6 @@ public class InfraService {
 
         List<InfraProduct> existingInfraProducts = infraProductRepository.findByProductId(product.getId());
         log.info("existingInfraProducts is" + existingInfraProducts);
-
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
@@ -90,6 +89,7 @@ public class InfraService {
                 .infraProducts(new HashSet<>())
                 .createdDate(LocalDateTime.now())
                 .build();
+        log.info("createNewInfra cmdb=", dto.getCmdbId());
         infraRepository.save(newInfra);
         InfraProduct infraProduct = InfraProduct.builder()
                 .createdDate(LocalDateTime.now())
@@ -97,6 +97,7 @@ public class InfraService {
                 .product(product)
                 .build();
         newInfra.getInfraProducts().add(infraProduct);
+        log.info("save new infraProduct");
         return infraProductRepository.save(infraProduct).getInfra();
 
     }
@@ -116,6 +117,7 @@ public class InfraService {
 
         if (modified) {
             infra.setLastModifiedDate(LocalDateTime.now());
+            log.info("update infra name or type");
             infraRepository.save(infra);
         }
     }

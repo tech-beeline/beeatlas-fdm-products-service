@@ -82,6 +82,9 @@ public class InfraService {
     }
 
     private Infra createNewInfra(InfraDTO dto, Product product) {
+        System.out.println("createNewInfra before flash");
+        infraRepository.flush();
+        System.out.println("createNewInfra after flash");
         Infra newInfra = Infra.builder()
                 .name(dto.getName())
                 .type(dto.getType())
@@ -93,6 +96,7 @@ public class InfraService {
         log.info("createNewInfra cmdb=", dto.getCmdbId());
         newInfra = infraRepository.save(newInfra);
         infraRepository.flush();
+        System.out.println("INFRA SAVED");
         InfraProduct infraProduct = InfraProduct.builder()
                 .createdDate(LocalDateTime.now())
                 .infra(newInfra)

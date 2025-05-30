@@ -66,19 +66,24 @@ public class InfraService {
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
+        log.info("requestInfras size: " + requestInfras.size());
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
 
             if (infra == null) {
-                infra = createNewInfra(infraDTO, product);
-                existingInfraMap.put(infraDTO.getCmdbId(), infra);
+                Optional<Infra> optionalInfra = infraRepository.findByCmdbId(infraDTO.getCmdbId());
+                if (optionalInfra.isEmpty()) {
+                    infra = createNewInfra(infraDTO, product);
+                    existingInfraMap.put(infraDTO.getCmdbId(), infra);
+                } else {
+                    updateExistingInfra(optionalInfra.get(), infraDTO);
+                }
             } else {
                 updateExistingInfra(infra, infraDTO);
             }
 
             processProperties(infra, infraDTO.getProperties());
-        }
-        log.info("The processInfras method is completed");
+        } log.info("The processInfras method is completed");
     }
 
     private Infra createNewInfra(InfraDTO dto, Product product) {

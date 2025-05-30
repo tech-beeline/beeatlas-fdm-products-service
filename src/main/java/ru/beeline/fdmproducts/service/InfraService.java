@@ -85,7 +85,7 @@ public class InfraService {
             }
 
             processProperties(infra, infraDTO.getProperties());
-        } log.info("The processInfras method is completed");
+        }
     }
 
     private Infra createNewInfra(InfraDTO dto, Product product) {

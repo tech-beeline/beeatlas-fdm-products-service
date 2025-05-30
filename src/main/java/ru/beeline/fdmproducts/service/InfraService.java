@@ -91,7 +91,7 @@ public class InfraService {
                 .build();
         System.out.println("cmdb= " + newInfra.getCmdbId());
         log.info("createNewInfra cmdb=", dto.getCmdbId());
-        infraRepository.save(newInfra);
+        newInfra = infraRepository.save(newInfra);
         InfraProduct infraProduct = InfraProduct.builder()
                 .createdDate(LocalDateTime.now())
                 .infra(newInfra)
@@ -99,7 +99,9 @@ public class InfraService {
                 .build();
         newInfra.getInfraProducts().add(infraProduct);
         log.info("save new infraProduct");
-        return infraProductRepository.save(infraProduct).getInfra();
+        infraProduct = infraProductRepository.save(infraProduct);
+        log.info("infraProduct has been saved");
+        return infraProduct.getInfra();
 
     }
 

@@ -475,7 +475,7 @@ public class ProductService {
         EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
                 .orElseThrow(() -> new IllegalArgumentException("Невозможный источник."));
         if (enumSourceType.getIdentifySource() && sourceId == null) {
-            throw new IllegalArgumentException("Для уазанного источника обязательна передача идентификатора.");
+            throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
         }
         Optional<LocalAssessment> existingAssessment =
                 assessmentRepository.findBySourceIdAndProduct(sourceId, product);
@@ -502,7 +502,7 @@ public class ProductService {
                     .orElseThrow(() -> new IllegalArgumentException("Невозможный источник."));
             if (enumSourceType.getIdentifySource()) {
                 if (sourceId == null) {
-                    throw new IllegalArgumentException("Для уазанного источника обязательна передача идентификатора.");
+                    throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
                 } else {
                     assessment = assessmentRepository
                             .findBySourceIdAndProductIdAndSourceTypeId(sourceId, product.getId(), enumSourceType.getId())

@@ -119,17 +119,14 @@ public class InfraService {
 
     private void updateExistingInfra(Infra infra, InfraDTO dto) {
         boolean modified = false;
-
         if (!Objects.equals(infra.getName(), dto.getName())) {
             infra.setName(dto.getName());
             modified = true;
         }
-
         if (!Objects.equals(infra.getType(), dto.getType())) {
             infra.setType(dto.getType());
             modified = true;
         }
-
         if (modified) {
             infra.setLastModifiedDate(LocalDateTime.now());
             log.info("update infra name or type");
@@ -148,40 +145,45 @@ public class InfraService {
                 .filter(property -> !processedKeys.contains(property.getName()))
                 .filter(property -> property.getDeletedDate() == null)
                 .forEach(property -> property.setDeletedDate(LocalDateTime.now()));
-        log.info("save all prop");
         propertyRepository.saveAll(existingProperties);
 
+        List<Property> toCreate = new ArrayList<>();
+        List<Property> toUpdate = new ArrayList<>();
         for (PropertyDTO propDTO : properties) {
             Property property = existingPropertyMap.get(propDTO.getKey());
-
             if (property == null) {
-                createNewProperty(infra, propDTO);
+                Property newProp = buildNewProperty(infra, propDTO);
+                toCreate.add(newProp);
             } else {
-                updateExistingProperty(property, propDTO);
+                Property updatedProp = prepareUpdatedProperty(property, propDTO);
+                if (updatedProp != null) {
+                    toUpdate.add(updatedProp);
+                }
             }
         }
-
+        propertyRepository.saveAll(toCreate);
+        log.info("save all prop");
+        propertyRepository.saveAll(toUpdate);
+        log.info("update all prop");
     }
 
-    private void createNewProperty(Infra infra, PropertyDTO propDTO) {
-        Property newProperty = Property.builder()
+    private Property buildNewProperty(Infra infra, PropertyDTO propDTO) {
+        return Property.builder()
                 .infra(infra)
                 .name(propDTO.getKey())
                 .value(propDTO.getValue())
                 .createdDate(LocalDateTime.now())
                 .build();
-        log.info("create prop");
-        propertyRepository.save(newProperty);
     }
 
-    private void updateExistingProperty(Property property, PropertyDTO propDTO) {
+    private Property prepareUpdatedProperty(Property property, PropertyDTO propDTO) {
         if (!Objects.equals(property.getValue(), propDTO.getValue())) {
             property.setValue(propDTO.getValue());
             property.setDeletedDate(null);
             property.setLastModifiedDate(LocalDateTime.now());
-            log.info("update prop");
-            propertyRepository.save(property);
+            return property;
         }
+        return null;
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
@@ -202,7 +204,6 @@ public class InfraService {
         List<Relation> existingRelations = relationRepository.findByParentId(infra.getCmdbId());
         log.info("existingRelations=" + existingRelations);
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
-
         existingRelations.stream()
                 .filter(child -> !processedChildrenIds.contains(child.getChildId()))
                 .filter(child -> child.getDeletedDate() == null)
@@ -210,22 +211,19 @@ public class InfraService {
         relationRepository.saveAll(existingRelations);
 
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
-                .collect(Collectors.toMap(rel -> rel.getChildId(), Function.identity()));
+                .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
 
-        processedChildrenIds.stream()
+        List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
-                .forEach(childId -> createNewRelation(infra, infraRepository.findByCmdbId(childId).get()));
-    }
-
-    private void createNewRelation(Infra parentInfra, Infra childInfra) {
-
-        Relation newRelation = Relation.builder()
-                .parentId(parentInfra.getCmdbId())
-                .childId(childInfra.getCmdbId())
-                .createdDate(LocalDateTime.now())
-                .build();
-        log.info("createNewRelation" + newRelation);
-
-        relationRepository.save(newRelation);
+                .map(childId -> infraRepository.findByCmdbId(childId)
+                        .map(childInfra -> Relation.builder()
+                                .parentId(infra.getCmdbId())
+                                .childId(childInfra.getCmdbId())
+                                .createdDate(LocalDateTime.now())
+                                .build())
+                        .orElse(null))
+                .filter(Objects::nonNull)
+                .toList();
+        relationRepository.saveAll(newRelations);
     }
 }

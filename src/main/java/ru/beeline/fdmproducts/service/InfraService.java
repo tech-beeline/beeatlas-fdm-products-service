@@ -67,23 +67,27 @@ public class InfraService {
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
         log.info("requestInfras size: " + requestInfras.size());
+        Set<String> requestCmdbIds = requestInfras.stream()
+                .map(InfraDTO::getCmdbId)
+                .collect(Collectors.toSet());
+
+        Set<String> missingCmdbIds = requestCmdbIds.stream()
+                .filter(cmdbId -> !existingInfraMap.containsKey(cmdbId))
+                .collect(Collectors.toSet());
+        if (!missingCmdbIds.isEmpty()) {
+            List<Infra> missingInfras = infraRepository.findByCmdbIdIn(missingCmdbIds);
+            for (Infra infra : missingInfras) {
+                existingInfraMap.put(infra.getCmdbId(), infra);
+            }
+        }
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
-
             if (infra == null) {
-                Optional<Infra> optionalInfra = infraRepository.findByCmdbId(infraDTO.getCmdbId());
-                if (optionalInfra.isEmpty()) {
-                    infra = createNewInfra(infraDTO, product);
-                    existingInfraMap.put(infraDTO.getCmdbId(), infra);
-                } else {
-                    infra = optionalInfra.get();
-                    updateExistingInfra(infra, infraDTO);
-                    existingInfraMap.put(infraDTO.getCmdbId(), infra);
-                }
+                infra = createNewInfra(infraDTO, product);
+                existingInfraMap.put(infraDTO.getCmdbId(), infra);
             } else {
                 updateExistingInfra(infra, infraDTO);
             }
-
             processProperties(infra, infraDTO.getProperties());
         }
     }

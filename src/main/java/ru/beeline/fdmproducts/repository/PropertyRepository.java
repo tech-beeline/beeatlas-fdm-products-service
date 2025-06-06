@@ -9,7 +9,6 @@ import java.util.Optional;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Integer> {
-    List<Property> findByInfraId(Integer infraId);
 
-    Optional<Property> findByInfraIdAndName(Integer infraId, String name);
+    List<Property> findByInfraIdIn(List<Integer> infraIds);
 }

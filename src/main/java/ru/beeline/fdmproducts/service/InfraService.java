@@ -245,10 +245,8 @@ public class InfraService {
                 .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
         relationRepository.saveAll(existingRelations);
-
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
                 .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
-
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
                 .map(childId -> infraRepository.findByCmdbId(childId)

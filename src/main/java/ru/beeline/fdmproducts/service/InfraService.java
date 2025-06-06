@@ -54,23 +54,28 @@ public class InfraService {
                     infra.getInfraProducts().forEach(infraProduct -> infraProduct.setDeletedDate(LocalDateTime.now()));
                 });
         infraProductRepository.saveAll(existingInfraProducts);
-
         Map<String, Infra> existingInfraMap = existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
-
         processInfras(request.getInfra(), product, existingInfraMap);
-
         processRelations(request.getRelations(), existingInfraMap);
         log.info("The syncInfrastructure method is completed");
     }
-
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
         log.info("requestInfras size: " + requestInfras.size());
+        loadMissingInfras(requestInfras, existingInfraMap);
+        List<Infra> newInfras = new ArrayList<>();
+        List<Infra> updatedInfras = new ArrayList<>();
+        processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
+        saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
+        saveUpdatedInfras(updatedInfras);
+        processAllProperties(requestInfras, existingInfraMap);
+    }
+
+    private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
         Set<String> requestCmdbIds = requestInfras.stream()
                 .map(InfraDTO::getCmdbId)
                 .collect(Collectors.toSet());
-
         Set<String> missingCmdbIds = requestCmdbIds.stream()
                 .filter(cmdbId -> !existingInfraMap.containsKey(cmdbId))
                 .collect(Collectors.toSet());
@@ -80,62 +85,93 @@ public class InfraService {
                 existingInfraMap.put(infra.getCmdbId(), infra);
             }
         }
+    }
+
+    private void processCreateOrUpdateInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap,
+                                             Product product, List<Infra> newInfras, List<Infra> updatedInfras) {
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
             if (infra == null) {
-                infra = createNewInfra(infraDTO, product);
-                existingInfraMap.put(infraDTO.getCmdbId(), infra);
+                Infra newInfra = Infra.builder()
+                        .name(infraDTO.getName())
+                        .type(infraDTO.getType())
+                        .cmdbId(infraDTO.getCmdbId())
+                        .infraProducts(new HashSet<>())
+                        .createdDate(LocalDateTime.now())
+                        .build();
+                InfraProduct infraProduct = InfraProduct.builder()
+                        .createdDate(LocalDateTime.now())
+                        .infra(newInfra)
+                        .product(product)
+                        .build();
+                newInfra.getInfraProducts().add(infraProduct);
+                newInfras.add(newInfra);
+                existingInfraMap.put(infraDTO.getCmdbId(), newInfra);
             } else {
-                updateExistingInfra(infra, infraDTO);
+                boolean modified = false;
+                if (!Objects.equals(infra.getName(), infraDTO.getName())) {
+                    infra.setName(infraDTO.getName());
+                    modified = true;
+                }
+                if (!Objects.equals(infra.getType(), infraDTO.getType())) {
+                    infra.setType(infraDTO.getType());
+                    modified = true;
+                }
+                if (modified) {
+                    infra.setLastModifiedDate(LocalDateTime.now());
+                    updatedInfras.add(infra);
+                }
+                boolean hasLink = infra.getInfraProducts().stream()
+                        .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
+                if (!hasLink) {
+                    InfraProduct infraProduct = InfraProduct.builder()
+                            .createdDate(LocalDateTime.now())
+                            .infra(infra)
+                            .product(product)
+                            .build();
+                    infra.getInfraProducts().add(infraProduct);
+                }
             }
-            processProperties(infra, infraDTO.getProperties());
         }
     }
 
-    private Infra createNewInfra(InfraDTO dto, Product product) {
-        System.out.println("createNewInfra before flash");
+    private void saveNewInfrasAndProducts(List<Infra> newInfras, Product product, Map<String, Infra> existingInfraMap) {
+        if (newInfras.isEmpty()) return;
+        List<Infra> savedInfras = infraRepository.saveAll(newInfras);
         infraRepository.flush();
-        System.out.println("createNewInfra after flash");
-        Infra newInfra = Infra.builder()
-                .name(dto.getName())
-                .type(dto.getType())
-                .cmdbId(dto.getCmdbId())
-                .infraProducts(new HashSet<>())
-                .createdDate(LocalDateTime.now())
-                .build();
-        System.out.println("cmdb= " + newInfra.getCmdbId());
-        log.info("createNewInfra cmdb=", dto.getCmdbId());
-        newInfra = infraRepository.save(newInfra);
-        infraRepository.flush();
-        System.out.println("INFRA SAVED");
-        InfraProduct infraProduct = InfraProduct.builder()
-                .createdDate(LocalDateTime.now())
-                .infra(newInfra)
-                .product(product)
-                .build();
-        newInfra.getInfraProducts().add(infraProduct);
-        log.info("save new infraProduct");
-        infraProduct = infraProductRepository.save(infraProduct);
-        log.info("infraProduct has been saved");
-        return infraProduct.getInfra();
-
+        List<InfraProduct> newInfraProducts = new ArrayList<>();
+        for (Infra infra : savedInfras) {
+            boolean hasLink = infra.getInfraProducts().stream()
+                    .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
+            if (!hasLink) {
+                InfraProduct infraProduct = InfraProduct.builder()
+                        .createdDate(LocalDateTime.now())
+                        .infra(infra)
+                        .product(product)
+                        .build();
+                infra.getInfraProducts().add(infraProduct);
+                newInfraProducts.add(infraProduct);
+            }
+            existingInfraMap.put(infra.getCmdbId(), infra);
+        }
+        if (!newInfraProducts.isEmpty()) {
+            infraProductRepository.saveAll(newInfraProducts);
+            infraProductRepository.flush();
+        }
     }
 
-    private void updateExistingInfra(Infra infra, InfraDTO dto) {
-        boolean modified = false;
-        if (!Objects.equals(infra.getName(), dto.getName())) {
-            infra.setName(dto.getName());
-            modified = true;
-        }
-        if (!Objects.equals(infra.getType(), dto.getType())) {
-            infra.setType(dto.getType());
-            modified = true;
-        }
-        if (modified) {
-            infra.setLastModifiedDate(LocalDateTime.now());
-            log.info("update infra name or type");
-            infraRepository.save(infra);
-            infraRepository.flush();
+    private void saveUpdatedInfras(List<Infra> updatedInfras) {
+        if (updatedInfras.isEmpty()) return;
+        infraRepository.saveAll(updatedInfras);
+        infraRepository.flush();
+    }
+
+    private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
+        for (InfraDTO infraDTO : requestInfras) {
+            Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
+            if (infra != null) {
+                processProperties(infra, infraDTO.getProperties());
+            }
         }
     }
 

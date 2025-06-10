@@ -244,23 +244,25 @@ public class InfraService {
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
         log.info("start process for Relations");
+        List<Relation> relationsForSave = new ArrayList<>();
         for (RelationDTO relationDTO : relations) {
             Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
             if (infra != null) {
-                processRelation(infra, relationDTO);
+                processRelation(infra, relationDTO, relationsForSave);
             }
         }
+        relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }
 
-    private void processRelation(final Infra infra, RelationDTO relationDTO) {
+    private void processRelation(final Infra infra, RelationDTO relationDTO, List<Relation> relationsForSave) {
         List<Relation> existingRelations = relationRepository.findByParentId(infra.getCmdbId());
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
         existingRelations.stream()
                 .filter(child -> !processedChildrenIds.contains(child.getChildId()))
                 .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
-        relationRepository.saveAll(existingRelations);
+        relationsForSave.addAll(existingRelations);
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
                 .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
         List<Relation> newRelations = processedChildrenIds.stream()
@@ -274,6 +276,6 @@ public class InfraService {
                         .orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
-        relationRepository.saveAll(newRelations);
+        relationsForSave.addAll(newRelations);
     }
 }

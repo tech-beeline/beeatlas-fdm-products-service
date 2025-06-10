@@ -44,6 +44,7 @@ public class InfraService {
         List<InfraProduct> existingInfraProducts = infraProductRepository.findByProductId(product.getId());
         log.info("existingInfraProducts is" + existingInfraProducts);
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 1");
         existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
                 .filter(infra -> !processedCmdbIds.contains(infra.getCmdbId()))
@@ -52,11 +53,14 @@ public class InfraService {
                     infra.setDeletedDate(LocalDateTime.now());
                     infra.getInfraProducts().forEach(infraProduct -> infraProduct.setDeletedDate(LocalDateTime.now()));
                 });
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
         infraProductRepository.saveAll(existingInfraProducts);
         Map<String, Infra> existingInfraMap = existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
         processInfras(request.getInfra(), product, existingInfraMap);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4");
         processRelations(request.getRelations(), existingInfraMap);
         log.info("The syncInfrastructure method is completed");
     }
@@ -66,16 +70,17 @@ public class InfraService {
         loadMissingInfras(requestInfras, existingInfraMap);
         List<Infra> newInfras = new ArrayList<>();
         List<Infra> updatedInfras = new ArrayList<>();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a");
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3b");
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c");
         saveUpdatedInfras(updatedInfras);
         processAllProperties(requestInfras, existingInfraMap);
     }
 
     private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
-        Set<String> requestCmdbIds = requestInfras.stream()
-                .map(InfraDTO::getCmdbId)
-                .collect(Collectors.toSet());
+        Set<String> requestCmdbIds = requestInfras.stream().map(InfraDTO::getCmdbId).collect(Collectors.toSet());
         Set<String> missingCmdbIds = requestCmdbIds.stream()
                 .filter(cmdbId -> !existingInfraMap.containsKey(cmdbId))
                 .collect(Collectors.toSet());
@@ -87,8 +92,11 @@ public class InfraService {
         }
     }
 
-    private void processCreateOrUpdateInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap,
-                                             Product product, List<Infra> newInfras, List<Infra> updatedInfras) {
+    private void processCreateOrUpdateInfras(List<InfraDTO> requestInfras,
+                                             Map<String, Infra> existingInfraMap,
+                                             Product product,
+                                             List<Infra> newInfras,
+                                             List<Infra> updatedInfras) {
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
             if (infra == null) {
@@ -121,7 +129,8 @@ public class InfraService {
                     infra.setLastModifiedDate(LocalDateTime.now());
                     updatedInfras.add(infra);
                 }
-                boolean hasLink = infra.getInfraProducts().stream()
+                boolean hasLink = infra.getInfraProducts()
+                        .stream()
                         .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
                 if (!hasLink) {
                     InfraProduct infraProduct = InfraProduct.builder()
@@ -136,12 +145,13 @@ public class InfraService {
     }
 
     private void saveNewInfrasAndProducts(List<Infra> newInfras, Product product, Map<String, Infra> existingInfraMap) {
-        if (newInfras.isEmpty()) return;
-        List<Infra> savedInfras = infraRepository.saveAll(newInfras);
-        infraRepository.flush();
+        if (newInfras.isEmpty())
+            return;
+        List<Infra> savedInfras = infraRepository.saveAllAndFlush(newInfras);
         List<InfraProduct> newInfraProducts = new ArrayList<>();
         for (Infra infra : savedInfras) {
-            boolean hasLink = infra.getInfraProducts().stream()
+            boolean hasLink = infra.getInfraProducts()
+                    .stream()
                     .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
             if (!hasLink) {
                 InfraProduct infraProduct = InfraProduct.builder()
@@ -161,9 +171,9 @@ public class InfraService {
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {
-        if (updatedInfras.isEmpty()) return;
-        infraRepository.saveAll(updatedInfras);
-        infraRepository.flush();
+        if (updatedInfras.isEmpty())
+            return;
+        infraRepository.saveAllAndFlush(updatedInfras);
     }
 
     private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
@@ -190,9 +200,7 @@ public class InfraService {
     private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties) {
         Map<String, Property> existingPropertyMap = existingProperties.stream()
                 .collect(Collectors.toMap(Property::getName, Function.identity()));
-        Set<String> incomingKeys = properties.stream()
-                .map(PropertyDTO::getKey)
-                .collect(Collectors.toSet());
+        Set<String> incomingKeys = properties.stream().map(PropertyDTO::getKey).collect(Collectors.toSet());
         List<Property> toDelete = existingProperties.stream()
                 .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
                 .peek(p -> p.setDeletedDate(LocalDateTime.now()))

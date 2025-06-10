@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.service;
 
+import com.lite.function.profiling.ActuatorProfiling;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class InfraService {
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method");
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 0");
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
         log.info("product is" + product);
 
@@ -42,8 +44,9 @@ public class InfraService {
         }
 
         List<InfraProduct> existingInfraProducts = infraProductRepository.findByProductId(product.getId());
-        log.info("existingInfraProducts is" + existingInfraProducts);
+        log.info("existingInfraProducts size" + existingInfraProducts.size());
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 1");
         existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
                 .filter(infra -> !processedCmdbIds.contains(infra.getCmdbId()))
@@ -52,33 +55,42 @@ public class InfraService {
                     infra.setDeletedDate(LocalDateTime.now());
                     infra.getInfraProducts().forEach(infraProduct -> infraProduct.setDeletedDate(LocalDateTime.now()));
                 });
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
         infraProductRepository.saveAll(existingInfraProducts);
         Map<String, Infra> existingInfraMap = existingInfraProducts.stream()
                 .map(InfraProduct::getInfra)
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
         processInfras(request.getInfra(), product, existingInfraMap);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4");
         processRelations(request.getRelations(), existingInfraMap);
         log.info("The syncInfrastructure method is completed");
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
         log.info("requestInfras size: " + requestInfras.size());
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a");
         loadMissingInfras(requestInfras, existingInfraMap);
         List<Infra> newInfras = new ArrayList<>();
         List<Infra> updatedInfras = new ArrayList<>();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3b");
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c");
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3d");
         saveUpdatedInfras(updatedInfras);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3e");
         processAllProperties(requestInfras, existingInfraMap);
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3f");
     }
 
     private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
-        Set<String> requestCmdbIds = requestInfras.stream()
-                .map(InfraDTO::getCmdbId)
-                .collect(Collectors.toSet());
+        Set<String> requestCmdbIds = requestInfras.stream().map(InfraDTO::getCmdbId).collect(Collectors.toSet());
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a.a");
         Set<String> missingCmdbIds = requestCmdbIds.stream()
                 .filter(cmdbId -> !existingInfraMap.containsKey(cmdbId))
                 .collect(Collectors.toSet());
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a.b size=" + missingCmdbIds.size());
         if (!missingCmdbIds.isEmpty()) {
             List<Infra> missingInfras = infraRepository.findByCmdbIdIn(missingCmdbIds);
             for (Infra infra : missingInfras) {
@@ -87,8 +99,11 @@ public class InfraService {
         }
     }
 
-    private void processCreateOrUpdateInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap,
-                                             Product product, List<Infra> newInfras, List<Infra> updatedInfras) {
+    private void processCreateOrUpdateInfras(List<InfraDTO> requestInfras,
+                                             Map<String, Infra> existingInfraMap,
+                                             Product product,
+                                             List<Infra> newInfras,
+                                             List<Infra> updatedInfras) {
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
             if (infra == null) {
@@ -121,7 +136,8 @@ public class InfraService {
                     infra.setLastModifiedDate(LocalDateTime.now());
                     updatedInfras.add(infra);
                 }
-                boolean hasLink = infra.getInfraProducts().stream()
+                boolean hasLink = infra.getInfraProducts()
+                        .stream()
                         .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
                 if (!hasLink) {
                     InfraProduct infraProduct = InfraProduct.builder()
@@ -136,12 +152,15 @@ public class InfraService {
     }
 
     private void saveNewInfrasAndProducts(List<Infra> newInfras, Product product, Map<String, Infra> existingInfraMap) {
-        if (newInfras.isEmpty()) return;
-        List<Infra> savedInfras = infraRepository.saveAll(newInfras);
-        infraRepository.flush();
+        if (newInfras.isEmpty())
+            return;
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.1");
+        List<Infra> savedInfras = infraRepository.saveAllAndFlush(newInfras);
         List<InfraProduct> newInfraProducts = new ArrayList<>();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.2 size=" + savedInfras.size());
         for (Infra infra : savedInfras) {
-            boolean hasLink = infra.getInfraProducts().stream()
+            boolean hasLink = infra.getInfraProducts()
+                    .stream()
                     .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
             if (!hasLink) {
                 InfraProduct infraProduct = InfraProduct.builder()
@@ -154,6 +173,7 @@ public class InfraService {
             }
             existingInfraMap.put(infra.getCmdbId(), infra);
         }
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.3");
         if (!newInfraProducts.isEmpty()) {
             infraProductRepository.saveAll(newInfraProducts);
             infraProductRepository.flush();
@@ -161,9 +181,9 @@ public class InfraService {
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {
-        if (updatedInfras.isEmpty()) return;
-        infraRepository.saveAll(updatedInfras);
-        infraRepository.flush();
+        if (updatedInfras.isEmpty())
+            return;
+        infraRepository.saveAllAndFlush(updatedInfras);
     }
 
     private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
@@ -177,29 +197,39 @@ public class InfraService {
         log.info("Fetched total {} properties for all Infra", allProperties.size());
         Map<Integer, List<Property>> propertiesByInfraId = allProperties.stream()
                 .collect(Collectors.groupingBy(p -> p.getInfra().getId()));
+        List<Property> toCreate = new ArrayList<>();
+        List<Property> toUpdate = new ArrayList<>();
+        List<Property> toDelete = new ArrayList<>();
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
             if (infra != null) {
                 List<Property> existingProperties = propertiesByInfraId.getOrDefault(infra.getId(), List.of());
-                processProperties(infra, infraDTO.getProperties(), existingProperties);
+                processProperties(infra, infraDTO.getProperties(), existingProperties, toCreate, toUpdate, toDelete);
             }
         }
+        propertyRepository.saveAll(toDelete);
+        log.info("Updated {} deleted properties", toUpdate.size());
+        propertyRepository.saveAll(toCreate);
+        log.info("Saved {} new properties", toCreate.size());
+        propertyRepository.saveAll(toUpdate);
+        log.info("Updated {} existing properties", toUpdate.size());
         log.info("Finished processing all InfraDTO properties");
     }
 
-    private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties) {
+    private void processProperties(Infra infra,
+                                   List<PropertyDTO> properties,
+                                   List<Property> existingProperties,
+                                   List<Property> toCreate,
+                                   List<Property> toUpdate,
+                                   List<Property> toDelete) {
         Map<String, Property> existingPropertyMap = existingProperties.stream()
                 .collect(Collectors.toMap(Property::getName, Function.identity()));
-        Set<String> incomingKeys = properties.stream()
-                .map(PropertyDTO::getKey)
-                .collect(Collectors.toSet());
-        List<Property> toDelete = existingProperties.stream()
-                .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
-                .peek(p -> p.setDeletedDate(LocalDateTime.now()))
-                .collect(Collectors.toList());
-        propertyRepository.saveAll(toDelete);
-        List<Property> toCreate = new ArrayList<>();
-        List<Property> toUpdate = new ArrayList<>();
+        Set<String> incomingKeys = properties.stream().map(PropertyDTO::getKey).collect(Collectors.toSet());
+        toDelete.addAll(existingProperties.stream()
+                                .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
+                                .peek(p -> p.setDeletedDate(LocalDateTime.now()))
+                                .collect(Collectors.toList()));
+
         for (PropertyDTO dto : properties) {
             Property existing = existingPropertyMap.get(dto.getKey());
             if (existing == null) {
@@ -211,10 +241,6 @@ public class InfraService {
                 toUpdate.add(existing);
             }
         }
-        propertyRepository.saveAll(toCreate);
-        log.info("Saved {} new properties", toCreate.size());
-        propertyRepository.saveAll(toUpdate);
-        log.info("Updated {} existing properties", toUpdate.size());
     }
 
     private Property buildNewProperty(Infra infra, PropertyDTO propDTO) {
@@ -227,26 +253,34 @@ public class InfraService {
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
-        log.info("start process for Relations");
+        log.info("start process for Relations with size" + relations.size());
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
+        List<Relation> relationsForSave = new ArrayList<>();
         for (RelationDTO relationDTO : relations) {
             Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
             if (infra != null) {
-                processRelation(infra, relationDTO);
+                processRelation(infra, relationDTO, relationsForSave);
             }
         }
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
+        relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }
 
-    private void processRelation(final Infra infra, RelationDTO relationDTO) {
-        List<Relation> existingRelations = relationRepository.findByParentId(infra.getCmdbId());
+    private void processRelation(final Infra infra, RelationDTO relationDTO, List<Relation> relationsForSave) {
+
+        List<Relation> existingRelations = findRelationsByParentId(infra);
+
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
         existingRelations.stream()
                 .filter(child -> !processedChildrenIds.contains(child.getChildId()))
                 .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
-        relationRepository.saveAll(existingRelations);
+        relationsForSave.addAll(existingRelations);
+
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
                 .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
+
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
                 .map(childId -> infraRepository.findByCmdbId(childId)
@@ -258,6 +292,11 @@ public class InfraService {
                         .orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
-        relationRepository.saveAll(newRelations);
+        relationsForSave.addAll(newRelations);
+    }
+
+    @ActuatorProfiling(name = "findRelationsByParentId")
+    public List<Relation> findRelationsByParentId(Infra infra) {
+        return relationRepository.findByParentId(infra.getCmdbId());
     }
 }

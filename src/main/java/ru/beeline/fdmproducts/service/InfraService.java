@@ -243,7 +243,7 @@ public class InfraService {
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
-        log.info("start process for Relations");
+        log.info("start process for Relations with size" + relations.size());
         List<Relation> relationsForSave = new ArrayList<>();
         for (RelationDTO relationDTO : relations) {
             Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
@@ -251,6 +251,7 @@ public class InfraService {
                 processRelation(infra, relationDTO, relationsForSave);
             }
         }
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.x");
         relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }

@@ -187,27 +187,39 @@ public class InfraService {
         log.info("Fetched total {} properties for all Infra", allProperties.size());
         Map<Integer, List<Property>> propertiesByInfraId = allProperties.stream()
                 .collect(Collectors.groupingBy(p -> p.getInfra().getId()));
+        List<Property> toCreate = new ArrayList<>();
+        List<Property> toUpdate = new ArrayList<>();
+        List<Property> toDelete = new ArrayList<>();
         for (InfraDTO infraDTO : requestInfras) {
             Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
             if (infra != null) {
                 List<Property> existingProperties = propertiesByInfraId.getOrDefault(infra.getId(), List.of());
-                processProperties(infra, infraDTO.getProperties(), existingProperties);
+                processProperties(infra, infraDTO.getProperties(), existingProperties, toCreate, toUpdate, toDelete);
             }
         }
+        propertyRepository.saveAll(toDelete);
+        log.info("Updated {} deleted properties", toUpdate.size());
+        propertyRepository.saveAll(toCreate);
+        log.info("Saved {} new properties", toCreate.size());
+        propertyRepository.saveAll(toUpdate);
+        log.info("Updated {} existing properties", toUpdate.size());
         log.info("Finished processing all InfraDTO properties");
     }
 
-    private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties) {
+    private void processProperties(Infra infra,
+                                   List<PropertyDTO> properties,
+                                   List<Property> existingProperties,
+                                   List<Property> toCreate,
+                                   List<Property> toUpdate,
+                                   List<Property> toDelete) {
         Map<String, Property> existingPropertyMap = existingProperties.stream()
                 .collect(Collectors.toMap(Property::getName, Function.identity()));
         Set<String> incomingKeys = properties.stream().map(PropertyDTO::getKey).collect(Collectors.toSet());
-        List<Property> toDelete = existingProperties.stream()
-                .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
-                .peek(p -> p.setDeletedDate(LocalDateTime.now()))
-                .collect(Collectors.toList());
-        propertyRepository.saveAll(toDelete);
-        List<Property> toCreate = new ArrayList<>();
-        List<Property> toUpdate = new ArrayList<>();
+        toDelete.addAll(existingProperties.stream()
+                                .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
+                                .peek(p -> p.setDeletedDate(LocalDateTime.now()))
+                                .collect(Collectors.toList()));
+
         for (PropertyDTO dto : properties) {
             Property existing = existingPropertyMap.get(dto.getKey());
             if (existing == null) {
@@ -219,10 +231,6 @@ public class InfraService {
                 toUpdate.add(existing);
             }
         }
-        propertyRepository.saveAll(toCreate);
-        log.info("Saved {} new properties", toCreate.size());
-        propertyRepository.saveAll(toUpdate);
-        log.info("Updated {} existing properties", toUpdate.size());
     }
 
     private Property buildNewProperty(Infra infra, PropertyDTO propDTO) {

@@ -45,22 +45,13 @@ public class InfraService {
             throw new EntityNotFoundException("Продукт не найден");
         }
 
-        List<InfraProduct> existingInfraProducts = infraProductRepository.findByProductId(product.getId());
-        log.info("existingInfraProducts size" + existingInfraProducts.size());
-        List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         log.info("!!!!!!!!!!!!!!!!!!!!!! 1");
-        existingInfraProducts.stream()
-                .map(InfraProduct::getInfra)
-                .filter(infra -> !processedCmdbIds.contains(infra.getCmdbId()))
-                .filter(infra -> infra.getDeletedDate() == null)
-                .forEach(infra -> {
-                    infra.setDeletedDate(LocalDateTime.now());
-                    infra.getInfraProducts().forEach(infraProduct -> infraProduct.setDeletedDate(LocalDateTime.now()));
-                });
+        List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
+        infraRepository.markInfrasDeleted(processedCmdbIds, LocalDateTime.now());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
-        infraProductRepository.saveAll(existingInfraProducts);
-        Map<String, Infra> existingInfraMap = existingInfraProducts.stream()
-                .map(InfraProduct::getInfra)
+        infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
+        Map<String, Infra> existingInfraMap = infraRepository.findInfrasByProductId(product.getId())
+                .stream()
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
         processInfras(request.getInfra(), product, existingInfraMap);
@@ -259,9 +250,7 @@ public class InfraService {
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
         if (relations.size() > 100) {
-            cacheRelation = relationRepository.findAll()
-                    .stream()
-                    .collect(Collectors.groupingBy(Relation::getParentId));
+            cacheRelation = relationRepository.findAll().stream().collect(Collectors.groupingBy(Relation::getParentId));
             cacheInfra = infraRepository.findAllCmdbIds();
             log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a.a");
         }
@@ -298,13 +287,11 @@ public class InfraService {
 
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
-                .map(childId -> getInfra(childId)
-                        .map(childInfra -> Relation.builder()
-                                .parentId(infra.getCmdbId())
-                                .childId(childId)
-                                .createdDate(LocalDateTime.now())
-                                .build())
-                        .orElse(null))
+                .map(childId -> getInfra(childId).map(childInfra -> Relation.builder()
+                        .parentId(infra.getCmdbId())
+                        .childId(childId)
+                        .createdDate(LocalDateTime.now())
+                        .build()).orElse(null))
                 .filter(Objects::nonNull)
                 .toList();
         relationsForSave.addAll(newRelations);
@@ -315,7 +302,6 @@ public class InfraService {
     }
 
     public List<Relation> findRelationsByParentId(Infra infra) {
-        return cacheRelation.isEmpty() ? relationRepository.findByParentId(infra.getCmdbId()) :
-                cacheRelation.get(infra.getCmdbId());
+        return cacheRelation.isEmpty() ? relationRepository.findByParentId(infra.getCmdbId()) : cacheRelation.get(infra.getCmdbId());
     }
 }

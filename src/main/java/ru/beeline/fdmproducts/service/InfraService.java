@@ -1,6 +1,5 @@
 package ru.beeline.fdmproducts.service;
 
-import com.lite.function.profiling.ActuatorProfiling;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -32,6 +31,9 @@ public class InfraService {
     private RelationRepository relationRepository;
     @Autowired
     private InfraProductRepository infraProductRepository;
+
+    private Map<String, List<Relation>> cacheRelation = new HashMap<>();
+    private List<String> cacheInfra = new ArrayList<>();
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method");
@@ -256,13 +258,26 @@ public class InfraService {
         log.info("start process for Relations with size" + relations.size());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
-        for (RelationDTO relationDTO : relations) {
-            Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
-            if (infra != null) {
-                processRelation(infra, relationDTO, relationsForSave);
-            }
+        if (relations.size() > 100) {
+            cacheRelation = relationRepository.findAll()
+                    .stream()
+                    .collect(Collectors.groupingBy(Relation::getParentId));
+            cacheInfra = infraRepository.findAllCmdbIds();
+            log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a.a");
         }
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
+        try {
+            for (RelationDTO relationDTO : relations) {
+                Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
+                if (infra != null) {
+                    processRelation(infra, relationDTO, relationsForSave);
+                }
+            }
+        } finally {
+            cacheRelation.clear();
+            cacheInfra.clear();
+        }
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
         relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }
@@ -283,10 +298,10 @@ public class InfraService {
 
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
-                .map(childId -> infraRepository.findByCmdbId(childId)
+                .map(childId -> getInfra(childId)
                         .map(childInfra -> Relation.builder()
                                 .parentId(infra.getCmdbId())
-                                .childId(childInfra.getCmdbId())
+                                .childId(childId)
                                 .createdDate(LocalDateTime.now())
                                 .build())
                         .orElse(null))
@@ -295,8 +310,12 @@ public class InfraService {
         relationsForSave.addAll(newRelations);
     }
 
-    @ActuatorProfiling(name = "findRelationsByParentId")
+    private Optional<Infra> getInfra(String childId) {
+        return cacheInfra.isEmpty() ? infraRepository.findByCmdbId(childId) : Optional.empty();
+    }
+
     public List<Relation> findRelationsByParentId(Infra infra) {
-        return relationRepository.findByParentId(infra.getCmdbId());
+        return cacheRelation.isEmpty() ? relationRepository.findByParentId(infra.getCmdbId()) :
+                cacheRelation.get(infra.getCmdbId());
     }
 }

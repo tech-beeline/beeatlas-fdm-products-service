@@ -247,7 +247,7 @@ public class InfraService {
         log.info("start process for Relations with size" + relations.size());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
-        Map<String, List<Relation>> cacheRelation = relationRepository.findByParentIdIn(relations.stream()
+        Map<String, List<Relation>> children = relationRepository.findByParentIdIn(relations.stream()
                                                                                                 .map(RelationDTO::getCmdbId)
                                                                                                 .collect(Collectors.toList()))
                 .stream()
@@ -259,10 +259,10 @@ public class InfraService {
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
-                processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, cacheRelation, cacheInfra);
+                processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, children, cacheInfra);
             }
         }
-        cacheRelation.clear();
+        children.clear();
         cacheInfra.clear();
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.d");
         relationRepository.saveAll(relationsForSave);
@@ -272,19 +272,14 @@ public class InfraService {
     private void processRelation(String cmdbId,
                                  RelationDTO relationDTO,
                                  List<Relation> relationsForSave,
-                                 Map<String, List<Relation>> cacheRelation,
+                                 Map<String, List<Relation>> childrenRelation,
                                  List<String> cacheInfra) {
 
-        List<Relation> existingRelations = cacheRelation.get(cmdbId);
+        List<Relation> existingRelations = childrenRelation.get(cmdbId);
         if (existingRelations == null) {
             existingRelations = new ArrayList<>();
         }
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
-        existingRelations.stream()
-                .filter(child -> !processedChildrenIds.contains(child.getChildId()))
-                .filter(child -> child.getDeletedDate() == null)
-                .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
-        relationsForSave.addAll(existingRelations);
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
                 .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
 

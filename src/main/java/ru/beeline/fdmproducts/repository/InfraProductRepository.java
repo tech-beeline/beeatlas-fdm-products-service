@@ -12,7 +12,6 @@ import java.util.List;
 
 @Repository
 public interface InfraProductRepository extends JpaRepository<InfraProduct, Integer> {
-    List<InfraProduct> findByProductId(Integer productId);
 
     @Modifying
     @Query(value = "UPDATE product.infra_product ip SET deleted_date = :now " +

@@ -17,6 +17,9 @@ public interface InfraRepository extends JpaRepository<Infra, Integer> {
 
     Optional<Infra> findByCmdbId(String cmdbId);
 
+    @Query("select i.cmdbId from Infra i where i.cmdbId in :cmdbIds")
+    List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);
+
     List<Infra> findByCmdbIdIn(Collection<String> cmdbIds);
 
     @Query("select i.cmdbId from Infra i")

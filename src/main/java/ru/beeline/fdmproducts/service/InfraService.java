@@ -32,9 +32,6 @@ public class InfraService {
     @Autowired
     private InfraProductRepository infraProductRepository;
 
-    private Map<String, List<Relation>> cacheRelation = new HashMap<>();
-    private List<String> cacheInfra = new ArrayList<>();
-
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method");
         log.info("!!!!!!!!!!!!!!!!!!!!!! 0");
@@ -250,46 +247,51 @@ public class InfraService {
         log.info("start process for Relations with size" + relations.size());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
-        if (relations.size() > 100) {
-            cacheRelation = relationRepository.findAll().stream().collect(Collectors.groupingBy(Relation::getParentId));
-            cacheInfra = infraRepository.findAllCmdbIds();
-            log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a.a");
-        }
+        Map<String, List<Relation>> cacheRelation = relationRepository.findByParentIdIn(relations.stream()
+                                                                                                .map(RelationDTO::getCmdbId)
+                                                                                                .collect(Collectors.toList()))
+                .stream()
+                .collect(Collectors.groupingBy(Relation::getParentId));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
-        try {
-            for (RelationDTO relationDTO : relations) {
-                Infra infra = existingInfraMap.get(relationDTO.getCmdbId());
-                if (infra != null) {
-                    processRelation(infra, relationDTO, relationsForSave);
-                }
-            }
-        } finally {
-            cacheRelation.clear();
-            cacheInfra.clear();
-        }
+        List<String> cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(relations.stream()
+                                                                         .flatMap(r -> r.getChildren().stream())
+                                                                         .collect(Collectors.toList()));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
+        for (RelationDTO relationDTO : relations) {
+            if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
+                processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, cacheRelation, cacheInfra);
+            }
+        }
+        cacheRelation.clear();
+        cacheInfra.clear();
+        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.d");
         relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }
 
-    private void processRelation(final Infra infra, RelationDTO relationDTO, List<Relation> relationsForSave) {
+    private void processRelation(String cmdbId,
+                                 RelationDTO relationDTO,
+                                 List<Relation> relationsForSave,
+                                 Map<String, List<Relation>> cacheRelation,
+                                 List<String> cacheInfra) {
 
-        List<Relation> existingRelations = findRelationsByParentId(infra);
-
+        List<Relation> existingRelations = cacheRelation.get(cmdbId);
+        if (existingRelations == null) {
+            existingRelations = new ArrayList<>();
+        }
         Set<String> processedChildrenIds = new HashSet<>(relationDTO.getChildren());
         existingRelations.stream()
                 .filter(child -> !processedChildrenIds.contains(child.getChildId()))
                 .filter(child -> child.getDeletedDate() == null)
                 .forEach(child -> child.setDeletedDate(LocalDateTime.now()));
         relationsForSave.addAll(existingRelations);
-
         Map<String, Relation> existingRelationsMap = existingRelations.stream()
                 .collect(Collectors.toMap(Relation::getChildId, Function.identity()));
 
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
-                .map(childId -> getInfra(childId).map(childInfra -> Relation.builder()
-                        .parentId(infra.getCmdbId())
+                .map(childId -> getInfra(childId,cacheInfra).map(childInfra -> Relation.builder()
+                        .parentId(cmdbId)
                         .childId(childId)
                         .createdDate(LocalDateTime.now())
                         .build()).orElse(null))
@@ -298,11 +300,7 @@ public class InfraService {
         relationsForSave.addAll(newRelations);
     }
 
-    private Optional<Infra> getInfra(String childId) {
-        return cacheInfra.isEmpty() ? infraRepository.findByCmdbId(childId) : Optional.empty();
-    }
-
-    public List<Relation> findRelationsByParentId(Infra infra) {
-        return cacheRelation.isEmpty() ? relationRepository.findByParentId(infra.getCmdbId()) : cacheRelation.get(infra.getCmdbId());
+    private Optional<Infra> getInfra(String childId, List<String> cacheInfra) {
+        return cacheInfra.contains(childId) ? Optional.of(new Infra()) : Optional.empty();
     }
 }

@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface RelationRepository extends JpaRepository<Relation, Integer> {
     List<Relation> findByParentId(String parentId);
+    List<Relation> findByParentIdIn(List<String> parentId);
 
 }

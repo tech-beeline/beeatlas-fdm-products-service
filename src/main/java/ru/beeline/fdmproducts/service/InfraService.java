@@ -33,7 +33,7 @@ public class InfraService {
     private InfraProductRepository infraProductRepository;
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
-        log.info("start of the Product Infrastructure Synchronization method");
+        log.info("start of the Product Infrastructure Synchronization method:" + request.toString());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 0");
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
         log.info("product is" + product);
@@ -44,7 +44,9 @@ public class InfraService {
 
         log.info("!!!!!!!!!!!!!!!!!!!!!! 1");
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
-        infraRepository.markInfrasDeleted(processedCmdbIds, LocalDateTime.now());
+        if (!processedCmdbIds.isEmpty()) {
+            infraRepository.markInfrasDeleted(processedCmdbIds, LocalDateTime.now());
+        }
         log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
         infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
         log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
@@ -248,14 +250,14 @@ public class InfraService {
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
         Map<String, List<Relation>> children = relationRepository.findByParentIdIn(relations.stream()
-                                                                                                .map(RelationDTO::getCmdbId)
-                                                                                                .collect(Collectors.toList()))
+                                                                                           .map(RelationDTO::getCmdbId)
+                                                                                           .collect(Collectors.toList()))
                 .stream()
                 .collect(Collectors.groupingBy(Relation::getParentId));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
         List<String> cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(relations.stream()
-                                                                         .flatMap(r -> r.getChildren().stream())
-                                                                         .collect(Collectors.toList()));
+                                                                               .flatMap(r -> r.getChildren().stream())
+                                                                               .collect(Collectors.toList()));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
@@ -285,7 +287,7 @@ public class InfraService {
 
         List<Relation> newRelations = processedChildrenIds.stream()
                 .filter(childId -> !existingRelationsMap.containsKey(childId))
-                .map(childId -> getInfra(childId,cacheInfra).map(childInfra -> Relation.builder()
+                .map(childId -> getInfra(childId, cacheInfra).map(childInfra -> Relation.builder()
                         .parentId(cmdbId)
                         .childId(childId)
                         .createdDate(LocalDateTime.now())

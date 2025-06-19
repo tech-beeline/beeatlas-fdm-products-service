@@ -22,12 +22,6 @@ public interface InfraRepository extends JpaRepository<Infra, Integer> {
 
     List<Infra> findByCmdbIdIn(Collection<String> cmdbIds);
 
-    @Query("select i.cmdbId from Infra i")
-    List<String> findAllCmdbIds();
-
-    @Modifying
-    @Query("UPDATE Infra i SET i.deletedDate = :now WHERE i.cmdbId NOT IN :cmdbIds AND i.deletedDate IS NULL")
-    int markInfrasDeleted(@Param("cmdbIds") List<String> cmdbIds, @Param("now") LocalDateTime now);
 
     @Query("SELECT ip.infra FROM InfraProduct ip WHERE ip.product.id = :productId AND ip.deletedDate IS NULL")
     List<Infra> findInfrasByProductId(@Param("productId") Integer productId);

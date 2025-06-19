@@ -46,9 +46,9 @@ public class InfraService {
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         if (!processedCmdbIds.isEmpty()) {
             infraRepository.markInfrasDeleted(processedCmdbIds, LocalDateTime.now());
-        }
         log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
         infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
+        }
         log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
         Map<String, Infra> existingInfraMap = infraRepository.findInfrasByProductId(product.getId())
                 .stream()
@@ -219,7 +219,7 @@ public class InfraService {
                 .collect(Collectors.toMap(Property::getName, Function.identity()));
         Set<String> incomingKeys = properties.stream().map(PropertyDTO::getKey).collect(Collectors.toSet());
         toDelete.addAll(existingProperties.stream()
-                                .filter(p -> !incomingKeys.contains(p.getName()) && p.getDeletedDate() == null)
+                                .filter(property -> !incomingKeys.contains(property.getName()) && property.getDeletedDate() == null)
                                 .peek(p -> p.setDeletedDate(LocalDateTime.now()))
                                 .collect(Collectors.toList()));
 

@@ -253,9 +253,13 @@ public class InfraService {
                 .stream()
                 .collect(Collectors.groupingBy(Relation::getParentId));
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
-        List<String> cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(relations.stream()
-                                                                               .flatMap(r -> r.getChildren().stream())
-                                                                               .collect(Collectors.toList()));
+        List<String> chldIds = relations.stream()
+                .flatMap(r -> r.getChildren().stream())
+                .collect(Collectors.toList());
+        List<String> cacheInfra = new ArrayList<>();
+        if(!chldIds.isEmpty()){
+        cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(chldIds);
+        }
         log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {

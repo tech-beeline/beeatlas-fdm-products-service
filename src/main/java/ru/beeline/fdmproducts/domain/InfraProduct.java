@@ -31,7 +31,7 @@ public class InfraProduct implements Serializable {
     @JsonIgnore
     private Product product;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "infra_id", nullable = false)
     @JsonIgnore
     private Infra infra;

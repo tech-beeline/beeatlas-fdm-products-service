@@ -13,6 +13,7 @@ import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.AssessmentResponseDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
+import ru.beeline.fdmproducts.dto.PostPatternProductDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -119,7 +120,7 @@ public class ProductController {
     public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
             @PathVariable String alias,
             @RequestParam(name = "source_id", required = false) Integer sourceId,
-            @RequestParam(name = "source_type", required = false) String sourceType ) {
+            @RequestParam(name = "source_type", required = false) String sourceType) {
 
         AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
         return ResponseEntity.ok(response);
@@ -129,5 +130,15 @@ public class ProductController {
     @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
     public List<String> getAllMnemonics() {
         return productService.getMnemonics();
+    }
+
+    @PostMapping("/product/{alias}/patterns/{source_type}")
+    @ApiOperation(value = "Создание связи паттерна из технорадра с продуктами в которых они реализованны")
+    public ResponseEntity postPatternProduct(@PathVariable String alias,
+                                             @PathVariable(value = "source_type", required = false) String sourceType,
+                                             @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
+                                             @RequestParam(name = "source_id", required = false) Integer sourceId) {
+        productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

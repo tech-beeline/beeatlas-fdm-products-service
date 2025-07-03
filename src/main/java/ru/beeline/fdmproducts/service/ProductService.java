@@ -46,8 +46,10 @@ public class ProductService {
     private final LocalFitnessFunctionRepository fitnessFunctionRepository;
     private final LocalAssessmentRepository assessmentRepository;
     private final LocalAssessmentCheckRepository assessmentCheckRepository;
-
     private final EnumSourceTypeRepository enumSourceTypeRepository;
+    private final PatternsAssessmentRepository patternsAssessmentRepository;
+
+    private final PatternsCheckRepository patternsCheckRepository;
 
     public ProductService(ContainerMapper containerMapper,
                           ProductTechMapper productTechMapper,
@@ -70,8 +72,8 @@ public class ProductService {
                           LocalFitnessFunctionRepository fitnessFunctionRepository,
                           LocalAssessmentRepository assessmentRepository,
                           LocalAssessmentCheckRepository assessmentCheckRepository,
-                          EnumSourceTypeRepository enumSourceTypeRepository
-    ) {
+                          EnumSourceTypeRepository enumSourceTypeRepository,
+                          PatternsAssessmentRepository patternsAssessmentRepository, PatternsCheckRepository patternsCheckRepository) {
         this.containerMapper = containerMapper;
         this.productTechMapper = productTechMapper;
         this.interfaceMapper = interfaceMapper;
@@ -94,6 +96,8 @@ public class ProductService {
         this.assessmentRepository = assessmentRepository;
         this.assessmentCheckRepository = assessmentCheckRepository;
         this.enumSourceTypeRepository = enumSourceTypeRepository;
+        this.patternsAssessmentRepository = patternsAssessmentRepository;
+        this.patternsCheckRepository = patternsCheckRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -550,5 +554,56 @@ public class ProductService {
 
     public List<String> getMnemonics() {
         return productRepository.findAllAliases();
+    }
+
+    public void postPatternProduct(String alias, String sourceType, List<PostPatternProductDTO> postPatternProductDTOS,
+                                   Integer sourceId) {
+        for (PostPatternProductDTO postPatternProductDTO : postPatternProductDTOS) {
+            validatePostPatternProductDTO(postPatternProductDTO);
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        if (product == null) {
+            throw new EntityNotFoundException("Указанный продукт не существует");
+        }
+        EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
+                .orElseThrow(() -> new IllegalArgumentException("невозможный источник"));
+        if (enumSourceType.getIdentifySource() && sourceId == null) {
+            throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора");
+        }
+        PatternsAssessment patternsAssessment = savePatternsAssessment(product.getId(), enumSourceType.getId(), sourceId);
+        List<PatternsCheck> checksToSave = new ArrayList<>();
+        for (PostPatternProductDTO dto : postPatternProductDTOS) {
+            PatternsCheck check = PatternsCheck.builder()
+                    .assessment(patternsAssessment)
+                    .patternCode(dto.getCode())
+                    .isCheck(dto.getIsCheck())
+                    .resultDetails(dto.getResultDetails())
+                    .build();
+            checksToSave.add(check);
+        }
+        patternsCheckRepository.saveAll(checksToSave);
+    }
+
+    private void validatePostPatternProductDTO(PostPatternProductDTO dto) {
+        StringBuilder errMsg = new StringBuilder();
+        if (dto.getCode() == null || dto.getCode().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле code; ");
+        }
+        if (dto.getIsCheck() == null) {
+            errMsg.append("Отсутствует обязательное поле isCheck; ");
+        }
+        if (!errMsg.toString().isEmpty()) {
+            throw new ValidationException(errMsg.toString().trim());
+        }
+    }
+
+    private PatternsAssessment savePatternsAssessment(Integer productId, Integer sourceTypeId, Integer sourceId) {
+        PatternsAssessment assessment = PatternsAssessment.builder()
+                .productId(productId)
+                .sourceTypeId(sourceTypeId)
+                .sourceId(sourceId)
+                .createDate(LocalDateTime.now())
+                .build();
+        return patternsAssessmentRepository.save(assessment);
     }
 }

@@ -137,9 +137,6 @@ public class ProductService {
         if (product == null) {
             product = new Product();
             product.setAlias(code);
-            product.setName(productPutDto.getName());
-            product.setDescription(productPutDto.getDescription());
-            product.setGitUrl(productPutDto.getGitUrl());
         }
         if (productPutDto.getName() != null) {
             product.setName(productPutDto.getName());
@@ -150,7 +147,18 @@ public class ProductService {
         if (productPutDto.getGitUrl() != null) {
             product.setGitUrl(productPutDto.getGitUrl());
         }
-
+        if (productPutDto.getStructurizrWorkspaceName() != null) {
+            product.setStructurizrWorkspaceName(productPutDto.getStructurizrWorkspaceName());
+        }
+        if (productPutDto.getStructurizrApiKey() != null) {
+            product.setStructurizrApiKey(productPutDto.getStructurizrApiKey());
+        }
+        if (productPutDto.getStructurizrApiSecret() != null) {
+            product.setStructurizrApiSecret(productPutDto.getStructurizrApiSecret());
+        }
+        if (productPutDto.getStructurizrApiUrl() != null) {
+            product.setStructurizrApiUrl(productPutDto.getStructurizrApiUrl());
+        }
         productRepository.save(product);
     }
 

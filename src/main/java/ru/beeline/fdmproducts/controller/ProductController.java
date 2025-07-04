@@ -139,6 +139,6 @@ public class ProductController {
                                              @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
                                              @RequestParam(name = "source_id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
-        return new ResponseEntity<>(HttpStatus.OK);
+        return new ResponseEntity<>(HttpStatus.CREATED);
     }
 }

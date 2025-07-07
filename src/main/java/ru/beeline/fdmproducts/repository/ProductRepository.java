@@ -14,7 +14,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Product findByAliasCaseInsensitive(@Param("code") String code);
     Product findByStructurizrApiKey(String apiKey);
 
-    @Query("SELECT p FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")
+    @Query("SELECT DISTINCT p FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")
     List<Product> findAllWithTechProductNotDeleted();
 
     @Query("SELECT p.alias FROM Product p")

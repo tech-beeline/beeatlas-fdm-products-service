@@ -132,12 +132,12 @@ public class ProductController {
         return productService.getMnemonics();
     }
 
-    @PostMapping("/product/{alias}/patterns/{source_type}")
+    @PostMapping("/product/{alias}/patterns/{source-type}")
     @ApiOperation(value = "Создание связи паттерна из технорадра с продуктами в которых они реализованны")
     public ResponseEntity postPatternProduct(@PathVariable String alias,
-                                             @PathVariable(value = "source_type", required = false) String sourceType,
+                                             @PathVariable(value = "source-type", required = false) String sourceType,
                                              @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
-                                             @RequestParam(name = "source_id", required = false) Integer sourceId) {
+                                             @RequestParam(name = "source-id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }

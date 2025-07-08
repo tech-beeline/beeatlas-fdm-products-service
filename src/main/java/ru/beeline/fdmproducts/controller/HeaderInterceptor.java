@@ -25,7 +25,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         try {
             if (request.getRequestURI().contains("/tech")
-                    || request.getRequestURI().contains("/actuator/prometheus")
+                    || request.getRequestURI().contains("/actuator")
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")

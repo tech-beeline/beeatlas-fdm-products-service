@@ -8,6 +8,9 @@ env:
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/test/func/fdm#capabilityserver"
   JWKS: "vault:eafdmmart/data/test/func/fdm#jwks"
 
+podAnnotations:
+  vault.security.banzaicloud.io/vault-addr: "https://vault-test.vimpelcom.ru/"
+
 ingress:
   annotations:
     nginx.ingress.kubernetes.io/cors-allow-headers: Content-Type, authorization
@@ -17,8 +20,8 @@ ingress:
 
 resources:
   limits:
-    cpu: 250m
-    memory: 512Mi
+    cpu: 500m
+    memory: 1512Mi
   requests:
-    cpu: 50m
-    memory: 256Mi
+    cpu: 100m
+    memory: 1256Mi

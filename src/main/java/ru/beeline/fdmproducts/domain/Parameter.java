@@ -15,9 +15,10 @@ import java.util.Date;
 @Entity
 @Table(name = "parameter")
 public class Parameter {
+
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "operation_id_generator")
-    @SequenceGenerator(name = "operation_id_generator", sequenceName = "seq_parameter_id", allocationSize = 1)
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "parameter_id_generator")
+    @SequenceGenerator(name = "parameter_id_generator", sequenceName = "seq_parameter_id", allocationSize = 1)
     @Column(name = "id")
     private Integer id;
 

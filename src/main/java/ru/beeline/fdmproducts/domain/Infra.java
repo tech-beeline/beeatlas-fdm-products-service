@@ -1,12 +1,13 @@
 package ru.beeline.fdmproducts.domain;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 @Builder
 @Data
@@ -17,20 +18,17 @@ import java.time.LocalDateTime;
         name = "infra",
         schema = "product",
         indexes = {
-                @Index(name = "idx_infra_product_id", columnList = "product_id"),
                 @Index(name = "idx_infra_type", columnList = "type"),
                 @Index(name = "idx_infra_cmdb_id", columnList = "cmdb_id", unique = true)
-        }
+        },
+        uniqueConstraints = @UniqueConstraint(columnNames = {"cmdb_id"})
 )
-public class Infra {
+public class Infra implements Serializable {
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq_infra_id")
     @SequenceGenerator(name = "seq_infra_id", sequenceName = "product.seq_infra_id", allocationSize = 1)
     private Integer id;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", nullable = false)
-    private Product product;
 
     @Column(nullable = false)
     private String name;
@@ -48,4 +46,23 @@ public class Infra {
 
     @Column(name = "cmdb_id", unique = true)
     private String cmdbId;
+
+    @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<InfraProduct> infraProducts = new HashSet<>();
+
+    @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<Property> properties = new HashSet<>();
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Infra infra = (Infra) o;
+        return Objects.equals(id, infra.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }

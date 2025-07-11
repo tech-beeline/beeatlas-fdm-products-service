@@ -8,6 +8,7 @@ import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
@@ -34,6 +35,7 @@ public class ProductService {
     private final AssessmentMapper assessmentMapper;
     private final FitnessFunctionMapper fitnessFunctionMapper;
     private final CapabilityClient capabilityClient;
+    private final TechradarClient techradarClient;
     private final UserProductRepository userProductRepository;
     private final ServiceEntityRepository serviceEntityRepository;
     private final ProductRepository productRepository;
@@ -48,7 +50,6 @@ public class ProductService {
     private final LocalAssessmentCheckRepository assessmentCheckRepository;
     private final EnumSourceTypeRepository enumSourceTypeRepository;
     private final PatternsAssessmentRepository patternsAssessmentRepository;
-
     private final PatternsCheckRepository patternsCheckRepository;
 
     public ProductService(ContainerMapper containerMapper,
@@ -60,7 +61,7 @@ public class ProductService {
                           AssessmentMapper assessmentMapper,
                           FitnessFunctionMapper fitnessFunctionMapper,
                           CapabilityClient capabilityClient,
-                          UserProductRepository userProductRepository,
+                          TechradarClient techradarClient, UserProductRepository userProductRepository,
                           ServiceEntityRepository serviceEntityRepository,
                           ProductRepository productRepository,
                           ContainerRepository containerRepository,
@@ -83,6 +84,7 @@ public class ProductService {
         this.assessmentMapper = assessmentMapper;
         this.fitnessFunctionMapper = fitnessFunctionMapper;
         this.capabilityClient = capabilityClient;
+        this.techradarClient = techradarClient;
         this.userProductRepository = userProductRepository;
         this.serviceEntityRepository = serviceEntityRepository;
         this.productRepository = productRepository;
@@ -578,7 +580,7 @@ public class ProductService {
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора");
         }
-        PatternsAssessment patternsAssessment = savePatternsAssessment(product.getId(), enumSourceType.getId(), sourceId);
+        PatternsAssessment patternsAssessment = savePatternsAssessment(product.getId(), enumSourceType, sourceId);
         List<PatternsCheck> checksToSave = new ArrayList<>();
         for (PostPatternProductDTO dto : postPatternProductDTOS) {
             PatternsCheck check = PatternsCheck.builder()
@@ -605,13 +607,59 @@ public class ProductService {
         }
     }
 
-    private PatternsAssessment savePatternsAssessment(Integer productId, Integer sourceTypeId, Integer sourceId) {
+    private PatternsAssessment savePatternsAssessment(Integer productId, EnumSourceType enumSourceType, Integer sourceId) {
         PatternsAssessment assessment = PatternsAssessment.builder()
                 .productId(productId)
-                .sourceTypeId(sourceTypeId)
+                .sourceType(enumSourceType)
                 .sourceId(sourceId)
                 .createDate(LocalDateTime.now())
                 .build();
         return patternsAssessmentRepository.save(assessment);
+    }
+
+    public List<PatternDTO> getProductPatterns(String alias, Integer sourceId, String sourceType) {
+        Product product = getProductByCode(alias);
+        validateSourceParams(sourceId, sourceType);
+        List<PatternDTO> patternDTOList = techradarClient.getPatternsAutoCheck();
+        log.info("patternDTOList from techradarClient size: " + patternDTOList.size());
+        if (patternDTOList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        PatternsAssessment patternsAssessment = findAssessment(product.getId(), sourceType, sourceId);
+        if (patternsAssessment == null) {
+            return Collections.emptyList();
+        }
+        Set<Integer> checkIds = patternsAssessment.getChecks().stream()
+                .map(PatternsCheck::getId)
+                .collect(Collectors.toSet());
+        log.info("checkIds: " + checkIds);
+        patternDTOList = patternDTOList.stream()
+                .filter(dto -> checkIds.contains(dto.getId()))
+                .toList();
+        return patternDTOList;
+    }
+
+    private void validateSourceParams(Integer sourceId, String sourceType) {
+        boolean isSourceTypeEmpty = sourceType == null || sourceType.isEmpty();
+        if (sourceId != null && isSourceTypeEmpty) {
+            throw new IllegalArgumentException("Не указан тип источника");
+        }
+        if (!isSourceTypeEmpty) {
+            EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
+                    .orElseThrow(() -> new IllegalArgumentException("Указан несуществующий источник"));
+            if (enumSourceType.getIdentifySource() && sourceId == null) {
+                throw new IllegalArgumentException("Не передан идентификатор источника");
+            }
+        }
+    }
+
+    private PatternsAssessment findAssessment(Integer productId, String sourceType, Integer sourceId) {
+        if (sourceType == null || sourceType.isEmpty()) {
+            return patternsAssessmentRepository.findFirstByProductIdOrderByCreateDateDesc(productId).orElse(null);
+        }
+        if (sourceId != null) {
+            return patternsAssessmentRepository.findBySourceType_NameAndSourceId(sourceType, sourceId).orElse(null);
+        }
+        return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
     }
 }

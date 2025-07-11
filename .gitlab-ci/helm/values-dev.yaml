@@ -5,6 +5,7 @@ env:
   SPRING_DATASOURCE_PASSWORD: "vault:eafdmmart/data/dev/fdm#password"
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: "vault:eafdmmart/data/dev/fdm#driver"
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/dev/fdm#capabilityserver"
+  INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/dev/fdm#techradarserverurl"
   JWKS: "vault:eafdmmart/data/dev/fdm#jwks"
 
 podAnnotations:

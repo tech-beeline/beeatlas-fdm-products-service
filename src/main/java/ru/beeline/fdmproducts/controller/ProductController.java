@@ -13,6 +13,7 @@ import ru.beeline.fdmproducts.dto.ApiSecretDTO;
 import ru.beeline.fdmproducts.dto.AssessmentResponseDTO;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
+import ru.beeline.fdmproducts.dto.PatternDTO;
 import ru.beeline.fdmproducts.dto.PostPatternProductDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
@@ -140,5 +141,13 @@ public class ProductController {
                                              @RequestParam(name = "source-id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @GetMapping("/product/{alias}/patterns")
+    @ApiOperation(value = "Получение паттернов реализованных в продукте")
+    public List<PatternDTO> getProductPatterns(@PathVariable(value = "alias", required = false) String alias,
+                                               @RequestParam(value = "source-id", required = false) Integer sourceId,
+                                               @RequestParam(value = "source-type", required = false) String sourceType) {
+        return productService.getProductPatterns(alias, sourceId, sourceType);
     }
 }

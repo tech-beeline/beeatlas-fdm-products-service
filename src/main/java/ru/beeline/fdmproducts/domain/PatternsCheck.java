@@ -4,7 +4,9 @@ package ru.beeline.fdmproducts.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 
@@ -21,6 +23,8 @@ public class PatternsCheck {
     @SequenceGenerator(name = "patterns_check_seq", sequenceName = "patterns_check_id_seq", allocationSize = 1)
     private Integer id;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assessment_id")
     private PatternsAssessment assessment;

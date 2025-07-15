@@ -629,12 +629,11 @@ public class ProductService {
         if (patternsAssessment == null) {
             return Collections.emptyList();
         }
-        Set<Integer> checkIds = patternsAssessment.getChecks().stream()
-                .map(PatternsCheck::getId)
-                .collect(Collectors.toSet());
-        log.info("checkIds: " + checkIds);
+        List<String> patternsCheckCodes = patternsAssessment.getChecks().stream()
+                .map(PatternsCheck::getPatternCode)
+                .toList();
         patternDTOList = patternDTOList.stream()
-                .filter(dto -> checkIds.contains(dto.getId()))
+                .filter(dto -> patternsCheckCodes.contains(dto.getCode()))
                 .toList();
         return patternDTOList;
     }

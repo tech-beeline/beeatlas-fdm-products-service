@@ -9,12 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.ApiSecretDTO;
-import ru.beeline.fdmproducts.dto.AssessmentResponseDTO;
-import ru.beeline.fdmproducts.dto.ContainerDTO;
-import ru.beeline.fdmproducts.dto.FitnessFunctionDTO;
-import ru.beeline.fdmproducts.dto.PatternDTO;
-import ru.beeline.fdmproducts.dto.PostPatternProductDTO;
+import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -28,6 +23,7 @@ import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
 @RequestMapping("/api/v1")
 @Api(value = "Product API", tags = "product")
 public class ProductController {
+
     @Autowired
     private ProductService productService;
 
@@ -52,30 +48,6 @@ public class ProductController {
         return productService.getProductByCode(code);
     }
 
-    @PutMapping("/product/{code}")
-    @ApiOperation(value = "Редактирование продукта")
-    public ResponseEntity putProducts(@PathVariable String code,
-                                      @RequestBody ProductPutDto productPutDto) {
-        productService.createOrUpdate(productPutDto, code);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
-    @PatchMapping("product/{code}/workspace")
-    @ApiOperation(value = "Добавление атрибутов к продукту")
-    public ResponseEntity patchProducts(@PathVariable String code,
-                                        @RequestBody ProductPutDto productPutDto) {
-        productService.patchProduct(productPutDto, code);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
-    @PostMapping("/user/{id}/products")
-    @ApiOperation(value = "Создание связи пользователя и продукта")
-    public ResponseEntity postUserProducts(@PathVariable String id,
-                                           @RequestBody List<String> aliasLIst) {
-        productService.postUserProduct(aliasLIst, id);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
     @GetMapping("/product/api-secret/{api-key}")
     @ApiOperation(value = "Получение api secret из таблицы product")
     public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
@@ -88,18 +60,43 @@ public class ProductController {
         return productService.getServiceSecretByApiKey(apiKey);
     }
 
-    @PutMapping("/product/{code}/relations")
-    @ApiOperation(value = "Создание и обновление связей продукта")
-    public ResponseEntity putProductRelations(@PathVariable String code,
-                                              @RequestBody List<ContainerDTO> containerDTO) {
-        productService.createOrUpdateProductRelations(containerDTO, code);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
     @GetMapping("/products/relations/tech")
     @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
     public List<GetProductTechDto> getAllProductsAndTechRelations() {
         return productService.getAllProductsAndTechRelations();
+    }
+
+    @GetMapping("/product/{alias}/fitness-function")
+    @ApiOperation(value = "Получение результатов фитнесс-функций")
+    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
+            @PathVariable String alias,
+            @RequestParam(name = "source_id", required = false) Integer sourceId,
+            @RequestParam(name = "source_type", required = false) String sourceType) {
+
+        AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/product/{alias}/patterns")
+    @ApiOperation(value = "Получение паттернов реализованных в продукте")
+    public List<PatternDTO> getProductPatterns(@PathVariable(value = "alias", required = false) String alias,
+                                               @RequestParam(value = "source-id", required = false) Integer sourceId,
+                                               @RequestParam(value = "source-type", required = false) String sourceType) {
+        return productService.getProductPatterns(alias, sourceId, sourceType);
+    }
+
+    @GetMapping("/products/mnemonic")
+    @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
+    public List<String> getAllMnemonics() {
+        return productService.getMnemonics();
+    }
+
+    @PostMapping("/user/{id}/products")
+    @ApiOperation(value = "Создание связи пользователя и продукта")
+    public ResponseEntity postUserProducts(@PathVariable String id,
+                                           @RequestBody List<String> aliasLIst) {
+        productService.postUserProduct(aliasLIst, id);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PostMapping("/product/{alias}/fitness-function/{source_type}")
@@ -116,23 +113,6 @@ public class ProductController {
 
     }
 
-    @GetMapping("/product/{alias}/fitness-function")
-    @ApiOperation(value = "Получение результатов фитнесс-функций")
-    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
-            @PathVariable String alias,
-            @RequestParam(name = "source_id", required = false) Integer sourceId,
-            @RequestParam(name = "source_type", required = false) String sourceType) {
-
-        AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/products/mnemonic")
-    @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
-    public List<String> getAllMnemonics() {
-        return productService.getMnemonics();
-    }
-
     @PostMapping("/product/{alias}/patterns/{source-type}")
     @ApiOperation(value = "Создание связи паттерна из технорадра с продуктами в которых они реализованны")
     public ResponseEntity postPatternProduct(@PathVariable String alias,
@@ -143,11 +123,34 @@ public class ProductController {
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
-    @GetMapping("/product/{alias}/patterns")
-    @ApiOperation(value = "Получение паттернов реализованных в продукте")
-    public List<PatternDTO> getProductPatterns(@PathVariable(value = "alias", required = false) String alias,
-                                               @RequestParam(value = "source-id", required = false) Integer sourceId,
-                                               @RequestParam(value = "source-type", required = false) String sourceType) {
-        return productService.getProductPatterns(alias, sourceId, sourceType);
+    @PutMapping("/product/{code}")
+    @ApiOperation(value = "Редактирование продукта")
+    public ResponseEntity putProducts(@PathVariable String code,
+                                      @RequestBody ProductPutDto productPutDto) {
+        productService.createOrUpdate(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PutMapping("/product/{code}/relations")
+    @ApiOperation(value = "Создание и обновление связей продукта")
+    public ResponseEntity putProductRelations(@PathVariable String code,
+                                              @RequestBody List<ContainerDTO> containerDTO) {
+        productService.createOrUpdateProductRelations(containerDTO, code);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PutMapping("/discovered-interfaces")
+    @ApiOperation(value = "Создание и обновление интерфейсов продукта")
+    public ResponseEntity putProductDiscoveredInterfaces(@RequestBody List<DiscoveredInterfaceDTO> DInterfacesDTOS) {
+        productService.createOrUpdateDiscoveredInterfaces(DInterfacesDTOS);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @PatchMapping("product/{code}/workspace")
+    @ApiOperation(value = "Добавление атрибутов к продукту")
+    public ResponseEntity patchProducts(@PathVariable String code,
+                                        @RequestBody ProductPutDto productPutDto) {
+        productService.patchProduct(productPutDto, code);
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 }

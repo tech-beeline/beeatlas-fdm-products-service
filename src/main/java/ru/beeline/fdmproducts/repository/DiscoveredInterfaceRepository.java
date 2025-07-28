@@ -12,6 +12,4 @@ import java.util.Optional;
 public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredInterface,Integer> {
 
     List<DiscoveredInterface> findByExternalIdIn(List<Integer> externalIds);
-    Optional<DiscoveredInterface> findByDiscoveredInterfaceId(Integer interfaceId);
-
 }

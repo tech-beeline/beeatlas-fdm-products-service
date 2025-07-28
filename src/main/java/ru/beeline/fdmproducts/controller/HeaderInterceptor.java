@@ -34,6 +34,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")
                     || request.getRequestURI().contains("/api/v1/discovered-interfaces")
+                    || request.getRequestURI().contains("/api/v1/discovered-interface")
                     || request.getRequestURI().contains("/api/v1/service")) {
                 return true;
             }

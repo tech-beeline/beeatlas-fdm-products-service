@@ -139,13 +139,6 @@ public class ProductController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @PutMapping("/discovered-interfaces")
-    @ApiOperation(value = "Создание и обновление интерфейсов продукта")
-    public ResponseEntity putProductDiscoveredInterfaces(@RequestBody List<DiscoveredInterfaceDTO> DInterfacesDTOS) {
-        productService.createOrUpdateDiscoveredInterfaces(DInterfacesDTOS);
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
-
     @PatchMapping("product/{code}/workspace")
     @ApiOperation(value = "Добавление атрибутов к продукту")
     public ResponseEntity patchProducts(@PathVariable String code,

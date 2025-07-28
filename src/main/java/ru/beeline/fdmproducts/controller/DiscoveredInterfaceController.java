@@ -32,11 +32,13 @@ public class DiscoveredInterfaceController {
     @ApiOperation(value = "Создание и обновление операций интерфейса по id")
     public ResponseEntity<?> updateInterfaceOperations(@PathVariable("id") Integer interfaceId,
                                                        @RequestBody List<DiscoveredInterfaceOperationDTO> operations) {
-
         discoveredInterfaceService.createOrUpdateOperations(interfaceId, operations);
-
         return ResponseEntity.ok().build();
     }
 
-
+    @GetMapping("/discovered-interface/{id}")
+    @ApiOperation(value = "Создание и обновление операций интерфейса по id")
+    public ResponseEntity<DiscoveredInterfaceDTO> getInterfaceOperations(@PathVariable("id") Integer interfaceId) {
+        return ResponseEntity.ok().body(discoveredInterfaceService.getOperationsByInterfaceId(interfaceId));
+    }
 }

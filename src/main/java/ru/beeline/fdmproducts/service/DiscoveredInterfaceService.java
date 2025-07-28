@@ -9,7 +9,6 @@ import ru.beeline.fdmproducts.domain.DiscoveredParameter;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationParameterDTO;
-import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.DiscoveredInterfaceMapper;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
@@ -68,7 +67,7 @@ public class DiscoveredInterfaceService {
         Map<Integer, DiscoveredInterfaceDTO> dtoByExternalId = incomingDtos.stream()
                 .collect(Collectors.toMap(DiscoveredInterfaceDTO::getExternalId, Function.identity()));
         for (DiscoveredInterface entity : existingInterfaces) {
-            DiscoveredInterfaceDTO existingDto = discoveredInterfaceMapper.convertToDiscoveredInterface(entity);
+            DiscoveredInterfaceDTO existingDto = discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(entity);
             DiscoveredInterfaceDTO incomingDto = dtoByExternalId.get(entity.getExternalId());
             if (incomingDto != null && !incomingDto.equals(existingDto)) {
                 discoveredInterfaceMapper.updateEntityFromDto(incomingDto, entity);
@@ -125,7 +124,8 @@ public class DiscoveredInterfaceService {
             if (existingOpOpt.isPresent()) {
                 operation = updateOperation(operationDTO, existingOpOpt, now);
 
-                Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters().stream()
+                Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
+                        .stream()
                         .collect(Collectors.toMap(p -> p.getParameterName() + "::" + p.getParameterType(),
                                                   Function.identity()));
 
@@ -188,5 +188,12 @@ public class DiscoveredInterfaceService {
 
     private boolean equalsNullable(String a, String b) {
         return (a == null && b == null) || (a != null && a.equals(b));
+    }
+
+    public DiscoveredInterfaceDTO getOperationsByInterfaceId(Integer interfaceId) {
+        return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository.findByDiscoveredInterfaceId(
+                        interfaceId)
+                                                                                 .orElseThrow(() -> new IllegalArgumentException(
+                                                                                         "discoveredOperation с данным interfaceId не найден")));
     }
 }

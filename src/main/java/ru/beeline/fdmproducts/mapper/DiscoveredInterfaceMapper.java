@@ -15,7 +15,7 @@ public class DiscoveredInterfaceMapper {
     @Autowired
     ProductRepository productRepository;
 
-    public DiscoveredInterfaceDTO convertToDiscoveredInterface(DiscoveredInterface entity) {
+    public DiscoveredInterfaceDTO convertToDiscoveredInterfaceDto(DiscoveredInterface entity) {
         return DiscoveredInterfaceDTO.builder()
                 .name(entity.getName())
                 .externalId(entity.getExternalId())

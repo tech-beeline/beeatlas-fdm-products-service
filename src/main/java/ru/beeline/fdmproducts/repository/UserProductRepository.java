@@ -1,10 +1,11 @@
 package ru.beeline.fdmproducts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.UserProduct;
 
 import java.util.List;
-
+@Repository
 public interface UserProductRepository extends JpaRepository<UserProduct, Long> {
     List<UserProduct> findAllByUserId(Integer userId);
 

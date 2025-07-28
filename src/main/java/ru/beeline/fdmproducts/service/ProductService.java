@@ -19,6 +19,7 @@ import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -51,6 +52,8 @@ public class ProductService {
     private final EnumSourceTypeRepository enumSourceTypeRepository;
     private final PatternsAssessmentRepository patternsAssessmentRepository;
     private final PatternsCheckRepository patternsCheckRepository;
+    private final DiscoveredInterfaceMapper discoveredInterfaceMapper;
+    private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
 
     public ProductService(ContainerMapper containerMapper,
                           ProductTechMapper productTechMapper,
@@ -74,7 +77,7 @@ public class ProductService {
                           LocalAssessmentRepository assessmentRepository,
                           LocalAssessmentCheckRepository assessmentCheckRepository,
                           EnumSourceTypeRepository enumSourceTypeRepository,
-                          PatternsAssessmentRepository patternsAssessmentRepository, PatternsCheckRepository patternsCheckRepository) {
+                          PatternsAssessmentRepository patternsAssessmentRepository, PatternsCheckRepository patternsCheckRepository, DiscoveredInterfaceMapper discoveredInterfaceMapper, DiscoveredInterfaceRepository discoveredInterfaceRepository) {
         this.containerMapper = containerMapper;
         this.productTechMapper = productTechMapper;
         this.interfaceMapper = interfaceMapper;
@@ -100,6 +103,8 @@ public class ProductService {
         this.enumSourceTypeRepository = enumSourceTypeRepository;
         this.patternsAssessmentRepository = patternsAssessmentRepository;
         this.patternsCheckRepository = patternsCheckRepository;
+        this.discoveredInterfaceMapper = discoveredInterfaceMapper;
+        this.discoveredInterfaceRepository = discoveredInterfaceRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -660,5 +665,71 @@ public class ProductService {
             return patternsAssessmentRepository.findBySourceType_NameAndSourceId(sourceType, sourceId).orElse(null);
         }
         return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
+    }
+
+    public void createOrUpdateDiscoveredInterfaces(List<DiscoveredInterfaceDTO> dInterfacesDTOS) {
+        dInterfacesDTOS.forEach(this::validateDiscoveredInterfaceDTO);
+        List<Integer> externalIds = dInterfacesDTOS.stream().map(DiscoveredInterfaceDTO::getExternalId).toList();
+        List<DiscoveredInterface> existingInterfaces = discoveredInterfaceRepository.findByExternalIdIn(externalIds);
+        List<Integer> existingExternalIds = existingInterfaces.stream().map(DiscoveredInterface::getExternalId).toList();
+        List<DiscoveredInterfaceDTO> missingInterfaces = dInterfacesDTOS.stream()
+                .filter(dto -> !existingExternalIds.contains(dto.getExternalId())).toList();
+        saveNewInterfaces(missingInterfaces);
+        updateInterfaces(existingInterfaces, dInterfacesDTOS);
+    }
+
+    private void saveNewInterfaces(List<DiscoveredInterfaceDTO> missingInterface) {
+        List<DiscoveredInterface> saveList = missingInterface.stream()
+                .map(discoveredInterfaceMapper::convertToEntity)
+                .collect(Collectors.toList());
+        discoveredInterfaceRepository.saveAll(saveList);
+    }
+
+    private void updateInterfaces(List<DiscoveredInterface> existingInterfaces, List<DiscoveredInterfaceDTO> incomingDtos) {
+        Map<Integer, DiscoveredInterfaceDTO> dtoByExternalId = incomingDtos.stream()
+                .collect(Collectors.toMap(DiscoveredInterfaceDTO::getExternalId, Function.identity()));
+        for (DiscoveredInterface entity : existingInterfaces) {
+            DiscoveredInterfaceDTO existingDto = discoveredInterfaceMapper.convertToDiscoveredInterface(entity);
+            DiscoveredInterfaceDTO incomingDto = dtoByExternalId.get(entity.getExternalId());
+            if (incomingDto != null && !incomingDto.equals(existingDto)) {
+                discoveredInterfaceMapper.updateEntityFromDto(incomingDto, entity);
+            }
+        }
+        discoveredInterfaceRepository.saveAll(existingInterfaces);
+    }
+
+
+    private void validateDiscoveredInterfaceDTO(DiscoveredInterfaceDTO dInterfaces) {
+        StringBuilder errMsg = new StringBuilder();
+        if (dInterfaces.getName() == null || dInterfaces.getName().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле name; ");
+        }
+        if (dInterfaces.getVersion() == null || dInterfaces.getVersion().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле Version; ");
+        }
+        if (dInterfaces.getApiLink() == null || dInterfaces.getApiLink().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле ApiLink; ");
+        }
+        if (dInterfaces.getDescription() == null || dInterfaces.getDescription().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле Description; ");
+        }
+        if (dInterfaces.getStatus() == null || dInterfaces.getStatus().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле Status; ");
+        }
+        if (dInterfaces.getContext() == null || dInterfaces.getContext().trim().isEmpty()) {
+            errMsg.append("Отсутствует обязательное поле Context; ");
+        }
+        if (dInterfaces.getExternalId() == null) {
+            errMsg.append("Отсутствует обязательное поле externalId; ");
+        }
+        if (dInterfaces.getApiId() == null) {
+            errMsg.append("Отсутствует обязательное поле apiId; ");
+        }
+        if (dInterfaces.getProductId() == null) {
+            errMsg.append("Отсутствует обязательное поле ProductId; ");
+        }
+        if (!errMsg.toString().isEmpty()) {
+            throw new ValidationException(errMsg.toString().trim());
+        }
     }
 }

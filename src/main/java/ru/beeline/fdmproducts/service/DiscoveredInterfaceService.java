@@ -191,7 +191,7 @@ public class DiscoveredInterfaceService {
     }
 
     public DiscoveredInterfaceDTO getOperationsByInterfaceId(Integer interfaceId) {
-        return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository.findByDiscoveredInterfaceId(
+        return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository.findById(
                         interfaceId)
                                                                                  .orElseThrow(() -> new IllegalArgumentException(
                                                                                          "discoveredOperation с данным interfaceId не найден")));

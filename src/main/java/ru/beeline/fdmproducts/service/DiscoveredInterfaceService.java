@@ -121,38 +121,36 @@ public class DiscoveredInterfaceService {
 
             DiscoveredOperation operation;
 
-            if (existingOpOpt.isPresent()) {
-                operation = updateOperation(operationDTO, existingOpOpt, now);
+            operation = updateOperation(operationDTO, existingOpOpt, now);
 
-                Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
-                        .stream()
-                        .collect(Collectors.toMap(p -> p.getParameterName() + "::" + p.getParameterType(),
-                                                  Function.identity()));
+            Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
+                    .stream()
+                    .collect(Collectors.toMap(p -> p.getParameterName() + "::" + p.getParameterType(),
+                                              Function.identity()));
 
-                Set<String> inputParamsKeys = new HashSet<>();
-                if (operationDTO.getParameters() != null) {
-                    for (OperationParameterDTO paramDTO : operationDTO.getParameters()) {
-                        String key = paramDTO.getParameterName() + "::" + paramDTO.getParameterType();
-                        inputParamsKeys.add(key);
+            Set<String> inputParamsKeys = new HashSet<>();
+            if (operationDTO.getParameters() != null) {
+                for (OperationParameterDTO paramDTO : operationDTO.getParameters()) {
+                    String key = paramDTO.getParameterName() + "::" + paramDTO.getParameterType();
+                    inputParamsKeys.add(key);
 
-                        if (!existingParamsMap.containsKey(key)) {
-                            DiscoveredParameter param = DiscoveredParameter.builder()
-                                    .discoveredOperation(operation)
-                                    .parameterName(paramDTO.getParameterName())
-                                    .parameterType(paramDTO.getParameterType())
-                                    .createdDate(now)
-                                    .build();
-                            discoveredParameterRepository.save(param);
-                        }
+                    if (!existingParamsMap.containsKey(key)) {
+                        DiscoveredParameter param = DiscoveredParameter.builder()
+                                .discoveredOperation(operation)
+                                .parameterName(paramDTO.getParameterName())
+                                .parameterType(paramDTO.getParameterType())
+                                .createdDate(now)
+                                .build();
+                        discoveredParameterRepository.save(param);
                     }
                 }
+            }
 
-                for (DiscoveredParameter existingParam : operation.getParameters()) {
-                    String key = existingParam.getParameterName() + "::" + existingParam.getParameterType();
-                    if (!inputParamsKeys.contains(key)) {
-                        existingParam.setDeletedDate(now);
-                        discoveredParameterRepository.saveAll(operation.getParameters());
-                    }
+            for (DiscoveredParameter existingParam : operation.getParameters()) {
+                String key = existingParam.getParameterName() + "::" + existingParam.getParameterType();
+                if (!inputParamsKeys.contains(key)) {
+                    existingParam.setDeletedDate(now);
+                    discoveredParameterRepository.saveAll(operation.getParameters());
                 }
             }
         }
@@ -161,29 +159,39 @@ public class DiscoveredInterfaceService {
     private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO,
                                                 Optional<DiscoveredOperation> existingOpOpt,
                                                 LocalDateTime now) {
-        DiscoveredOperation operation;
-        operation = existingOpOpt.get();
+        if (existingOpOpt.isPresent()) {
+            DiscoveredOperation operation;
+            operation = existingOpOpt.get();
 
-        boolean needUpdate = false;
+            boolean needUpdate = false;
 
-        if (!equalsNullable(operation.getContext(), operationDTO.getContext())) {
-            operation.setContext(operationDTO.getContext());
-            needUpdate = true;
-        }
-        if (!equalsNullable(operation.getDescription(), operationDTO.getDescription())) {
-            operation.setDescription(operationDTO.getDescription());
-            needUpdate = true;
-        }
-        if (!equalsNullable(operation.getReturnType(), operationDTO.getReturnType())) {
-            operation.setReturnType(operationDTO.getReturnType());
-            needUpdate = true;
-        }
+            if (!equalsNullable(operation.getContext(), operationDTO.getContext())) {
+                operation.setContext(operationDTO.getContext());
+                needUpdate = true;
+            }
+            if (!equalsNullable(operation.getDescription(), operationDTO.getDescription())) {
+                operation.setDescription(operationDTO.getDescription());
+                needUpdate = true;
+            }
+            if (!equalsNullable(operation.getReturnType(), operationDTO.getReturnType())) {
+                operation.setReturnType(operationDTO.getReturnType());
+                needUpdate = true;
+            }
 
-        if (needUpdate) {
-            operation.setUpdatedDate(now);
-            discoveredOperationRepository.save(operation);
+            if (needUpdate) {
+                operation.setUpdatedDate(now);
+                discoveredOperationRepository.save(operation);
+            }
+            return operation;
+        } else {
+            return discoveredOperationRepository.save(DiscoveredOperation.builder()
+                                                              .name(operationDTO.getName())
+                                                              .description(operationDTO.getDescription())
+                                                              .type(operationDTO.getType())
+                                                              .createdDate(LocalDateTime.now())
+                                                              .parameters(new ArrayList<>())
+                                                              .build());
         }
-        return operation;
     }
 
     private boolean equalsNullable(String a, String b) {

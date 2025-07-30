@@ -18,7 +18,7 @@ public class DiscoveredParameter {
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "discovered_parameter_generator")
-    @SequenceGenerator(name = "discovered_parameter_generator", sequenceName = "products.discovered_parameter_id_seq", allocationSize = 1)
+    @SequenceGenerator(name = "discovered_parameter_generator", sequenceName = "discovered_parameter_id_seq", allocationSize = 1)
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)

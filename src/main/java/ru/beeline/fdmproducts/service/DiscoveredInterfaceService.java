@@ -6,7 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.DiscoveredParameter;
-import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
+import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationParameterDTO;
 import ru.beeline.fdmproducts.exception.ValidationException;

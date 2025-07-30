@@ -6,7 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
+import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.service.DiscoveredInterfaceService;
 

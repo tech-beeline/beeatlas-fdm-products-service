@@ -114,14 +114,13 @@ public class DiscoveredInterfaceService {
     public void createOrUpdateOperations(Integer interfaceId, List<DiscoveredInterfaceOperationDTO> operations) {
         LocalDateTime now = LocalDateTime.now();
         for (DiscoveredInterfaceOperationDTO operationDTO : operations) {
-            Optional<DiscoveredOperation> existingOpOpt = discoveredOperationRepository.findByDiscoveredInterfaceIdAndNameAndTypeAndDeletedDateIsNull(
+            Optional<DiscoveredOperation> existingOpOpt = discoveredOperationRepository.findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(
                     interfaceId,
                     operationDTO.getName(),
                     operationDTO.getType());
 
             DiscoveredOperation operation;
-
-            operation = updateOperation(operationDTO, existingOpOpt, now);
+            operation = updateOperation(operationDTO, existingOpOpt, now, interfaceId);
 
             Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
                     .stream()
@@ -158,7 +157,7 @@ public class DiscoveredInterfaceService {
 
     private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO,
                                                 Optional<DiscoveredOperation> existingOpOpt,
-                                                LocalDateTime now) {
+                                                LocalDateTime now, Integer interfaceId) {
         if (existingOpOpt.isPresent()) {
             DiscoveredOperation operation;
             operation = existingOpOpt.get();
@@ -186,6 +185,7 @@ public class DiscoveredInterfaceService {
         } else {
             return discoveredOperationRepository.save(DiscoveredOperation.builder()
                                                               .name(operationDTO.getName())
+                                                              .discoveredInterface(discoveredInterfaceRepository.findById(interfaceId).get())
                                                               .description(operationDTO.getDescription())
                                                               .type(operationDTO.getType())
                                                               .createdDate(LocalDateTime.now())

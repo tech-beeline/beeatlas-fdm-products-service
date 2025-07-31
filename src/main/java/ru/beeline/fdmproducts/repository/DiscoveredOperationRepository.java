@@ -8,6 +8,6 @@ import java.util.Optional;
 
 @Repository
 public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredOperation,Integer> {
-    Optional<DiscoveredOperation> findByDiscoveredInterfaceIdAndNameAndTypeAndDeletedDateIsNull(Integer interfaceId, String name, String type);
+    Optional<DiscoveredOperation> findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(Integer interfaceId, String name, String type);
 
 }

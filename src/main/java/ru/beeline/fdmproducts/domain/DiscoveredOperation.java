@@ -23,8 +23,11 @@ public class DiscoveredOperation {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "interface_id")
+    @JoinColumn(name = "interface_id" )
     private DiscoveredInterface discoveredInterface;
+
+    @Column(name = "interface_id", insertable = false, updatable = false)
+    private Integer interfaceId;
 
     private String name;
 

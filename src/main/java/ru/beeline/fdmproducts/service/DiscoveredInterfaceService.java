@@ -188,6 +188,9 @@ public class DiscoveredInterfaceService {
                                                               .discoveredInterface(discoveredInterfaceRepository.findById(interfaceId).get())
                                                               .description(operationDTO.getDescription())
                                                               .type(operationDTO.getType())
+                                                              .context(operationDTO.getContext())
+                                                              .updatedDate(now)
+                                                              .returnType(operationDTO.getReturnType())
                                                               .createdDate(LocalDateTime.now())
                                                               .parameters(new ArrayList<>())
                                                               .build());

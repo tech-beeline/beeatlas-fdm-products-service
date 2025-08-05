@@ -77,7 +77,6 @@ public class ComparisonOperationsService {
                 List<Operation> operationList = operationRepository.findAllByInterfaceId(discoveredOperation.getInterfaceId());
                 List<DiscoveredOperation> discoveredOperationList = discoveredOperationRepository.findAllByConnectionOperationIdIn(
                         operationList.stream().map(Operation::getId).collect(Collectors.toList()));
-
                 log.info("filtering");
 
                 List<Integer> discoveredOperationIdListFiltered = discoveredOperationList.stream()

@@ -30,6 +30,9 @@ public class DiscoveredInterface {
     @Column(name = "api_id")
     private Integer apiId;
 
+    @Column(name = "connection_interface_id")
+    private Integer connectionInterfaceId;
+
     @Column(name = "api_link")
     private String apiLink;
 

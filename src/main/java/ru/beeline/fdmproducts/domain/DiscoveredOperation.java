@@ -29,6 +29,9 @@ public class DiscoveredOperation {
     @Column(name = "interface_id", insertable = false, updatable = false)
     private Integer interfaceId;
 
+    @Column(name = "connection_operation_id")
+    private Integer connectionOperationId;
+
     private String name;
 
     private String context;

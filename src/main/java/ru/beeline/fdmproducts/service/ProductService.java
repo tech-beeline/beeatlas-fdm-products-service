@@ -314,7 +314,8 @@ public class ProductService {
                     List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
                     markAsDeleted(existingOrCreatedOperation, allOperations);
                 }
-                List<Interface> allInterfaces = interfaceRepository.findByContainerIdAndDeletedDateIsNull(containerId);
+                List<Interface> allInterfaces =
+                        interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
                 markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
         }

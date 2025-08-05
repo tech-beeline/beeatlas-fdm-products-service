@@ -24,8 +24,8 @@ public class ComparisonOperationsConsumer {
         log.info("Received message from comparison_operations: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
-            if (jsonNode.has("entity_id") && jsonNode.has("change_type")) {
-                comparisonOperationsService.process(jsonNode.get("entity_id").asInt());
+            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+                comparisonOperationsService.process(jsonNode.get("entityId").asInt());
             } else {
                 log.error("Message does not match the required format");
             }

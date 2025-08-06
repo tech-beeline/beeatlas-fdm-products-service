@@ -3,10 +3,10 @@ package ru.beeline.fdmproducts.service;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.DiscoveredParameter;
-import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationParameterDTO;
 import ru.beeline.fdmproducts.exception.ValidationException;
@@ -124,6 +124,7 @@ public class DiscoveredInterfaceService {
 
             Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
                     .stream()
+                    .filter(param -> param.getDeletedDate() == null)
                     .collect(Collectors.toMap(p -> p.getParameterName() + "::" + p.getParameterType(),
                                               Function.identity()));
 
@@ -157,7 +158,8 @@ public class DiscoveredInterfaceService {
 
     private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO,
                                                 Optional<DiscoveredOperation> existingOpOpt,
-                                                LocalDateTime now, Integer interfaceId) {
+                                                LocalDateTime now,
+                                                Integer interfaceId) {
         if (existingOpOpt.isPresent()) {
             DiscoveredOperation operation;
             operation = existingOpOpt.get();
@@ -185,11 +187,10 @@ public class DiscoveredInterfaceService {
         } else {
             return discoveredOperationRepository.save(DiscoveredOperation.builder()
                                                               .name(operationDTO.getName())
-                                                              .discoveredInterface(discoveredInterfaceRepository.findById(interfaceId).get())
+                                                              .discoveredInterface(discoveredInterfaceRepository.findById(
+                                                                      interfaceId).get())
                                                               .description(operationDTO.getDescription())
                                                               .type(operationDTO.getType())
-                                                              .context(operationDTO.getContext())
-                                                              .updatedDate(now)
                                                               .returnType(operationDTO.getReturnType())
                                                               .createdDate(LocalDateTime.now())
                                                               .parameters(new ArrayList<>())
@@ -205,7 +206,6 @@ public class DiscoveredInterfaceService {
         return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository.findById(
                         interfaceId)
                                                                                  .orElseThrow(() -> new IllegalArgumentException(
-                                                                                         "discoveredInterface с " +
-                                                                                                 "данным interfaceId не найден")));
+                                                                                         "discoveredInterface с " + "данным interfaceId не найден")));
     }
 }

@@ -121,7 +121,7 @@ public class DiscoveredInterfaceService {
         for (DiscoveredInterfaceOperationDTO operationDTO : operations) {
             if (operationDTO.getName() == null){
                 throw new EntityNotFoundException(String.format(
-                        "Отсутствует обязательно еопле name",
+                        "Отсутствует обязательно поле 'name'",
                         interfaceId));
             }
             Optional<DiscoveredOperation> existingOpOpt = discoveredOperationRepository.findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(

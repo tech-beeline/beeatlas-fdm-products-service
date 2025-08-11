@@ -57,7 +57,7 @@ public class ComparisonOperationsService {
                                                                                                           .map(Interface::getId)
                                                                                                           .collect(
                                                                                                                   Collectors.toList()));
-            log.info("Operation attempt21 isEmpty=" + operation.isEmpty());
+            log.info("Operation attempt1 isEmpty=" + operation.isEmpty());
             if (operation.isEmpty()) {
                 operation = operationRepository.findByNameAndTypeAndInterfaceIdIn(discoveredOperation.getContext() + discoveredOperation.getName(),
                                                                                   discoveredOperation.getType(),
@@ -83,18 +83,18 @@ public class ComparisonOperationsService {
                 log.info("operationList ids=" + operationList.stream().map(Operation::getId).collect(Collectors.toList()));
                 List<DiscoveredOperation> discoveredOperationList = discoveredOperationRepository.findAllByConnectionOperationIdIn(
                         operationList.stream().map(Operation::getId).collect(Collectors.toList()));
-                log.info("discoveredOperationList ids=" + discoveredOperationList.stream().map(DiscoveredOperation::getId).collect(Collectors.toList()));
+                log.info("discoveredOperationListIds=" + discoveredOperationList.stream().map(DiscoveredOperation::getId).collect(Collectors.toList()));
 
                 List<Integer> discoveredOperationIdListFiltered = discoveredOperationList.stream()
                         .filter(op -> op.getInterfaceId().equals(discoveredOperation.getInterfaceId()))
                         .map(DiscoveredOperation::getId)
                         .collect(Collectors.toList());
-                log.info("discoveredOperationList ids=" + discoveredOperationList.stream().map(DiscoveredOperation::getId).collect(Collectors.toList()));
+                log.info("discoveredOperationListIds=" + discoveredOperationList.stream().map(DiscoveredOperation::getId).collect(Collectors.toList()));
 
                 if (discoveredOperationList.size() == discoveredOperationIdListFiltered.size() && discoveredOperationRepository.getRows(
                         discoveredOperation.getInterfaceId(),
                         discoveredOperationIdListFiltered).isEmpty()) {
-                    log.info("set ConnectionInterfaceId");
+                    log.info("setConnectionInterfaceId");
                     discoveredOperation.getDiscoveredInterface()
                             .setConnectionInterfaceId(operation.get().getInterfaceId());
                     discoveredOperationRepository.save(discoveredOperation);

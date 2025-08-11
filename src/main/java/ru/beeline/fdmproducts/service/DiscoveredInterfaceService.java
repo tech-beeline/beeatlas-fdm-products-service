@@ -9,6 +9,7 @@ import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.DiscoveredParameter;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationParameterDTO;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.DiscoveredInterfaceMapper;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
@@ -112,15 +113,24 @@ public class DiscoveredInterfaceService {
     }
 
     public void createOrUpdateOperations(Integer interfaceId, List<DiscoveredInterfaceOperationDTO> operations) {
+        DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(interfaceId)
+                .orElseThrow(() -> new EntityNotFoundException(String.format(
+                        "Запись в таблице discovered_interface с id: %s," + "не найдена",
+                        interfaceId)));
         LocalDateTime now = LocalDateTime.now();
         for (DiscoveredInterfaceOperationDTO operationDTO : operations) {
+            if (operationDTO.getName() == null){
+                throw new EntityNotFoundException(String.format(
+                        "Отсутствует обязательно еопле name",
+                        interfaceId));
+            }
             Optional<DiscoveredOperation> existingOpOpt = discoveredOperationRepository.findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(
                     interfaceId,
                     operationDTO.getName(),
                     operationDTO.getType());
 
             DiscoveredOperation operation;
-            operation = updateOperation(operationDTO, existingOpOpt, now, interfaceId);
+            operation = updateOperation(operationDTO, existingOpOpt, now, discoveredInterface);
 
             Map<String, DiscoveredParameter> existingParamsMap = operation.getParameters()
                     .stream()
@@ -159,7 +169,7 @@ public class DiscoveredInterfaceService {
     private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO,
                                                 Optional<DiscoveredOperation> existingOpOpt,
                                                 LocalDateTime now,
-                                                Integer interfaceId) {
+                                                DiscoveredInterface discoveredInterface) {
         if (existingOpOpt.isPresent()) {
             DiscoveredOperation operation;
             operation = existingOpOpt.get();
@@ -187,8 +197,7 @@ public class DiscoveredInterfaceService {
         } else {
             return discoveredOperationRepository.save(DiscoveredOperation.builder()
                                                               .name(operationDTO.getName())
-                                                              .discoveredInterface(discoveredInterfaceRepository.findById(
-                                                                      interfaceId).get())
+                                                              .discoveredInterface(discoveredInterface)
                                                               .description(operationDTO.getDescription())
                                                               .type(operationDTO.getType())
                                                               .returnType(operationDTO.getReturnType())

@@ -8,6 +8,7 @@ import ru.beeline.fdmproducts.domain.mapic.CapabilityMapic;
 import ru.beeline.fdmproducts.domain.mapic.ProductMapic;
 import ru.beeline.fdmproducts.domain.mapic.PublishedApi;
 import ru.beeline.fdmproducts.dto.PublishedApiDTO;
+import ru.beeline.fdmproducts.dto.SpecDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.mapic.ApiMapicRepository;
 import ru.beeline.fdmproducts.repository.mapic.CapabilityMapicRepository;
@@ -34,7 +35,8 @@ public class MapicService {
     PublishedApiRepository publishedApiRepository;
 
     public List<PublishedApiDTO> requestToMapic(String cmdb) {
-        ProductMapic productMapic = productMapicRepository.findByCmdb(cmdb).orElseThrow(() -> new EntityNotFoundException("Запись с данным cmdb не найдена."));
+        ProductMapic productMapic = productMapicRepository
+                .findByCmdb(cmdb).orElseThrow(() -> new EntityNotFoundException("Запись с данным cmdb не найдена."));
         List<CapabilityMapic> capabilityMapicList = capabilityMapicRepository.findByProductId(productMapic);
         List<PublishedApiDTO> result = new ArrayList<>();
         if (!capabilityMapicList.isEmpty()) {
@@ -54,5 +56,13 @@ public class MapicService {
             }
         }
         return result;
+    }
+
+    public SpecDTO getMapicApi(Integer apiId) {
+        ApiMapic apiMapic = apiMapicRepository
+                .findById(apiId).orElseThrow(() -> new EntityNotFoundException("Запись с данным api-id не найдена."));
+        return SpecDTO.builder()
+                .spec(apiMapic.getSpec())
+                .build();
     }
 }

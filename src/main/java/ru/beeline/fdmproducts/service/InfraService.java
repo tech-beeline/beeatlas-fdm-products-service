@@ -34,7 +34,6 @@ public class InfraService {
 
     public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method:" + request.toString());
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 0");
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
         log.info("product is" + product);
 
@@ -42,46 +41,35 @@ public class InfraService {
             throw new EntityNotFoundException("Продукт не найден");
         }
 
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 1");
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         if (!processedCmdbIds.isEmpty()) {
             infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
         }
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 2");
         Map<String, Infra> existingInfraMap = infraRepository.findInfrasByProductId(product.getId())
                 .stream()
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3");
         processInfras(request.getInfra(), product, existingInfraMap);
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 4");
         processRelations(request.getRelations(), existingInfraMap);
         log.info("The syncInfrastructure method is completed");
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
         log.info("requestInfras size: " + requestInfras.size());
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a");
         loadMissingInfras(requestInfras, existingInfraMap);
         List<Infra> newInfras = new ArrayList<>();
         List<Infra> updatedInfras = new ArrayList<>();
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3b");
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c");
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3d");
         saveUpdatedInfras(updatedInfras);
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3e");
         processAllProperties(requestInfras, existingInfraMap);
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3f");
+
     }
 
     private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
         Set<String> requestCmdbIds = requestInfras.stream().map(InfraDTO::getCmdbId).collect(Collectors.toSet());
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a.a");
         Set<String> missingCmdbIds = requestCmdbIds.stream()
                 .filter(cmdbId -> !existingInfraMap.containsKey(cmdbId))
                 .collect(Collectors.toSet());
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3a.b size=" + missingCmdbIds.size());
         if (!missingCmdbIds.isEmpty()) {
             List<Infra> missingInfras = infraRepository.findByCmdbIdIn(missingCmdbIds);
             for (Infra infra : missingInfras) {
@@ -145,10 +133,8 @@ public class InfraService {
     private void saveNewInfrasAndProducts(List<Infra> newInfras, Product product, Map<String, Infra> existingInfraMap) {
         if (newInfras.isEmpty())
             return;
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.1");
         List<Infra> savedInfras = infraRepository.saveAllAndFlush(newInfras);
         List<InfraProduct> newInfraProducts = new ArrayList<>();
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.2 size=" + savedInfras.size());
         for (Infra infra : savedInfras) {
             boolean hasLink = infra.getInfraProducts()
                     .stream()
@@ -164,7 +150,6 @@ public class InfraService {
             }
             existingInfraMap.put(infra.getCmdbId(), infra);
         }
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 3c.3");
         if (!newInfraProducts.isEmpty()) {
             infraProductRepository.saveAll(newInfraProducts);
             infraProductRepository.flush();
@@ -245,14 +230,12 @@ public class InfraService {
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
         log.info("start process for Relations with size" + relations.size());
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.a");
         List<Relation> relationsForSave = new ArrayList<>();
         Map<String, List<Relation>> children = relationRepository.findByParentIdIn(relations.stream()
                                                                                            .map(RelationDTO::getCmdbId)
                                                                                            .collect(Collectors.toList()))
                 .stream()
                 .collect(Collectors.groupingBy(Relation::getParentId));
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.b");
         List<String> chldIds = relations.stream()
                 .flatMap(r -> r.getChildren().stream())
                 .collect(Collectors.toList());
@@ -260,7 +243,6 @@ public class InfraService {
         if(!chldIds.isEmpty()){
         cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(chldIds);
         }
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.c");
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
                 processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, children, cacheInfra);
@@ -268,7 +250,7 @@ public class InfraService {
         }
         children.clear();
         cacheInfra.clear();
-        log.info("!!!!!!!!!!!!!!!!!!!!!! 4.d");
+
         relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }

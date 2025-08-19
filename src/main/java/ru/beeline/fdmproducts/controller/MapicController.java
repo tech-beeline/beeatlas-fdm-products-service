@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.PublishedApiDTO;
+import ru.beeline.fdmproducts.dto.SpecDTO;
 import ru.beeline.fdmproducts.service.MapicService;
 
 import java.util.List;
@@ -25,5 +26,11 @@ public class MapicController {
     @ApiOperation("Эмуляция запросов к Mapic")
     public ResponseEntity<List<PublishedApiDTO>> requestToMapic(@PathVariable String cmdb) {
         return ResponseEntity.status(HttpStatus.OK).body(mapicService.requestToMapic(cmdb));
+    }
+
+    @GetMapping("/spec/{api-id}")
+    @ApiOperation("Найти запись в таблице mapic.api  по id")
+    public ResponseEntity<SpecDTO> getMapicApi(@PathVariable("api-id") Integer apiId) {
+        return ResponseEntity.status(HttpStatus.OK).body(mapicService.getMapicApi(apiId));
     }
 }

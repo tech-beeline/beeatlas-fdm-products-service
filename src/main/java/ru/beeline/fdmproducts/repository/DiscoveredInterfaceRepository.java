@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
+import ru.beeline.fdmproducts.domain.Product;
 
 import javax.transaction.Transactional;
 import java.util.List;
@@ -22,4 +23,7 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
+
+    List<DiscoveredInterface> findAllByProduct(Product product);
+
 }

@@ -38,8 +38,8 @@ public class ProductController {
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProductsAdmin(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUserAdmin(userId,
-                request.getHeader(USER_ROLES_HEADER)));
+        return ResponseEntity.status(HttpStatus.OK)
+                .body(productService.getProductsByUserAdmin(userId, request.getHeader(USER_ROLES_HEADER)));
     }
 
     @GetMapping("/product/{code}")
@@ -68,10 +68,9 @@ public class ProductController {
 
     @GetMapping("/product/{alias}/fitness-function")
     @ApiOperation(value = "Получение результатов фитнесс-функций")
-    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(
-            @PathVariable String alias,
-            @RequestParam(name = "source_id", required = false) Integer sourceId,
-            @RequestParam(name = "source_type", required = false) String sourceType) {
+    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(@PathVariable String alias,
+                                                                     @RequestParam(name = "source_id", required = false) Integer sourceId,
+                                                                     @RequestParam(name = "source_type", required = false) String sourceType) {
 
         AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
         return ResponseEntity.ok(response);
@@ -93,26 +92,29 @@ public class ProductController {
 
     @GetMapping("/product/{cmdb}/interface/arch")
     @ApiOperation(value = "Интерфейсы продукта полученные из архитектуры")
-    public List<ProductInterfaceDTO> getProductsInStructurizr(@PathVariable String cmdb) {
-        return productService.getProductsInStructurizr(cmdb);
+    public List<ProductInterfaceDTO> getProductsFromStructurizr(@PathVariable String cmdb) {
+        return productService.getProductsFromStructurizr(cmdb);
+    }
+
+    @GetMapping("/product/{cmdb}/interface/mapic")
+    @ApiOperation(value = "Интерфейсы продукта полученные из мапик")
+    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb) {
+        return productService.getProductsFromMapic(cmdb);
     }
 
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
-    public ResponseEntity postUserProducts(@PathVariable String id,
-                                           @RequestBody List<String> aliasLIst) {
+    public ResponseEntity postUserProducts(@PathVariable String id, @RequestBody List<String> aliasLIst) {
         productService.postUserProduct(aliasLIst, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PostMapping("/product/{alias}/fitness-function/{source_type}")
     @ApiOperation(value = "Публикация результатов фитнесс-функций")
-    public ResponseEntity postFitnessFunctions(
-            @PathVariable String alias,
-            @PathVariable("source_type") String sourceType,
-            @RequestBody List<FitnessFunctionDTO> requests,
-            @RequestParam(value = "source_id",
-                    required = false) Integer sourceId) {
+    public ResponseEntity postFitnessFunctions(@PathVariable String alias,
+                                               @PathVariable("source_type") String sourceType,
+                                               @RequestBody List<FitnessFunctionDTO> requests,
+                                               @RequestParam(value = "source_id", required = false) Integer sourceId) {
 
         productService.postFitnessFunctions(alias, sourceType, requests, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
@@ -131,24 +133,21 @@ public class ProductController {
 
     @PutMapping("/product/{code}")
     @ApiOperation(value = "Редактирование продукта")
-    public ResponseEntity putProducts(@PathVariable String code,
-                                      @RequestBody ProductPutDto productPutDto) {
+    public ResponseEntity putProducts(@PathVariable String code, @RequestBody ProductPutDto productPutDto) {
         productService.createOrUpdate(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PutMapping("/product/{code}/relations")
     @ApiOperation(value = "Создание и обновление связей продукта")
-    public ResponseEntity putProductRelations(@PathVariable String code,
-                                              @RequestBody List<ContainerDTO> containerDTO) {
+    public ResponseEntity putProductRelations(@PathVariable String code, @RequestBody List<ContainerDTO> containerDTO) {
         productService.createOrUpdateProductRelations(containerDTO, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("product/{code}/workspace")
     @ApiOperation(value = "Добавление атрибутов к продукту")
-    public ResponseEntity patchProducts(@PathVariable String code,
-                                        @RequestBody ProductPutDto productPutDto) {
+    public ResponseEntity patchProducts(@PathVariable String code, @RequestBody ProductPutDto productPutDto) {
         productService.patchProduct(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }

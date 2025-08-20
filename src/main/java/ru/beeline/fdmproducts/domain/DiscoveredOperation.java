@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -22,6 +23,7 @@ public class DiscoveredOperation {
     @SequenceGenerator(name = "discovered_operation_generator", sequenceName = "discovered_operation_id_seq", allocationSize = 1)
     private Integer id;
 
+    @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "interface_id" )
     private DiscoveredInterface discoveredInterface;

@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -44,6 +45,7 @@ public class DiscoveredInterface {
 
     private String context;
 
+    @ToString.Exclude
     @ManyToOne
     @JoinColumn(name = "product_id")
     private Product product;
@@ -57,6 +59,7 @@ public class DiscoveredInterface {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "discoveredInterface")
     private List<DiscoveredOperation> operations;
 }

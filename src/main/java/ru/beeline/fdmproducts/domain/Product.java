@@ -50,6 +50,7 @@ public class Product {
     @OneToMany(mappedBy = "product")
     private List<TechProduct> techProducts;
 
+    @ToString.Exclude
     @OneToMany(mappedBy = "product")
     private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
 }

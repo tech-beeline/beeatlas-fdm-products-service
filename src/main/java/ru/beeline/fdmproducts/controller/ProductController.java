@@ -91,6 +91,12 @@ public class ProductController {
         return productService.getMnemonics();
     }
 
+    @GetMapping("/product/{cmdb}/interface/arch")
+    @ApiOperation(value = "Интерфейсы продукта полученные из архитектуры")
+    public List<ProductInterfaceDTO> getProductsInStructurizr(@PathVariable String cmdb) {
+        return productService.getProductsInStructurizr(cmdb);
+    }
+
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
     public ResponseEntity postUserProducts(@PathVariable String id,

@@ -20,4 +20,6 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     @Query("UPDATE DiscoveredInterface di SET di.connectionInterfaceId = null WHERE di.id <> :mapicInterfaceId AND di.connectionInterfaceId = :archInterfaceId")
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
+
+    List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 }

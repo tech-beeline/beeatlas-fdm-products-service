@@ -8,7 +8,6 @@ import ru.beeline.fdmproducts.domain.mapic.CapabilityMapic;
 import ru.beeline.fdmproducts.domain.mapic.ProductMapic;
 import ru.beeline.fdmproducts.domain.mapic.PublishedApi;
 import ru.beeline.fdmproducts.dto.PublishedApiDTO;
-import ru.beeline.fdmproducts.dto.SpecDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.mapic.ApiMapicRepository;
 import ru.beeline.fdmproducts.repository.mapic.CapabilityMapicRepository;
@@ -58,11 +57,9 @@ public class MapicService {
         return result;
     }
 
-    public SpecDTO getMapicApi(Integer apiId) {
+    public String getMapicApi(Integer apiId) {
         ApiMapic apiMapic = apiMapicRepository
                 .findById(apiId).orElseThrow(() -> new EntityNotFoundException("Запись с данным api-id не найдена."));
-        return SpecDTO.builder()
-                .spec(apiMapic.getSpec())
-                .build();
+        return apiMapic.getSpec();
     }
 }

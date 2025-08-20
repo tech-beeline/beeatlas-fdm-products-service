@@ -30,7 +30,7 @@ public class MapicController {
 
     @GetMapping("/spec/{api-id}")
     @ApiOperation("Найти запись в таблице mapic.api  по id")
-    public ResponseEntity<SpecDTO> getMapicApi(@PathVariable("api-id") Integer apiId) {
+    public ResponseEntity<String> getMapicApi(@PathVariable("api-id") Integer apiId) {
         return ResponseEntity.status(HttpStatus.OK).body(mapicService.getMapicApi(apiId));
     }
 }

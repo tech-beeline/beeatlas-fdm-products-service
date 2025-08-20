@@ -54,6 +54,7 @@ public class ProductService {
     private final PatternsCheckRepository patternsCheckRepository;
     private final DiscoveredInterfaceMapper discoveredInterfaceMapper;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
+    private final DiscoveredOperationRepository discoveredOperationRepository;
 
     public ProductService(ContainerMapper containerMapper,
                           ProductTechMapper productTechMapper,
@@ -77,7 +78,7 @@ public class ProductService {
                           LocalAssessmentRepository assessmentRepository,
                           LocalAssessmentCheckRepository assessmentCheckRepository,
                           EnumSourceTypeRepository enumSourceTypeRepository,
-                          PatternsAssessmentRepository patternsAssessmentRepository, PatternsCheckRepository patternsCheckRepository, DiscoveredInterfaceMapper discoveredInterfaceMapper, DiscoveredInterfaceRepository discoveredInterfaceRepository) {
+                          PatternsAssessmentRepository patternsAssessmentRepository, PatternsCheckRepository patternsCheckRepository, DiscoveredInterfaceMapper discoveredInterfaceMapper, DiscoveredInterfaceRepository discoveredInterfaceRepository, DiscoveredOperationRepository discoveredOperationRepository) {
         this.containerMapper = containerMapper;
         this.productTechMapper = productTechMapper;
         this.interfaceMapper = interfaceMapper;
@@ -105,6 +106,7 @@ public class ProductService {
         this.patternsCheckRepository = patternsCheckRepository;
         this.discoveredInterfaceMapper = discoveredInterfaceMapper;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
+        this.discoveredOperationRepository = discoveredOperationRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -666,5 +668,82 @@ public class ProductService {
             return patternsAssessmentRepository.findBySourceType_NameAndSourceId(sourceType, sourceId).orElse(null);
         }
         return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
+    }
+
+    public List<ProductInterfaceDTO> getProductsInStructurizr(String cmdb) {
+        Product product = productRepository.findByAliasCaseInsensitive(cmdb);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
+        }
+        List<ProductInterfaceDTO> result = new ArrayList<>();
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductId(product.getId());
+        if (!containerProducts.isEmpty()) {
+            List<Integer> containerIds = containerProducts.stream().map(ContainerProduct::getId).toList();
+            List<Interface> interfaces = interfaceRepository.findAllByContainerIdIn(containerIds);
+            if (!interfaces.isEmpty()) {
+                Map<Integer, DiscoveredInterface> discoveredInterfaceMap = discoveredInterfaceRepository
+                        .findAllByConnectionInterfaceIdIn(interfaces.stream().map(Interface::getId).toList())
+                        .stream().collect(Collectors.toMap(DiscoveredInterface::getConnectionInterfaceId, Function.identity()));
+                List<Operation> allOperations = operationRepository
+                        .findAllByInterfaceIdIn(interfaces.stream().map(Interface::getId).toList());
+                Map<Integer, List<Operation>> operationsByInterfaceId = allOperations.stream()
+                        .collect(Collectors.groupingBy(Operation::getInterfaceId));
+                Map<Integer, DiscoveredOperation> discoveredOperationMap = discoveredOperationRepository
+                        .findAllByConnectionOperationIdIn(allOperations.stream().map(Operation::getId).toList())
+                        .stream().collect(Collectors.toMap(DiscoveredOperation::getConnectionOperationId, Function.identity()));
+                for (Interface interfaceObj : interfaces) {
+                    ProductInterfaceDTO productInterfaceDTO = createProductInterface(interfaceObj);
+                    DiscoveredInterface dInterface = discoveredInterfaceMap.get(interfaceObj.getId());
+                    if (dInterface != null) {
+                        productInterfaceDTO.setMapicInterface(createMapicInterfaceDTO(dInterface));
+                    }
+                    List<Operation> operations = operationsByInterfaceId.getOrDefault(interfaceObj.getId(), List.of());
+                    if (!operations.isEmpty()) {
+                        List<OperationDTO> operationDTOS = operations.stream()
+                                .map(op -> createOperationDTO(op, discoveredOperationMap)).toList();
+                        productInterfaceDTO.setOperations(operationDTOS);
+                    }
+                    result.add(productInterfaceDTO);
+                }
+            }
+        }
+        return result;
+    }
+
+    private ProductInterfaceDTO createProductInterface(Interface interfaceObj) {
+        return ProductInterfaceDTO.builder()
+                .id(interfaceObj.getId())
+                .name(interfaceObj.getName())
+                .version(interfaceObj.getVersion())
+                .description(interfaceObj.getDescription())
+                .build();
+    }
+
+    private MapicInterfaceDTO createMapicInterfaceDTO(DiscoveredInterface dInterface) {
+        return MapicInterfaceDTO.builder()
+                .id(dInterface.getId())
+                .name(dInterface.getName())
+                .description(dInterface.getDescription())
+                .build();
+    }
+
+    private OperationDTO createOperationDTO(Operation operation, Map<Integer, DiscoveredOperation> discoveredOperationMap) {
+        OperationDTO operationDTO = OperationDTO.builder()
+                .id(operation.getId())
+                .name(operation.getName())
+                .description(operation.getDescription())
+                .type(operation.getType())
+                .build();
+        DiscoveredOperation discoveredOperation = discoveredOperationMap.get(operation.getId());
+        if (discoveredOperation != null) {
+            MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
+                    .id(discoveredOperation.getId())
+                    .name(discoveredOperation.getName())
+                    .description(discoveredOperation.getDescription())
+                    .type(discoveredOperation.getType())
+                    .build();
+            operationDTO.setMapicOperation(mapicOperationDTO);
+        }
+        return operationDTO;
     }
 }

@@ -696,7 +696,7 @@ public class ProductService {
 
                 Interface anInterface = interfaceRepository.getById(discoveredInterface.getConnectionInterfaceId());
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
-                        anInterface.getId());
+                        discoveredInterface.getId());
                 List<OperationDTO> operationDTOS = discoveredOperations.stream().map(discoveredOperation -> {
                     log.info("connection getConnectionOperationId = " + discoveredOperation.getConnectionOperationId());
                     Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());

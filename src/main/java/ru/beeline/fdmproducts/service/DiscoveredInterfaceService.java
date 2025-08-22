@@ -83,15 +83,6 @@ public class DiscoveredInterfaceService {
         if (dInterfaces.getName() == null || dInterfaces.getName().trim().isEmpty()) {
             errMsg.append("Отсутствует обязательное поле name; ");
         }
-        if (dInterfaces.getVersion() == null || dInterfaces.getVersion().trim().isEmpty()) {
-            errMsg.append("Отсутствует обязательное поле Version; ");
-        }
-        if (dInterfaces.getApiLink() == null || dInterfaces.getApiLink().trim().isEmpty()) {
-            errMsg.append("Отсутствует обязательное поле ApiLink; ");
-        }
-        if (dInterfaces.getDescription() == null || dInterfaces.getDescription().trim().isEmpty()) {
-            errMsg.append("Отсутствует обязательное поле Description; ");
-        }
         if (dInterfaces.getStatus() == null || dInterfaces.getStatus().trim().isEmpty()) {
             errMsg.append("Отсутствует обязательное поле Status; ");
         }

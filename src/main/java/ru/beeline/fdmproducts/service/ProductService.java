@@ -698,11 +698,13 @@ public class ProductService {
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         anInterface.getId());
                 List<OperationDTO> operationDTOS = discoveredOperations.stream().map(discoveredOperation -> {
-                    return createOperationDTO(operationRepository.getById(discoveredOperation.getConnectionOperationId()),
-                                              discoveredOperation);
+                    log.info("connection getConnectionOperationId = " + discoveredOperation.getConnectionOperationId());
+                    Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());
+                    log.info("operationId = " + operation.getId());
+                    return createOperationDTO(operation, discoveredOperation);
                 }).collect(Collectors.toList());
                 productMapicInterfaceDTO.setOperations(operationDTOS);
-                productMapicInterfaceDTO.setMapicInterface(createMapicInterfaceDTO(discoveredInterface, anInterface));
+                productMapicInterfaceDTO.setConnectInterface(createMapicInterfaceDTO(discoveredInterface, anInterface));
                 result.add(productMapicInterfaceDTO);
             });
         }
@@ -784,7 +786,7 @@ public class ProductService {
 
     private MapicInterfaceDTO createMapicInterfaceDTO(DiscoveredInterface dInterface, Interface anInterface) {
         return MapicInterfaceDTO.builder()
-                .id(dInterface.getId())
+                .id(dInterface.getConnectionInterfaceId())
                 .name(anInterface.getName())
                 .description(anInterface.getDescription())
                 .build();

@@ -52,5 +52,6 @@ public class Product {
 
     @ToString.Exclude
     @OneToMany(mappedBy = "product")
+    @JsonManagedReference
     private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
 }

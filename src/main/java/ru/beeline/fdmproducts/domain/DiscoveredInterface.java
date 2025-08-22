@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -45,6 +46,7 @@ public class DiscoveredInterface {
 
     private String context;
 
+    @JsonBackReference
     @ToString.Exclude
     @ManyToOne
     @JoinColumn(name = "product_id")

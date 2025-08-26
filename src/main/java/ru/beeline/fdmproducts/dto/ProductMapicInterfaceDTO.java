@@ -19,5 +19,5 @@ public class ProductMapicInterfaceDTO {
     private String description;
     private String context;
     private MapicInterfaceDTO connectInterface;
-    private List<OperationDTO> operations;
+    private List<ConnectOperationDTO> operations;
 }

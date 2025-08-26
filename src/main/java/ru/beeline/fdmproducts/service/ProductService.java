@@ -794,17 +794,17 @@ public class ProductService {
 
     private OperationDTO createOperationDTO(Operation operation, DiscoveredOperation discoveredOperation) {
         OperationDTO operationDTO = OperationDTO.builder()
-                .id(discoveredOperation.getId())
-                .name(discoveredOperation.getName())
-                .description(discoveredOperation.getDescription())
-                .type(discoveredOperation.getType())
+                .id(operation.getId())
+                .name(operation.getName())
+                .description(operation.getDescription())
+                .type(operation.getType())
                 .build();
-        if (operation != null) {
+        if (discoveredOperation != null) {
             MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
-                    .id(operation.getId())
-                    .name(operation.getName())
-                    .description(operation.getDescription())
-                    .type(operation.getType())
+                    .id(discoveredOperation.getId())
+                    .name(discoveredOperation.getName())
+                    .description(discoveredOperation.getDescription())
+                    .type(discoveredOperation.getType())
                     .build();
             operationDTO.setMapicOperation(mapicOperationDTO);
         }

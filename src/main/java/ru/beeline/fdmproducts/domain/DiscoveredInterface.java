@@ -64,4 +64,8 @@ public class DiscoveredInterface {
     @ToString.Exclude
     @OneToMany(mappedBy = "discoveredInterface")
     private List<DiscoveredOperation> operations;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "connection_interface_id", insertable = false, updatable = false)
+    private Interface connectedInterface;
 }

@@ -110,7 +110,7 @@ public class DiscoveredInterfaceService {
                         interfaceId)));
         LocalDateTime now = LocalDateTime.now();
         for (DiscoveredInterfaceOperationDTO operationDTO : operations) {
-            if (operationDTO.getName() == null){
+            if (operationDTO.getName() == null) {
                 throw new EntityNotFoundException(String.format(
                         "Отсутствует обязательно поле 'name'",
                         interfaceId));
@@ -127,7 +127,7 @@ public class DiscoveredInterfaceService {
                     .stream()
                     .filter(param -> param.getDeletedDate() == null)
                     .collect(Collectors.toMap(p -> p.getParameterName() + "::" + p.getParameterType(),
-                                              Function.identity()));
+                            Function.identity()));
 
             Set<String> inputParamsKeys = new HashSet<>();
             if (operationDTO.getParameters() != null) {
@@ -187,14 +187,14 @@ public class DiscoveredInterfaceService {
             return operation;
         } else {
             return discoveredOperationRepository.save(DiscoveredOperation.builder()
-                                                              .name(operationDTO.getName())
-                                                              .discoveredInterface(discoveredInterface)
-                                                              .description(operationDTO.getDescription())
-                                                              .type(operationDTO.getType())
-                                                              .returnType(operationDTO.getReturnType())
-                                                              .createdDate(LocalDateTime.now())
-                                                              .parameters(new ArrayList<>())
-                                                              .build());
+                    .name(operationDTO.getName())
+                    .discoveredInterface(discoveredInterface)
+                    .description(operationDTO.getDescription())
+                    .type(operationDTO.getType())
+                    .returnType(operationDTO.getReturnType())
+                    .createdDate(LocalDateTime.now())
+                    .parameters(new ArrayList<>())
+                    .build());
         }
     }
 
@@ -202,10 +202,32 @@ public class DiscoveredInterfaceService {
         return (a == null && b == null) || (a != null && a.equals(b));
     }
 
-    public DiscoveredInterfaceDTO getOperationsByInterfaceId(Integer interfaceId) {
-        return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository.findById(
-                        interfaceId)
-                                                                                 .orElseThrow(() -> new IllegalArgumentException(
-                                                                                         "discoveredInterface с " + "данным interfaceId не найден")));
+    public DiscoveredInterfaceDTO getOperationsByInterfaceId(Integer interfaceId, Integer externalId, Integer apiId) {
+        List<Integer> list = new ArrayList<>();
+        listAdd(list, interfaceId);
+        listAdd(list, externalId);
+        listAdd(list, apiId);
+        if (list.size() == 1) {
+            if (interfaceId != null) {
+                return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository
+                        .findById(interfaceId).orElseThrow(() -> new IllegalArgumentException(
+                                "discoveredInterface с " + "данным interface-id не найден")));
+            } else if (externalId != null) {
+                return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository
+                        .findByExternalId(externalId).orElseThrow(() -> new IllegalArgumentException(
+                                "discoveredInterface с " + "данным external-id не найден")));
+            } else if (apiId != null) {
+                return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository
+                        .findByApiId(apiId).orElseThrow(() -> new IllegalArgumentException(
+                                "discoveredInterface с " + "данным api-id не найден")));
+            }
+        }
+        throw new IllegalArgumentException("Должен быть передан только один параметр");
+    }
+
+    private void listAdd(List<Integer> list, Integer obj) {
+        if (obj != null) {
+            list.add(obj);
+        }
     }
 }

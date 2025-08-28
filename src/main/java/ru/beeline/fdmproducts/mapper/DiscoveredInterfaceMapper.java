@@ -17,6 +17,7 @@ public class DiscoveredInterfaceMapper {
 
     public DiscoveredInterfaceDTO convertToDiscoveredInterfaceDto(DiscoveredInterface entity) {
         return DiscoveredInterfaceDTO.builder()
+                .id(entity.getId())
                 .name(entity.getName())
                 .externalId(entity.getExternalId())
                 .apiId(entity.getApiId())

@@ -395,6 +395,7 @@ public class ProductService {
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
         Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(),
                 interfaceId);
+//        Integer tcId = getTCId()
         if (optionalOperation.isEmpty()) {
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
             operationRepository.save(operation);
@@ -413,6 +414,17 @@ public class ProductService {
             }
             return updateOperation;
         }
+    }
+
+    private Integer getTCId(String code) {
+        List<SearchCapabilityDTO> capabilities = capabilityClient.getCapabilities(code);
+        if (!capabilities.isEmpty()) {
+            SearchCapabilityDTO searchCapabilityDTO = capabilities.get(0);
+            if (searchCapabilityDTO.getCode().equals(code)) {
+                return searchCapabilityDTO.getId();
+            }
+        }
+        return null;
     }
 
     private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {

@@ -395,9 +395,12 @@ public class ProductService {
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
         Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(),
                 interfaceId);
-//        Integer tcId = getTCId()
+        Integer tcId = getTCId(methodDTO.getCapabilityCode());
+        if (tcId == null) {
+            tcId = interfaceId;
+        }
         if (optionalOperation.isEmpty()) {
-            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
+            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
             operationRepository.save(operation);
             return operation;
         } else {
@@ -409,7 +412,7 @@ public class ProductService {
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
                     .equals(updateOperation.getReturnType())) {
-                operationMapper.updateOperation(updateOperation, methodDTO);
+                operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
                 operationRepository.save(updateOperation);
             }
             return updateOperation;

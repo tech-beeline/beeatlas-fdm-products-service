@@ -1,6 +1,7 @@
 package ru.beeline.fdmproducts.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -55,6 +56,8 @@ public class DiscoveredOperation {
 
     @Column(name = "deleted_date")
     private LocalDateTime deletedDate;
+
+    @JsonManagedReference
     @ToString.Exclude
     @OneToMany(mappedBy = "discoveredOperation")
     private List<DiscoveredParameter> parameters;

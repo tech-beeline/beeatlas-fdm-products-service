@@ -711,6 +711,9 @@ public class ProductService {
                 Interface anInterface = discoveredInterface.getConnectedInterface();
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         discoveredInterface.getId());
+                if (discoveredOperations != null && !discoveredOperations.isEmpty()) {
+                    productMapicInterfaceDTO.setContextProvider(discoveredOperations.get(0).getContext());
+                }
                 List<ConnectOperationDTO> operationDTOS = discoveredOperations.stream()
                         .filter(d -> d.getConnectionOperationId() != null)
                         .map(discoveredOperation -> {

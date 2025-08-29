@@ -19,7 +19,6 @@ import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -309,7 +308,7 @@ public class ProductService {
                                     validateField(parameterDTO.getName(), list, "name");
                                     validateField(parameterDTO.getType(), list, "type");
                                     Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO,
-                                                                                                  operationId);
+                                            operationId);
                                     existingOrCreatedParameters.add(createdOrUpdatedParameter);
                                 }
                             }
@@ -330,8 +329,8 @@ public class ProductService {
     private void validateField(String fieldValue, String entityName, String fieldName) {
         if (fieldValue == null || fieldValue.isEmpty()) {
             throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s",
-                                                        entityName,
-                                                        fieldName));
+                    entityName,
+                    fieldName));
         }
     }
 
@@ -357,7 +356,7 @@ public class ProductService {
             throw new IllegalArgumentException("Capability code is empty");
         }
         Optional<Interface> optionalInterface = interfaceRepository.findByCodeAndContainerId(interfaceDTO.getCode(),
-                                                                                             containerId);
+                containerId);
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
         Integer tcId = null;
         if (!searchCapabilityDTOS.isEmpty()) {
@@ -389,15 +388,19 @@ public class ProductService {
         return getInterface.getName().equals(interfaceDTO.getName()) && getInterface.getVersion()
                 .equals(interfaceDTO.getVersion()) && getInterface.getSpecLink()
                 .equals(interfaceDTO.getSpecLink()) && Objects.equals(getInterface.getTcId(),
-                                                                      tcId) && getInterface.getProtocol()
+                tcId) && getInterface.getProtocol()
                 .equals(interfaceDTO.getProtocol());
     }
 
     private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
         Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(),
-                                                                                             interfaceId);
+                interfaceId);
+        Integer tcId = getTCId(methodDTO.getCapabilityCode());
+        if (tcId == null) {
+            tcId = interfaceId;
+        }
         if (optionalOperation.isEmpty()) {
-            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId);
+            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
             operationRepository.save(operation);
             return operation;
         } else {
@@ -409,11 +412,22 @@ public class ProductService {
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
                     .equals(updateOperation.getReturnType())) {
-                operationMapper.updateOperation(updateOperation, methodDTO);
+                operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
                 operationRepository.save(updateOperation);
             }
             return updateOperation;
         }
+    }
+
+    private Integer getTCId(String code) {
+        List<SearchCapabilityDTO> capabilities = capabilityClient.getCapabilities(code);
+        if (!capabilities.isEmpty()) {
+            SearchCapabilityDTO searchCapabilityDTO = capabilities.get(0);
+            if (searchCapabilityDTO.getCode().equals(code)) {
+                return searchCapabilityDTO.getId();
+            }
+        }
+        return null;
     }
 
     private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
@@ -478,8 +492,8 @@ public class ProductService {
             Map<Integer, List<GetProductsDTO>> productsDTOByTechId = techProducts.stream()
                     .filter(techProduct -> techProduct.getProduct() != null)
                     .collect(Collectors.groupingBy(TechProduct::getTechId,
-                                                   Collectors.mapping(techProduct -> productTechMapper.mapToGetProductsDTO(
-                                                           techProduct.getProduct()), Collectors.toList())));
+                            Collectors.mapping(techProduct -> productTechMapper.mapToGetProductsDTO(
+                                    techProduct.getProduct()), Collectors.toList())));
             List<GetProductTechDto> productTechDtoList = productsDTOByTechId.entrySet()
                     .stream()
                     .map(entry -> GetProductTechDto.builder().techId(entry.getKey()).products(entry.getValue()).build())
@@ -511,11 +525,11 @@ public class ProductService {
             throw new IllegalArgumentException("Оценка для данного источника и продукта уже существует.");
         }
         LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder()
-                                                                       .sourceId(sourceId)
-                                                                       .product(product)
-                                                                       .sourceTypeId(enumSourceType.getId())
-                                                                       .createdTime(LocalDateTime.now())
-                                                                       .build());
+                .sourceId(sourceId)
+                .product(product)
+                .sourceTypeId(enumSourceType.getId())
+                .createdTime(LocalDateTime.now())
+                .build());
         requests.forEach(request -> processAssessmentCheck(request, assessment));
     }
 
@@ -533,8 +547,8 @@ public class ProductService {
                     throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
                 } else {
                     assessment = assessmentRepository.findBySourceIdAndProductIdAndSourceTypeId(sourceId,
-                                                                                                product.getId(),
-                                                                                                enumSourceType.getId())
+                                    product.getId(),
+                                    enumSourceType.getId())
                             .orElseThrow(() -> new EntityNotFoundException(String.format(
                                     "Запись в таблице local_assessment с sourceId: %s, " + "SourceTypeId: %s, productId: %s не найдена",
                                     sourceId,
@@ -544,7 +558,7 @@ public class ProductService {
                 }
             } else {
                 assessment = assessmentRepository.findLatestBySourceTypeIdAndProductId(enumSourceType.getId(),
-                                                                                       product.getId())
+                                product.getId())
                         .orElseThrow(() -> new EntityNotFoundException(String.format(
                                 "Запись в таблице local_assessment с SourceTypeId: %s," + " productId: %s не найдена",
                                 enumSourceType.getId(),
@@ -694,15 +708,18 @@ public class ProductService {
             discoveredInterfaces.forEach(discoveredInterface -> {
                 ProductMapicInterfaceDTO productMapicInterfaceDTO = createProductMapicInterface(discoveredInterface);
 
-                Interface anInterface = interfaceRepository.getById(discoveredInterface.getConnectionInterfaceId());
+                Interface anInterface = discoveredInterface.getConnectedInterface();
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         discoveredInterface.getId());
-                List<OperationDTO> operationDTOS = discoveredOperations.stream().map(discoveredOperation -> {
-                    log.info("connection getConnectionOperationId = " + discoveredOperation.getConnectionOperationId());
-                    Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());
-                    log.info("operationId = " + operation.getId());
-                    return createOperationDTO(operation, discoveredOperation);
-                }).collect(Collectors.toList());
+                List<ConnectOperationDTO> operationDTOS = discoveredOperations.stream()
+                        .filter(d -> d.getConnectionOperationId() != null)
+                        .map(discoveredOperation -> {
+                            log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
+                            Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());
+                            log.info("operationId = {}", operation.getId());
+                            return createConnectOperationDTO(operation, discoveredOperation);
+                        })
+                        .collect(Collectors.toList());
                 productMapicInterfaceDTO.setOperations(operationDTOS);
                 productMapicInterfaceDTO.setConnectInterface(createMapicInterfaceDTO(discoveredInterface, anInterface));
                 result.add(productMapicInterfaceDTO);
@@ -722,30 +739,17 @@ public class ProductService {
             List<Integer> containerIds = containerProducts.stream().map(ContainerProduct::getId).toList();
             List<Interface> interfaces = interfaceRepository.findAllByContainerIdIn(containerIds);
             if (!interfaces.isEmpty()) {
-                Map<Integer, DiscoveredInterface> discoveredInterfaceMap = discoveredInterfaceRepository.findAllByConnectionInterfaceIdIn(
-                                interfaces.stream().map(Interface::getId).toList())
-                        .stream()
-                        .collect(Collectors.toMap(DiscoveredInterface::getConnectionInterfaceId, Function.identity()));
-                List<Operation> allOperations = operationRepository.findAllByInterfaceIdIn(interfaces.stream()
-                                                                                                   .map(Interface::getId)
-                                                                                                   .toList());
-                Map<Integer, List<Operation>> operationsByInterfaceId = allOperations.stream()
-                        .collect(Collectors.groupingBy(Operation::getInterfaceId));
-                Map<Integer, DiscoveredOperation> discoveredOperationMap = discoveredOperationRepository.findAllByConnectionOperationIdIn(
-                                allOperations.stream().map(Operation::getId).toList())
-                        .stream()
-                        .collect(Collectors.toMap(DiscoveredOperation::getConnectionOperationId, Function.identity()));
                 for (Interface interfaceObj : interfaces) {
                     ProductInterfaceDTO productInterfaceDTO = createProductInterface(interfaceObj);
-                    DiscoveredInterface dInterface = discoveredInterfaceMap.get(interfaceObj.getId());
-                    if (dInterface != null) {
-                        productInterfaceDTO.setMapicInterface(createMapicInterfaceDTO(dInterface));
-                    }
-                    List<Operation> operations = operationsByInterfaceId.getOrDefault(interfaceObj.getId(), List.of());
+                    Optional<DiscoveredInterface> dInterface = discoveredInterfaceRepository.findByConnectionInterfaceId(interfaceObj.getId());
+                    dInterface.ifPresent(discoveredInterface -> productInterfaceDTO.setMapicInterface(createMapicInterfaceDTO(discoveredInterface)));
+                    List<Operation> operations = operationRepository.findAllByInterfaceId(interfaceObj.getId());
                     if (!operations.isEmpty()) {
-                        List<OperationDTO> operationDTOS = operations.stream()
-                                .map(op -> createOperationDTO(op, discoveredOperationMap.get(op.getId())))
-                                .toList();
+                        List<OperationDTO> operationDTOS = new ArrayList<>();
+                        for (Operation operation : operations) {
+                            operationDTOS.add(createOperationDTO(operation, discoveredOperationRepository
+                                    .findByConnectionOperationId(operation.getId())));
+                        }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }
                     result.add(productInterfaceDTO);
@@ -787,27 +791,46 @@ public class ProductService {
     private MapicInterfaceDTO createMapicInterfaceDTO(DiscoveredInterface dInterface, Interface anInterface) {
         return MapicInterfaceDTO.builder()
                 .id(dInterface.getConnectionInterfaceId())
-                .name(anInterface.getName())
-                .description(anInterface.getDescription())
+                .name(anInterface != null ? anInterface.getName() : null)
+                .description(anInterface != null ? anInterface.getDescription() : null)
                 .build();
     }
 
     private OperationDTO createOperationDTO(Operation operation, DiscoveredOperation discoveredOperation) {
         OperationDTO operationDTO = OperationDTO.builder()
+                .id(operation.getId())
+                .name(operation.getName())
+                .description(operation.getDescription())
+                .type(operation.getType())
+                .build();
+        if (discoveredOperation != null) {
+            MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
+                    .id(discoveredOperation.getId())
+                    .name(discoveredOperation.getName())
+                    .description(discoveredOperation.getDescription())
+                    .type(discoveredOperation.getType())
+                    .build();
+            operationDTO.setMapicOperation(mapicOperationDTO);
+        }
+        return operationDTO;
+    }
+
+    private ConnectOperationDTO createConnectOperationDTO(Operation operation, DiscoveredOperation discoveredOperation) {
+        ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .description(discoveredOperation.getDescription())
                 .type(discoveredOperation.getType())
                 .build();
-        if (operation != null) {
+        if (discoveredOperation != null) {
             MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
-                    .id(operation.getId())
+                    .id(discoveredOperation.getConnectionOperationId())
                     .name(operation.getName())
                     .description(operation.getDescription())
                     .type(operation.getType())
                     .build();
-            operationDTO.setMapicOperation(mapicOperationDTO);
+            connectOperationDTO.setConnectOperation(mapicOperationDTO);
         }
-        return operationDTO;
+        return connectOperationDTO;
     }
 }

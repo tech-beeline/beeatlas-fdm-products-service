@@ -10,6 +10,7 @@ import ru.beeline.fdmproducts.domain.Product;
 
 import javax.transaction.Transactional;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredInterface, Integer> {
@@ -22,8 +23,11 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
 
-    List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
+    Optional<DiscoveredInterface> findByConnectionInterfaceId(Integer interfaceId);
 
     List<DiscoveredInterface> findAllByProduct(Product product);
 
+    Optional<DiscoveredInterface> findByExternalId(Integer externalId);
+
+    Optional<DiscoveredInterface> findByApiId(Integer apiId);
 }

@@ -18,6 +18,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByConnectionOperationIdIn(List<Integer> interfaceId);
 
+   DiscoveredOperation findByConnectionOperationId(Integer operationId);
+
     List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
 
     @Query("SELECT do FROM DiscoveredOperation do " + "WHERE do.interfaceId = :interfaceId " + "AND NOT EXISTS (" + "   SELECT 1 FROM DiscoveredOperation do2 JOIN Operation o ON do2.connectionOperationId = o.id " + "   WHERE do2.interfaceId = :interfaceId " + "     AND o.id NOT IN :operationIds" + ")")

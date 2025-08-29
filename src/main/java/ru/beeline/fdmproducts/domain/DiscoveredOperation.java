@@ -55,7 +55,7 @@ public class DiscoveredOperation {
 
     @Column(name = "deleted_date")
     private LocalDateTime deletedDate;
-
+    @ToString.Exclude
     @OneToMany(mappedBy = "discoveredOperation")
     private List<DiscoveredParameter> parameters;
 }

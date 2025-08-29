@@ -36,9 +36,11 @@ public class DiscoveredInterfaceController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/discovered-interface/{id}")
+    @GetMapping("/discovered-interface")
     @ApiOperation(value = "Создание и обновление операций интерфейса по id")
-    public ResponseEntity<DiscoveredInterfaceDTO> getInterfaceOperations(@PathVariable("id") Integer interfaceId) {
-        return ResponseEntity.ok().body(discoveredInterfaceService.getOperationsByInterfaceId(interfaceId));
+    public ResponseEntity<DiscoveredInterfaceDTO> getInterfaceOperations(@RequestParam(name = "id", required = false) Integer interfaceId,
+                                                                         @RequestParam(name = "external-id", required = false) Integer externalId,
+                                                                         @RequestParam(name = "api-id", required = false) Integer apiId) {
+        return ResponseEntity.ok().body(discoveredInterfaceService.getOperationsByInterfaceId(interfaceId, externalId, apiId));
     }
 }

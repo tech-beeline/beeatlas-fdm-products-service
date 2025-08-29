@@ -8,8 +8,10 @@ import java.util.Date;
 
 @Component
 public class OperationMapper {
-    public Operation convertToOperation(MethodDTO methodDTO, Integer interfaceId) {
+    public Operation convertToOperation(MethodDTO methodDTO, Integer interfaceId, Integer tcId) {
         return Operation.builder()
+                .tcId(tcId)
+                .type(methodDTO.getType())
                 .name(methodDTO.getName())
                 .description(methodDTO.getDescription())
                 .returnType(methodDTO.getReturnType())
@@ -18,10 +20,13 @@ public class OperationMapper {
                 .build();
     }
 
-    public void updateOperation(Operation operation, MethodDTO methodDTO) {
+    public void updateOperation(Operation operation, MethodDTO methodDTO, Integer tcId, Integer interfaceId) {
+        operation.setTcId(tcId);
         operation.setName(methodDTO.getName());
         operation.setDescription(methodDTO.getDescription());
+        operation.setInterfaceId(interfaceId);
         operation.setReturnType(methodDTO.getReturnType());
+        operation.setType(methodDTO.getType());
         operation.setUpdatedDate(new Date());
     }
 }

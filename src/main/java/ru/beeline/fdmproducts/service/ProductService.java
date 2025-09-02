@@ -416,7 +416,7 @@ public class ProductService {
                 operationRepository.save(updateOperation);
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
-                    .equals(updateOperation.getReturnType())) {
+                    .equals(updateOperation.getReturnType()) || !tcId.equals(updateOperation.getTcId())) {
                 operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
                 operationRepository.save(updateOperation);
             }

@@ -33,7 +33,6 @@ public class ProductService {
     private final SlaMapper slaMapper;
     private final ParameterMapper parameterMapper;
     private final AssessmentMapper assessmentMapper;
-    private final FitnessFunctionMapper fitnessFunctionMapper;
     private final CapabilityClient capabilityClient;
     private final TechradarClient techradarClient;
     private final UserProductRepository userProductRepository;
@@ -51,7 +50,6 @@ public class ProductService {
     private final EnumSourceTypeRepository enumSourceTypeRepository;
     private final PatternsAssessmentRepository patternsAssessmentRepository;
     private final PatternsCheckRepository patternsCheckRepository;
-    private final DiscoveredInterfaceMapper discoveredInterfaceMapper;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
 
@@ -62,7 +60,6 @@ public class ProductService {
                           SlaMapper slaMapper,
                           ParameterMapper parameterMapper,
                           AssessmentMapper assessmentMapper,
-                          FitnessFunctionMapper fitnessFunctionMapper,
                           CapabilityClient capabilityClient,
                           TechradarClient techradarClient,
                           UserProductRepository userProductRepository,
@@ -80,7 +77,6 @@ public class ProductService {
                           EnumSourceTypeRepository enumSourceTypeRepository,
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
-                          DiscoveredInterfaceMapper discoveredInterfaceMapper,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
                           DiscoveredOperationRepository discoveredOperationRepository) {
         this.containerMapper = containerMapper;
@@ -90,7 +86,6 @@ public class ProductService {
         this.slaMapper = slaMapper;
         this.parameterMapper = parameterMapper;
         this.assessmentMapper = assessmentMapper;
-        this.fitnessFunctionMapper = fitnessFunctionMapper;
         this.capabilityClient = capabilityClient;
         this.techradarClient = techradarClient;
         this.userProductRepository = userProductRepository;
@@ -108,7 +103,6 @@ public class ProductService {
         this.enumSourceTypeRepository = enumSourceTypeRepository;
         this.patternsAssessmentRepository = patternsAssessmentRepository;
         this.patternsCheckRepository = patternsCheckRepository;
-        this.discoveredInterfaceMapper = discoveredInterfaceMapper;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
         this.discoveredOperationRepository = discoveredOperationRepository;
     }
@@ -144,6 +138,17 @@ public class ProductService {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
         return product;
+    }
+
+    public ProductInfoDTO getProductInfoByCode(String code) {
+        if (code == null || code.equals("\n") || code.equals(" \n")) {
+            throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(code);
+        if (product == null) {
+            throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
+        }
+        return productTechMapper.mapToProductInfoDTO(product);
     }
 
     public List<Product> findAllWithTechProductNotDeleted() {

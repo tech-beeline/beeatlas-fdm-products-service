@@ -48,6 +48,12 @@ public class ProductController {
         return productService.getProductByCode(code);
     }
 
+    @GetMapping("/product/{code}/info")
+    @ApiOperation(value = "Получить инфо продукта по alias", response = ProductInfoDTO.class)
+    public ProductInfoDTO getProductsInfoByCode(@PathVariable String code) {
+        return productService.getProductInfoByCode(code);
+    }
+
     @GetMapping("/product/api-secret/{api-key}")
     @ApiOperation(value = "Получение api secret из таблицы product")
     public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {

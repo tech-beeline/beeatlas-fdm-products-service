@@ -108,6 +108,12 @@ public class ProductController {
         return productService.getProductsFromMapic(cmdb);
     }
 
+    @GetMapping("/product/{cmdb}/container")
+    @ApiOperation(value = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb) {
+        return productService.getContainersFromStructurizr(cmdb);
+    }
+
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
     public ResponseEntity postUserProducts(@PathVariable String id, @RequestBody List<String> aliasLIst) {

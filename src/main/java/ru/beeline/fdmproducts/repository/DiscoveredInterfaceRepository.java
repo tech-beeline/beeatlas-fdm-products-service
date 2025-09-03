@@ -25,6 +25,8 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     Optional<DiscoveredInterface> findByConnectionInterfaceId(Integer interfaceId);
 
+    List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
+
     List<DiscoveredInterface> findAllByProduct(Product product);
 
     Optional<DiscoveredInterface> findByExternalId(Integer externalId);

@@ -1,5 +1,7 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +25,7 @@ public class DiscoveredOperation {
     @SequenceGenerator(name = "discovered_operation_generator", sequenceName = "discovered_operation_id_seq", allocationSize = 1)
     private Integer id;
 
+    @JsonBackReference
     @ToString.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "interface_id" )
@@ -53,6 +56,8 @@ public class DiscoveredOperation {
 
     @Column(name = "deleted_date")
     private LocalDateTime deletedDate;
+
+    @JsonManagedReference
     @ToString.Exclude
     @OneToMany(mappedBy = "discoveredOperation")
     private List<DiscoveredParameter> parameters;

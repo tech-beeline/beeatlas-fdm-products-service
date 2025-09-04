@@ -1,6 +1,7 @@
 package ru.beeline.fdmproducts.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -61,6 +62,7 @@ public class DiscoveredInterface {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
+    @JsonManagedReference
     @ToString.Exclude
     @OneToMany(mappedBy = "discoveredInterface")
     private List<DiscoveredOperation> operations;

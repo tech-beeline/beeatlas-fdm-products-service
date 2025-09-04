@@ -18,6 +18,7 @@ public class ProductMapicInterfaceDTO {
     private Integer apiId;
     private String description;
     private String context;
+    private String contextProvider;
     private MapicInterfaceDTO connectInterface;
     private List<ConnectOperationDTO> operations;
 }

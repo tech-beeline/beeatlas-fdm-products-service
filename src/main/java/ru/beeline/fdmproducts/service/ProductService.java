@@ -33,7 +33,6 @@ public class ProductService {
     private final SlaMapper slaMapper;
     private final ParameterMapper parameterMapper;
     private final AssessmentMapper assessmentMapper;
-    private final FitnessFunctionMapper fitnessFunctionMapper;
     private final CapabilityClient capabilityClient;
     private final TechradarClient techradarClient;
     private final UserProductRepository userProductRepository;
@@ -51,7 +50,6 @@ public class ProductService {
     private final EnumSourceTypeRepository enumSourceTypeRepository;
     private final PatternsAssessmentRepository patternsAssessmentRepository;
     private final PatternsCheckRepository patternsCheckRepository;
-    private final DiscoveredInterfaceMapper discoveredInterfaceMapper;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
 
@@ -62,7 +60,6 @@ public class ProductService {
                           SlaMapper slaMapper,
                           ParameterMapper parameterMapper,
                           AssessmentMapper assessmentMapper,
-                          FitnessFunctionMapper fitnessFunctionMapper,
                           CapabilityClient capabilityClient,
                           TechradarClient techradarClient,
                           UserProductRepository userProductRepository,
@@ -80,7 +77,6 @@ public class ProductService {
                           EnumSourceTypeRepository enumSourceTypeRepository,
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
-                          DiscoveredInterfaceMapper discoveredInterfaceMapper,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
                           DiscoveredOperationRepository discoveredOperationRepository) {
         this.containerMapper = containerMapper;
@@ -90,7 +86,6 @@ public class ProductService {
         this.slaMapper = slaMapper;
         this.parameterMapper = parameterMapper;
         this.assessmentMapper = assessmentMapper;
-        this.fitnessFunctionMapper = fitnessFunctionMapper;
         this.capabilityClient = capabilityClient;
         this.techradarClient = techradarClient;
         this.userProductRepository = userProductRepository;
@@ -108,7 +103,6 @@ public class ProductService {
         this.enumSourceTypeRepository = enumSourceTypeRepository;
         this.patternsAssessmentRepository = patternsAssessmentRepository;
         this.patternsCheckRepository = patternsCheckRepository;
-        this.discoveredInterfaceMapper = discoveredInterfaceMapper;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
         this.discoveredOperationRepository = discoveredOperationRepository;
     }
@@ -144,6 +138,17 @@ public class ProductService {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
         return product;
+    }
+
+    public ProductInfoDTO getProductInfoByCode(String code) {
+        if (code == null || code.equals("\n") || code.equals(" \n")) {
+            throw new IllegalArgumentException("Параметр alias не должен быть пустым.");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(code);
+        if (product == null) {
+            throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
+        }
+        return productTechMapper.mapToProductInfoDTO(product);
     }
 
     public List<Product> findAllWithTechProductNotDeleted() {
@@ -360,7 +365,7 @@ public class ProductService {
                 containerId);
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
         Integer tcId = null;
-        if (!searchCapabilityDTOS.isEmpty()) {
+        if (searchCapabilityDTOS != null && !searchCapabilityDTOS.isEmpty()) {
             SearchCapabilityDTO searchCapabilityDTO = searchCapabilityDTOS.get(0);
             if (searchCapabilityDTO.getCode().equals(interfaceDTO.getCapabilityCode())) {
                 tcId = searchCapabilityDTO.getId();
@@ -712,6 +717,9 @@ public class ProductService {
                 Interface anInterface = discoveredInterface.getConnectedInterface();
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         discoveredInterface.getId());
+                if (discoveredOperations != null && !discoveredOperations.isEmpty()) {
+                    productMapicInterfaceDTO.setContextProvider(discoveredOperations.get(0).getContext());
+                }
                 List<ConnectOperationDTO> operationDTOS = discoveredOperations.stream()
                         .filter(d -> d.getConnectionOperationId() != null)
                         .map(discoveredOperation -> {
@@ -833,5 +841,129 @@ public class ProductService {
             connectOperationDTO.setConnectOperation(mapicOperationDTO);
         }
         return connectOperationDTO;
+    }
+
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb) {
+        Product product = productRepository.findByAliasCaseInsensitive(cmdb);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
+        }
+        List<ContainerInterfacesDTO> result = new ArrayList<>();
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductId(product.getId());
+        if (!containerProducts.isEmpty()) {
+            for (ContainerProduct containerProduct : containerProducts) {
+                result.add(ContainerInterfacesDTO.builder()
+                        .id(containerProduct.getId())
+                        .name(containerProduct.getName())
+                        .code(containerProduct.getCode())
+                        .interfaces(createInterfaceMethodDTOS(containerProduct.getId()))
+                        .build());
+            }
+        }
+        return result;
+    }
+
+    private List<InterfaceMethodDTO> createInterfaceMethodDTOS(Integer containerId) {
+        List<InterfaceMethodDTO> result = new ArrayList<>();
+        List<Interface> interfaces = interfaceRepository.findAllByContainerId(containerId);
+        if (interfaces.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> tcIds = interfaces.stream().map(Interface::getTcId).toList();
+        List<Integer> interfaceIds = interfaces.stream().map(Interface::getId).toList();
+        List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllByConnectionInterfaceIdIn(interfaceIds);
+        Map<Integer, DiscoveredInterface> discoveredInterfaceMap = discoveredInterfaces.stream()
+                .collect(Collectors.toMap(DiscoveredInterface::getConnectionInterfaceId, obj -> obj));
+        Map<Integer, TcDTO> tcDTOMap = loadTcDTOMap(tcIds);
+        for (Interface interfaceObj : interfaces) {
+            result.add(InterfaceMethodDTO.builder()
+                    .id(interfaceObj.getId())
+                    .name(interfaceObj.getName())
+                    .description(interfaceObj.getDescription())
+                    .version(interfaceObj.getVersion())
+                    .mapicInterface(createMapicInterface(discoveredInterfaceMap.get(interfaceObj.getId())))
+                    .operations(createOperations(
+                            operationRepository.findAllByInterfaceId(interfaceObj.getId())))
+                    .techCapability(tcDTOMap.get(interfaceObj.getTcId()))
+                    .build());
+        }
+        return result;
+    }
+
+    private Map<Integer, TcDTO> loadTcDTOMap(List<Integer> tcIds) {
+        if (tcIds == null || tcIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        List<TcDTO> tcDtos = capabilityClient.getTcs(tcIds);
+        return tcDtos.stream().collect(Collectors.toMap(TcDTO::getId, tc -> tc));
+    }
+
+    private MapicInterfaceDTO createMapicInterface(DiscoveredInterface discoveredInterface) {
+        if (discoveredInterface != null) {
+            return MapicInterfaceDTO.builder()
+                    .id(discoveredInterface.getId())
+                    .name(discoveredInterface.getName())
+                    .description(discoveredInterface.getDescription())
+                    .build();
+        }
+        return null;
+    }
+
+    private List<OperationFullDTO> createOperations(List<Operation> operations) {
+        List<OperationFullDTO> result = new ArrayList<>();
+        if (operations.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> operationId = operations.stream().map(Operation::getId).toList();
+        List<Integer> tcIds = operations.stream().map(Operation::getTcId).toList();
+        List<Sla> slas = slaRepository.findAllByOperationIdIn(operationId);
+        List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByConnectionOperationIdIn(operationId);
+        Map<Integer, Sla> slaMap = slas.stream().collect(Collectors.toMap(Sla::getOperationId, sla -> sla));
+        Map<Integer, TcDTO> tcDTOMap = loadTcDTOMap(tcIds);
+        Map<Integer, DiscoveredOperation> discoveredOperationMap = discoveredOperations.stream()
+                .collect(Collectors.toMap(DiscoveredOperation::getConnectionOperationId, obj -> obj));
+        for (Operation operation : operations) {
+            result.add(OperationFullDTO.builder()
+                    .id(operation.getId())
+                    .description(operation.getDescription())
+                    .name(operation.getName())
+                    .type(operation.getType())
+                    .mapicOperation(createMapicOperationFullDTO(discoveredOperationMap.get(operation.getId())))
+                    .sla(createSlaV2DTO(slaMap.get(operation.getId())))
+                    .techCapability(tcDTOMap.get(operation.getTcId()))
+                    .build());
+        }
+        return result;
+    }
+
+    private MapicOperationFullDTO createMapicOperationFullDTO(DiscoveredOperation discoveredOperation) {
+        if (discoveredOperation != null) {
+            String contextApi = null;
+            Optional<DiscoveredInterface> optDiscoveredInterface = discoveredInterfaceRepository
+                    .findById(discoveredOperation.getInterfaceId());
+            if (optDiscoveredInterface.isPresent()) {
+                contextApi = optDiscoveredInterface.get().getContext();
+            }
+            return MapicOperationFullDTO.builder()
+                    .id(discoveredOperation.getId())
+                    .name(discoveredOperation.getName())
+                    .type(discoveredOperation.getType())
+                    .description(discoveredOperation.getDescription())
+                    .context(discoveredOperation.getContext())
+                    .contextApi(contextApi)
+                    .build();
+        }
+        return null;
+    }
+
+    private SlaV2DTO createSlaV2DTO(Sla sla) {
+        if (sla != null) {
+            return SlaV2DTO.builder()
+                    .latency(sla.getLatency())
+                    .errorRate(sla.getErrorRate())
+                    .rps(sla.getRps())
+                    .build();
+        }
+        return null;
     }
 }

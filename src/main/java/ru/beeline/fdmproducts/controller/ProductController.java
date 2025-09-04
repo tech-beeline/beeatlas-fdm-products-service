@@ -48,6 +48,12 @@ public class ProductController {
         return productService.getProductByCode(code);
     }
 
+    @GetMapping("/product/{code}/info")
+    @ApiOperation(value = "Получить инфо продукта по alias", response = ProductInfoDTO.class)
+    public ProductInfoDTO getProductsInfoByCode(@PathVariable String code) {
+        return productService.getProductInfoByCode(code);
+    }
+
     @GetMapping("/product/api-secret/{api-key}")
     @ApiOperation(value = "Получение api secret из таблицы product")
     public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
@@ -100,6 +106,12 @@ public class ProductController {
     @ApiOperation(value = "Интерфейсы продукта полученные из мапик")
     public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb) {
         return productService.getProductsFromMapic(cmdb);
+    }
+
+    @GetMapping("/product/{cmdb}/container")
+    @ApiOperation(value = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb) {
+        return productService.getContainersFromStructurizr(cmdb);
     }
 
     @PostMapping("/user/{id}/products")

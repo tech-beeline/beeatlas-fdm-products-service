@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -21,7 +22,8 @@ public class DiscoveredParameter {
     @SequenceGenerator(name = "discovered_parameter_generator", sequenceName = "discovered_parameter_id_seq", allocationSize = 1)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @JsonBackReference
+   @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "operation_id")
     private DiscoveredOperation discoveredOperation;
 

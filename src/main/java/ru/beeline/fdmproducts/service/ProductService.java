@@ -300,7 +300,8 @@ public class ProductService {
                         for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
                             list = "Method";
                             validateField(methodDTO.getName(), list, "name");
-                            Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId);
+                            Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId,
+                                    createdOrUpdatedInterface.getTcId());
                             Integer operationId = createdOrUpdatedOperation.getId();
                             existingOrCreatedOperation.add(createdOrUpdatedOperation);
                             if (methodDTO.getSla() != null) {
@@ -397,12 +398,12 @@ public class ProductService {
                 .equals(interfaceDTO.getProtocol());
     }
 
-    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId) {
+    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId, Integer tcIdInterface) {
         Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(),
                 interfaceId);
         Integer tcId = getTCId(methodDTO.getCapabilityCode());
         if (tcId == null) {
-            tcId = interfaceId;
+            tcId = tcIdInterface;
         }
         if (optionalOperation.isEmpty()) {
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
@@ -416,7 +417,7 @@ public class ProductService {
                 operationRepository.save(updateOperation);
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
-                    .equals(updateOperation.getReturnType()) || !tcId.equals(updateOperation.getTcId())) {
+                    .equals(updateOperation.getReturnType()) || !Objects.equals(tcId, updateOperation.getTcId())) {
                 operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
                 operationRepository.save(updateOperation);
             }

@@ -12,6 +12,8 @@ import ru.beeline.fdmproducts.dto.RelationDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -32,8 +34,9 @@ public class InfraService {
     @Autowired
     private InfraProductRepository infraProductRepository;
 
-    public void syncInfrastructure(String productAlias, InfraRequestDTO request) {
-        log.info("start of the Product Infrastructure Synchronization method:" + request.toString());
+    public void syncInfrastructure(String alias, InfraRequestDTO request) {
+        log.info("start of the Product Infrastructure Synchronization method");
+        String productAlias = URLDecoder.decode(alias, StandardCharsets.UTF_8);
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
         log.info("product is" + product);
 

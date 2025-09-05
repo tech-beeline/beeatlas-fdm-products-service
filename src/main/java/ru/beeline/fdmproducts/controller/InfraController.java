@@ -20,10 +20,8 @@ public class InfraController {
 
     @PostMapping
     @ApiOperation("Синхронизация инфраструктуры продукта")
-    public ResponseEntity<Void> syncInfrastructure(
-            @RequestParam String product,
-            @RequestBody InfraRequestDTO request) {
-
+    public ResponseEntity<Void> syncInfrastructure(@RequestParam String product,
+                                                   @RequestBody InfraRequestDTO request) {
         infraService.syncInfrastructure(product, request);
         return ResponseEntity.status(HttpStatus.CREATED).build();
     }

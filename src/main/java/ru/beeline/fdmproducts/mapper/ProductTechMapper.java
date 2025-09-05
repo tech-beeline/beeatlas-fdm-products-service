@@ -3,10 +3,7 @@ package ru.beeline.fdmproducts.mapper;
 import org.springframework.stereotype.Component;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.ProductDTO;
-import ru.beeline.fdmproducts.dto.ProductInfoDTO;
-import ru.beeline.fdmproducts.dto.TechDTO;
-import ru.beeline.fdmproducts.dto.TechInfoDTO;
+import ru.beeline.fdmproducts.dto.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +54,8 @@ public class ProductTechMapper {
                 .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
                 .techProducts(product.getTechProducts()
                                       .stream()
+                                      .filter(techProduct -> techProduct.getDeletedDate() == null)
+                                      //.filter(techProduct -> techProduct.rew() == null)
                                       .map(techProduct -> TechInfoDTO.builder()
                                               .id(techProduct.getId())
                                               .techId(techProduct.getTechId())
@@ -67,5 +66,19 @@ public class ProductTechMapper {
                                               .build())
                                       .collect(Collectors.toList()))
                 .build();
+    }
+
+    public List<ProductInfoShortDTO> mapToProductInfoShortDTO(List<Product> products) {
+        return products.stream()
+                .map(product -> ProductInfoShortDTO.builder()
+                        .alias(product.getAlias())
+                        .description(product.getDescription())
+                        .gitUrl(product.getGitUrl())
+                        .id(product.getId().toString())
+                        .name(product.getName())
+                        .structurizrApiUrl(product.getStructurizrApiUrl())
+                        .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                        .build())
+                .collect(Collectors.toList());
     }
 }

@@ -142,7 +142,8 @@ public class DiscoveredInterfaceService {
                                 .parameterType(paramDTO.getParameterType())
                                 .createdDate(now)
                                 .build();
-                        discoveredParameterRepository.save(param);
+                        param = discoveredParameterRepository.save(param);
+                        existingParamsMap.put(key, param);
                     }
                 }
             }

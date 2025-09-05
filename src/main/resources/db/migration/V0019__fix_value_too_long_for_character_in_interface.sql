@@ -1,0 +1,2 @@
+ALTER TABLE product.interface ALTER COLUMN name TYPE VARCHAR(250);
+ALTER TABLE product.interface ALTER COLUMN spec_link TYPE VARCHAR(250);

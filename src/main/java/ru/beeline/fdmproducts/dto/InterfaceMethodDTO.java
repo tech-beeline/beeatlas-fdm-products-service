@@ -14,6 +14,8 @@ public class InterfaceMethodDTO {
     private Integer id;
     private String description;
     private String name;
+    private String specLink;
+    private String protocol;
     private String version;
     private TcDTO techCapability;
     private MapicInterfaceDTO mapicInterface;

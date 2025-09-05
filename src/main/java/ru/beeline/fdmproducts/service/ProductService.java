@@ -879,6 +879,8 @@ public class ProductService {
             result.add(InterfaceMethodDTO.builder()
                     .id(interfaceObj.getId())
                     .name(interfaceObj.getName())
+                    .specLink(interfaceObj.getSpecLink())
+                    .protocol(interfaceObj.getProtocol())
                     .description(interfaceObj.getDescription())
                     .version(interfaceObj.getVersion())
                     .mapicInterface(createMapicInterface(discoveredInterfaceMap.get(interfaceObj.getId())))

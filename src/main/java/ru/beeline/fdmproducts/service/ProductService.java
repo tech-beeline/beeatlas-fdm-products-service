@@ -278,6 +278,7 @@ public class ProductService {
     }
 
     public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
+        log.info("Старт метода createOrUpdateProductRelations ");
         Product product = getProductByCode(code);
         for (ContainerDTO containerDTO : containerDTOS) {
             String list = "Container";
@@ -286,9 +287,9 @@ public class ProductService {
             ContainerProduct container = createOrUpdateContainer(containerDTO, product);
             Integer containerId = container.getId();
             if (containerDTO.getInterfaces() != null && !containerDTO.getInterfaces().isEmpty()) {
-
                 List<Interface> existingOrCreatedInterface = new ArrayList<>();
                 for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
+                    log.info(" обработка interfaceDTO");
                     list = "Interface";
                     validateField(interfaceDTO.getName(), list, "name");
                     validateField(interfaceDTO.getCode(), list, "code");
@@ -309,12 +310,12 @@ public class ProductService {
                             }
                             List<Parameter> existingOrCreatedParameters = new ArrayList<>();
                             if (methodDTO.getParameters() != null) {
+
                                 for (ParameterDTO parameterDTO : methodDTO.getParameters()) {
                                     list = "Parameter";
                                     validateField(parameterDTO.getName(), list, "name");
                                     validateField(parameterDTO.getType(), list, "type");
-                                    Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO,
-                                                                                                  operationId);
+                                    Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
                                     existingOrCreatedParameters.add(createdOrUpdatedParameter);
                                 }
                             }
@@ -322,14 +323,14 @@ public class ProductService {
                             markAsDeleted(existingOrCreatedParameters, allParameters);
                         }
                     }
-                    List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(
-                            interfaceId);
+                    List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
                     markAsDeleted(existingOrCreatedOperation, allOperations);
                 }
                 List<Interface> allInterfaces = interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
                 markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
         }
+        log.info("метод  createOrUpdateProductRelations method завершен");
     }
 
     private void validateField(String fieldValue, String entityName, String fieldName) {

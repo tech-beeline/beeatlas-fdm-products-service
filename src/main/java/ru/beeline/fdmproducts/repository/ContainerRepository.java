@@ -9,6 +9,10 @@ import java.util.Optional;
 
 @Repository
 public interface ContainerRepository extends JpaRepository<ContainerProduct, Integer> {
+
     Optional<ContainerProduct> findByCode(String code);
+
     List<ContainerProduct> findAllByProductId(Integer productId);
+
+    List<ContainerProduct> findAllByCodeIn(List<String> codes);
 }

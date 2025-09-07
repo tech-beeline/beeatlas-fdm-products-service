@@ -18,4 +18,6 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 
+    List<Operation> findByNameInAndInterfaceId (List<String> names, Integer interfaceId);
+
 }

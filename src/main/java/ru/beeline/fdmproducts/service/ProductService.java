@@ -280,36 +280,57 @@ public class ProductService {
     public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
         log.info("Старт метода createOrUpdateProductRelations ");
         Product product = getProductByCode(code);
+        List<String> containerDtoCodes = containerDTOS.stream().map(ContainerDTO::getCode).toList();
+        List<ContainerProduct> containerProducts = containerRepository.findAllByCodeIn(containerDtoCodes);
+        Map<String, ContainerProduct> containerProductMap = containerProducts.stream()
+                .collect(Collectors.toMap(
+                        ContainerProduct::getCode,
+                        containerProduct -> containerProduct
+                ));
+        List<ContainerProduct> saveUpdateContainers = new ArrayList<>();
         for (ContainerDTO containerDTO : containerDTOS) {
             String list = "Container";
             validateField(containerDTO.getName(), list, "name");
             validateField(containerDTO.getCode(), list, "code");
-            ContainerProduct container = createOrUpdateContainer(containerDTO, product);
+            ContainerProduct container = createOrUpdateContainer(containerDTO, product, containerProductMap.get(containerDTO.getCode()));
+            saveUpdateContainers.add(container);
             Integer containerId = container.getId();
             if (containerDTO.getInterfaces() != null && !containerDTO.getInterfaces().isEmpty()) {
                 List<Interface> existingOrCreatedInterface = new ArrayList<>();
+                List<String> codeInterfaces = containerDTO.getInterfaces().stream().map(InterfaceDTO::getCode).toList();
+                List<Interface> interfaces = interfaceRepository.findByCodeInAndContainerId(codeInterfaces, containerId);
+                Map<String, Interface> interfaceMap = interfaces.stream()
+                        .collect(Collectors.toMap(Interface::getCode, inter -> inter));
                 for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
                     log.info(" обработка interfaceDTO");
                     list = "Interface";
                     validateField(interfaceDTO.getName(), list, "name");
                     validateField(interfaceDTO.getCode(), list, "code");
-                    Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId);
+                    Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId,
+                            interfaceMap.get(interfaceDTO.getCode()));
                     Integer interfaceId = createdOrUpdatedInterface.getId();
                     existingOrCreatedInterface.add(createdOrUpdatedInterface);
                     List<Operation> existingOrCreatedOperation = new ArrayList<>();
-                    if (interfaceDTO.getMethods() != null) {
+                    if (interfaceDTO.getMethods() != null && !interfaceDTO.getMethods().isEmpty()) {
+                        List<String> methodNames = interfaceDTO.getMethods().stream()
+                                .map(MethodDTO::getName)
+                                .toList();
+                        List<Operation> operations = operationRepository.findByNameInAndInterfaceId(methodNames, interfaceId);
+                        Map<String, Operation> operationMap = operations.stream()
+                                .collect(Collectors.toMap(Operation::getName, operation -> operation));
+                        List<Sla> slas = new ArrayList<>();
                         for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
                             list = "Method";
                             validateField(methodDTO.getName(), list, "name");
                             Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId,
-                                    createdOrUpdatedInterface.getTcId());
+                                    createdOrUpdatedInterface.getTcId(), operationMap.get(methodDTO.getName()));
                             Integer operationId = createdOrUpdatedOperation.getId();
                             existingOrCreatedOperation.add(createdOrUpdatedOperation);
                             if (methodDTO.getSla() != null) {
-                                createOrUpdateSla(methodDTO, operationId);
+                                slas.add(createOrUpdateSla(methodDTO, operationId));
                             }
                             List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                            if (methodDTO.getParameters() != null) {
+                            if (methodDTO.getParameters() != null && !methodDTO.getParameters().isEmpty()) {
 
                                 for (ParameterDTO parameterDTO : methodDTO.getParameters()) {
                                     list = "Parameter";
@@ -319,51 +340,50 @@ public class ProductService {
                                     existingOrCreatedParameters.add(createdOrUpdatedParameter);
                                 }
                             }
+                            slaRepository.saveAll(slas);
                             List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
                             markAsDeleted(existingOrCreatedParameters, allParameters);
                         }
                     }
+                    operationRepository.saveAll(existingOrCreatedOperation);
                     List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
                     markAsDeleted(existingOrCreatedOperation, allOperations);
                 }
+                interfaceRepository.saveAll(existingOrCreatedInterface);
                 List<Interface> allInterfaces = interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
                 markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
         }
+        containerRepository.saveAll(saveUpdateContainers);
         log.info("метод  createOrUpdateProductRelations method завершен");
     }
 
     private void validateField(String fieldValue, String entityName, String fieldName) {
         if (fieldValue == null || fieldValue.isEmpty()) {
-            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s",
-                                                        entityName,
-                                                        fieldName));
+            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s", entityName, fieldName));
         }
     }
 
-    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product) {
-        Optional<ContainerProduct> optionalContainerProduct = containerRepository.findByCode(containerDTO.getCode());
-        if (optionalContainerProduct.isEmpty()) {
-            ContainerProduct containerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
-            containerRepository.save(containerProduct);
-            return containerProduct;
+    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product, ContainerProduct containerProduct) {
+        if (containerProduct == null) {
+            log.info("Создание контейнера с code: " + containerDTO.getCode());
+            ContainerProduct saveContainerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
+            return saveContainerProduct;
         } else {
-            ContainerProduct container = optionalContainerProduct.get();
-            if (!container.getName().equals(containerDTO.getName()) || !container.getVersion()
+            log.info("Обновление контейнера с code: " + containerDTO.getCode());
+            if (!containerProduct.getName().equals(containerDTO.getName()) || !containerProduct.getVersion()
                     .equals(containerDTO.getVersion())) {
-                containerMapper.updateContainerProduct(container, containerDTO, product);
-                containerRepository.save(container);
+                containerMapper.updateContainerProduct(containerProduct, containerDTO, product);
             }
-            return container;
+            return containerProduct;
         }
     }
 
-    private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId) {
+    private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId, Interface interfaceObj) {
         if (interfaceDTO.getCapabilityCode() == null) {
             throw new IllegalArgumentException("Capability code is empty");
         }
-        Optional<Interface> optionalInterface = interfaceRepository.findByCodeAndContainerId(interfaceDTO.getCode(),
-                                                                                             containerId);
+        log.info("Запрос в /api/v1/find?search=" + interfaceDTO.getCapabilityCode());
         List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
         Integer tcId = null;
         if (searchCapabilityDTOS != null && !searchCapabilityDTOS.isEmpty()) {
@@ -372,22 +392,20 @@ public class ProductService {
                 tcId = searchCapabilityDTO.getId();
             }
         }
-        if (optionalInterface.isEmpty()) {
+        if (interfaceObj == null) {
+            log.info("Создание интерфейса с Code: " + interfaceDTO.getCode());
             Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, tcId);
-            interfaceRepository.save(newInterface);
             return newInterface;
         } else {
-            Interface getInterface = optionalInterface.get();
-            if (getInterface.getDeletedDate() != null) {
-                getInterface.setDeletedDate(null);
-                getInterface.setUpdatedDate(new Date());
-                interfaceRepository.save(getInterface);
+            log.info("Обновление интерфейса с Code: " + interfaceDTO.getCode());
+            if (interfaceObj.getDeletedDate() != null) {
+                interfaceObj.setDeletedDate(null);
+                interfaceObj.setUpdatedDate(new Date());
             }
-            if (!equalsInterfaces(getInterface, interfaceDTO, tcId)) {
-                interfaceMapper.updateInterface(getInterface, interfaceDTO, containerId, tcId);
-                interfaceRepository.save(getInterface);
+            if (!equalsInterfaces(interfaceObj, interfaceDTO, tcId)) {
+                interfaceMapper.updateInterface(interfaceObj, interfaceDTO, containerId, tcId);
             }
-            return getInterface;
+            return interfaceObj;
         }
     }
 
@@ -395,32 +413,29 @@ public class ProductService {
         return getInterface.getName().equals(interfaceDTO.getName()) && getInterface.getVersion()
                 .equals(interfaceDTO.getVersion()) && getInterface.getSpecLink()
                 .equals(interfaceDTO.getSpecLink()) && Objects.equals(getInterface.getTcId(),
-                                                                      tcId) && getInterface.getProtocol()
+                tcId) && getInterface.getProtocol()
                 .equals(interfaceDTO.getProtocol());
     }
 
-    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId, Integer tcIdInterface) {
-        Optional<Operation> optionalOperation = operationRepository.findByNameAndInterfaceId(methodDTO.getName(),
-                                                                                             interfaceId);
+    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId, Integer tcIdInterface, Operation existingOperation) {
         Integer tcId = getTCId(methodDTO.getCapabilityCode());
         if (tcId == null) {
             tcId = tcIdInterface;
         }
-        if (optionalOperation.isEmpty()) {
+        if (existingOperation == null) {
+            log.info("Создание метода с name: " + methodDTO.getName());
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
-            operationRepository.save(operation);
             return operation;
         } else {
-            Operation updateOperation = optionalOperation.get();
+            log.info("Обновление метода с name: " + methodDTO.getName());
+            Operation updateOperation = existingOperation;
             if (updateOperation.getDeletedDate() != null) {
                 updateOperation.setDeletedDate(null);
                 updateOperation.setUpdatedDate(new Date());
-                operationRepository.save(updateOperation);
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
                     .equals(updateOperation.getReturnType()) || !Objects.equals(tcId, updateOperation.getTcId())) {
                 operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
-                operationRepository.save(updateOperation);
             }
             return updateOperation;
         }
@@ -437,7 +452,7 @@ public class ProductService {
         return null;
     }
 
-    private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
+    private Sla createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
         Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
         Sla sla;
         if (optionalSla.isEmpty()) {
@@ -446,7 +461,7 @@ public class ProductService {
             sla = optionalSla.get();
             slaMapper.updateSla(sla, methodDTO);
         }
-        slaRepository.save(sla);
+        return sla;
     }
 
     private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
@@ -499,8 +514,8 @@ public class ProductService {
             Map<Integer, List<GetProductsDTO>> productsDTOByTechId = techProducts.stream()
                     .filter(techProduct -> techProduct.getProduct() != null)
                     .collect(Collectors.groupingBy(TechProduct::getTechId,
-                                                   Collectors.mapping(techProduct -> productTechMapper.mapToGetProductsDTO(
-                                                           techProduct.getProduct()), Collectors.toList())));
+                            Collectors.mapping(techProduct -> productTechMapper.mapToGetProductsDTO(
+                                    techProduct.getProduct()), Collectors.toList())));
             List<GetProductTechDto> productTechDtoList = productsDTOByTechId.entrySet()
                     .stream()
                     .map(entry -> GetProductTechDto.builder().techId(entry.getKey()).products(entry.getValue()).build())
@@ -532,11 +547,11 @@ public class ProductService {
             throw new IllegalArgumentException("Оценка для данного источника и продукта уже существует.");
         }
         LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder()
-                                                                       .sourceId(sourceId)
-                                                                       .product(product)
-                                                                       .sourceTypeId(enumSourceType.getId())
-                                                                       .createdTime(LocalDateTime.now())
-                                                                       .build());
+                .sourceId(sourceId)
+                .product(product)
+                .sourceTypeId(enumSourceType.getId())
+                .createdTime(LocalDateTime.now())
+                .build());
         requests.forEach(request -> processAssessmentCheck(request, assessment));
     }
 
@@ -554,8 +569,8 @@ public class ProductService {
                     throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
                 } else {
                     assessment = assessmentRepository.findBySourceIdAndProductIdAndSourceTypeId(sourceId,
-                                                                                                product.getId(),
-                                                                                                enumSourceType.getId())
+                                    product.getId(),
+                                    enumSourceType.getId())
                             .orElseThrow(() -> new EntityNotFoundException(String.format(
                                     "Запись в таблице local_assessment с sourceId: %s, " + "SourceTypeId: %s, productId: %s не найдена",
                                     sourceId,
@@ -565,7 +580,7 @@ public class ProductService {
                 }
             } else {
                 assessment = assessmentRepository.findLatestBySourceTypeIdAndProductId(enumSourceType.getId(),
-                                                                                       product.getId())
+                                product.getId())
                         .orElseThrow(() -> new EntityNotFoundException(String.format(
                                 "Запись в таблице local_assessment с SourceTypeId: %s," + " productId: %s не найдена",
                                 enumSourceType.getId(),
@@ -725,7 +740,7 @@ public class ProductService {
                         .filter(d -> d.getConnectionOperationId() != null)
                         .map(discoveredOperation -> {
                             log.info("connection getConnectionOperationId = {}",
-                                     discoveredOperation.getConnectionOperationId());
+                                    discoveredOperation.getConnectionOperationId());
                             Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());
                             log.info("operationId = {}", operation.getId());
                             return createConnectOperationDTO(operation, discoveredOperation);
@@ -761,8 +776,8 @@ public class ProductService {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
                             operationDTOS.add(createOperationDTO(operation,
-                                                                 discoveredOperationRepository.findByConnectionOperationId(
-                                                                         operation.getId())));
+                                    discoveredOperationRepository.findByConnectionOperationId(
+                                            operation.getId())));
                         }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }

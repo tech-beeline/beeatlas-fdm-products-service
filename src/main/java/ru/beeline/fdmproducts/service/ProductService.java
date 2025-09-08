@@ -287,13 +287,11 @@ public class ProductService {
                         ContainerProduct::getCode,
                         containerProduct -> containerProduct
                 ));
-        List<ContainerProduct> saveUpdateContainers = new ArrayList<>();
         for (ContainerDTO containerDTO : containerDTOS) {
             String list = "Container";
             validateField(containerDTO.getName(), list, "name");
             validateField(containerDTO.getCode(), list, "code");
             ContainerProduct container = createOrUpdateContainer(containerDTO, product, containerProductMap.get(containerDTO.getCode()));
-            saveUpdateContainers.add(container);
             Integer containerId = container.getId();
             if (containerDTO.getInterfaces() != null && !containerDTO.getInterfaces().isEmpty()) {
                 List<Interface> existingOrCreatedInterface = new ArrayList<>();
@@ -318,7 +316,6 @@ public class ProductService {
                         List<Operation> operations = operationRepository.findByNameInAndInterfaceId(methodNames, interfaceId);
                         Map<String, Operation> operationMap = operations.stream()
                                 .collect(Collectors.toMap(Operation::getName, operation -> operation));
-                        List<Sla> slas = new ArrayList<>();
                         for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
                             list = "Method";
                             validateField(methodDTO.getName(), list, "name");
@@ -327,11 +324,10 @@ public class ProductService {
                             Integer operationId = createdOrUpdatedOperation.getId();
                             existingOrCreatedOperation.add(createdOrUpdatedOperation);
                             if (methodDTO.getSla() != null) {
-                                slas.add(createOrUpdateSla(methodDTO, operationId));
+                                createOrUpdateSla(methodDTO, operationId);
                             }
                             List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                            if (methodDTO.getParameters() != null && !methodDTO.getParameters().isEmpty()) {
-
+                            if (methodDTO.getParameters() != null) {
                                 for (ParameterDTO parameterDTO : methodDTO.getParameters()) {
                                     list = "Parameter";
                                     validateField(parameterDTO.getName(), list, "name");
@@ -340,27 +336,25 @@ public class ProductService {
                                     existingOrCreatedParameters.add(createdOrUpdatedParameter);
                                 }
                             }
-                            slaRepository.saveAll(slas);
                             List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
                             markAsDeleted(existingOrCreatedParameters, allParameters);
                         }
                     }
-                    operationRepository.saveAll(existingOrCreatedOperation);
                     List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
                     markAsDeleted(existingOrCreatedOperation, allOperations);
                 }
-                interfaceRepository.saveAll(existingOrCreatedInterface);
                 List<Interface> allInterfaces = interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
                 markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
         }
-        containerRepository.saveAll(saveUpdateContainers);
         log.info("метод  createOrUpdateProductRelations method завершен");
     }
 
     private void validateField(String fieldValue, String entityName, String fieldName) {
         if (fieldValue == null || fieldValue.isEmpty()) {
-            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s", entityName, fieldName));
+            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s",
+                    entityName,
+                    fieldName));
         }
     }
 
@@ -368,12 +362,14 @@ public class ProductService {
         if (containerProduct == null) {
             log.info("Создание контейнера с code: " + containerDTO.getCode());
             ContainerProduct saveContainerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
+            containerRepository.save(saveContainerProduct);
             return saveContainerProduct;
         } else {
             log.info("Обновление контейнера с code: " + containerDTO.getCode());
             if (!containerProduct.getName().equals(containerDTO.getName()) || !containerProduct.getVersion()
                     .equals(containerDTO.getVersion())) {
                 containerMapper.updateContainerProduct(containerProduct, containerDTO, product);
+                containerRepository.save(containerProduct);
             }
             return containerProduct;
         }
@@ -393,17 +389,18 @@ public class ProductService {
             }
         }
         if (interfaceObj == null) {
-            log.info("Создание интерфейса с Code: " + interfaceDTO.getCode());
             Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, tcId);
+            interfaceRepository.save(newInterface);
             return newInterface;
         } else {
-            log.info("Обновление интерфейса с Code: " + interfaceDTO.getCode());
             if (interfaceObj.getDeletedDate() != null) {
                 interfaceObj.setDeletedDate(null);
                 interfaceObj.setUpdatedDate(new Date());
+                interfaceRepository.save(interfaceObj);
             }
             if (!equalsInterfaces(interfaceObj, interfaceDTO, tcId)) {
                 interfaceMapper.updateInterface(interfaceObj, interfaceDTO, containerId, tcId);
+                interfaceRepository.save(interfaceObj);
             }
             return interfaceObj;
         }
@@ -425,6 +422,7 @@ public class ProductService {
         if (existingOperation == null) {
             log.info("Создание метода с name: " + methodDTO.getName());
             Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
+            operationRepository.save(operation);
             return operation;
         } else {
             log.info("Обновление метода с name: " + methodDTO.getName());
@@ -432,10 +430,12 @@ public class ProductService {
             if (updateOperation.getDeletedDate() != null) {
                 updateOperation.setDeletedDate(null);
                 updateOperation.setUpdatedDate(new Date());
+                operationRepository.save(updateOperation);
             }
             if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
                     .equals(updateOperation.getReturnType()) || !Objects.equals(tcId, updateOperation.getTcId())) {
                 operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
+                operationRepository.save(updateOperation);
             }
             return updateOperation;
         }
@@ -452,7 +452,7 @@ public class ProductService {
         return null;
     }
 
-    private Sla createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
+    private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
         Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
         Sla sla;
         if (optionalSla.isEmpty()) {
@@ -461,7 +461,7 @@ public class ProductService {
             sla = optionalSla.get();
             slaMapper.updateSla(sla, methodDTO);
         }
-        return sla;
+        slaRepository.save(sla);
     }
 
     private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
@@ -480,6 +480,7 @@ public class ProductService {
             return optionalParameter.get();
         }
     }
+
 
     private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
         List<Parameter> parametersToDelete = new ArrayList<>();

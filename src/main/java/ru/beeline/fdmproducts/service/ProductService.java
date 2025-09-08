@@ -19,6 +19,7 @@ import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Transactional
@@ -278,131 +279,269 @@ public class ProductService {
     }
 
     public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
-        log.info("Старт метода createOrUpdateProductRelations ");
+        log.info("Старт метода createOrUpdateProductRelations");
         Product product = getProductByCode(code);
-        List<String> containerDtoCodes = containerDTOS.stream().map(ContainerDTO::getCode).toList();
-        List<ContainerProduct> containerProducts = containerRepository.findAllByCodeIn(containerDtoCodes);
-        Map<String, ContainerProduct> containerProductMap = containerProducts.stream()
-                .collect(Collectors.toMap(
-                        ContainerProduct::getCode,
-                        containerProduct -> containerProduct
-                ));
-        for (ContainerDTO containerDTO : containerDTOS) {
-            String list = "Container";
-            validateField(containerDTO.getName(), list, "name");
-            validateField(containerDTO.getCode(), list, "code");
-            ContainerProduct container = createOrUpdateContainer(containerDTO, product, containerProductMap.get(containerDTO.getCode()));
-            Integer containerId = container.getId();
-            if (containerDTO.getInterfaces() != null && !containerDTO.getInterfaces().isEmpty()) {
-                List<Interface> existingOrCreatedInterface = new ArrayList<>();
-                List<String> codeInterfaces = containerDTO.getInterfaces().stream().map(InterfaceDTO::getCode).toList();
-                List<Interface> interfaces = interfaceRepository.findByCodeInAndContainerId(codeInterfaces, containerId);
-                Map<String, Interface> interfaceMap = interfaces.stream()
-                        .collect(Collectors.toMap(Interface::getCode, inter -> inter));
-                for (InterfaceDTO interfaceDTO : containerDTO.getInterfaces()) {
-                    log.info(" обработка interfaceDTO");
-                    list = "Interface";
-                    validateField(interfaceDTO.getName(), list, "name");
-                    validateField(interfaceDTO.getCode(), list, "code");
-                    Interface createdOrUpdatedInterface = createOrUpdateInterface(interfaceDTO, containerId,
-                            interfaceMap.get(interfaceDTO.getCode()));
-                    Integer interfaceId = createdOrUpdatedInterface.getId();
-                    existingOrCreatedInterface.add(createdOrUpdatedInterface);
-                    List<Operation> existingOrCreatedOperation = new ArrayList<>();
-                    if (interfaceDTO.getMethods() != null && !interfaceDTO.getMethods().isEmpty()) {
-                        List<String> methodNames = interfaceDTO.getMethods().stream()
-                                .map(MethodDTO::getName)
-                                .toList();
-                        List<Operation> operations = operationRepository.findByNameInAndInterfaceId(methodNames, interfaceId);
-                        Map<String, Operation> operationMap = operations.stream()
-                                .collect(Collectors.toMap(Operation::getName, operation -> operation));
-                        for (MethodDTO methodDTO : interfaceDTO.getMethods()) {
-                            list = "Method";
-                            validateField(methodDTO.getName(), list, "name");
-                            Operation createdOrUpdatedOperation = createOrUpdateOperation(methodDTO, interfaceId,
-                                    createdOrUpdatedInterface.getTcId(), operationMap.get(methodDTO.getName()));
-                            Integer operationId = createdOrUpdatedOperation.getId();
-                            existingOrCreatedOperation.add(createdOrUpdatedOperation);
-                            if (methodDTO.getSla() != null) {
-                                createOrUpdateSla(methodDTO, operationId);
-                            }
-                            List<Parameter> existingOrCreatedParameters = new ArrayList<>();
-                            if (methodDTO.getParameters() != null) {
-                                for (ParameterDTO parameterDTO : methodDTO.getParameters()) {
-                                    list = "Parameter";
-                                    validateField(parameterDTO.getName(), list, "name");
-                                    validateField(parameterDTO.getType(), list, "type");
-                                    Parameter createdOrUpdatedParameter = createOrUpdateParameter(parameterDTO, operationId);
-                                    existingOrCreatedParameters.add(createdOrUpdatedParameter);
-                                }
-                            }
-                            List<Parameter> allParameters = parameterRepository.findByOperationId(operationId);
-                            markAsDeleted(existingOrCreatedParameters, allParameters);
-                        }
-                    }
-                    List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceId);
-                    markAsDeleted(existingOrCreatedOperation, allOperations);
+        Map<String, ContainerProduct> existingContainers = containerRepository
+                .findAllByCodeIn(containerDTOS.stream().map(ContainerDTO::getCode).toList())
+                .stream()
+                .collect(Collectors.toMap(ContainerProduct::getCode, c -> c));
+        List<ContainerProduct> toSave = new ArrayList<>();
+        Map<String, List<InterfaceDTO>> interfacesByCode = new HashMap<>();
+        List<InterfaceDTO> allInterfaces = new ArrayList<>();
+        List<MethodDTO> allMethods = new ArrayList<>();
+
+        prepareContainersAndCollectData(containerDTOS, product, existingContainers, toSave, interfacesByCode,
+                allInterfaces, allMethods);
+        if (!toSave.isEmpty()) {
+            containerRepository.saveAll(toSave);
+        }
+        Map<String, Long> codesIdMap = loadInterfaceCapabilityMap(allInterfaces);
+        Map<String, Long> methodCodesIdMap = loadMethodCapabilityMap(allMethods);
+        Map<Integer, List<InterfaceDTO>> containerInterfaces = buildContainerInterfacesMap(existingContainers,
+                toSave, interfacesByCode);
+
+        for (Map.Entry<Integer, List<InterfaceDTO>> entry : containerInterfaces.entrySet()) {
+            List<Interface> existingOrCreated = processInterfaces(entry.getValue(), entry.getKey(),
+                    codesIdMap, methodCodesIdMap);
+            List<Interface> allDbInterfaces =
+                    interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(entry.getKey());
+            markAsDeleted(existingOrCreated, allDbInterfaces);
+        }
+    }
+
+    private void prepareContainersAndCollectData(List<ContainerDTO> containerDTOS,
+                                                 Product product, Map<String, ContainerProduct> existingContainers,
+                                                 List<ContainerProduct> toSave, Map<String, List<InterfaceDTO>> interfacesByCode,
+                                                 List<InterfaceDTO> allInterfaces, List<MethodDTO> allMethods) {
+        String container = "Container";
+        for (ContainerDTO dto : containerDTOS) {
+            validateField(dto.getName(), container, "name");
+            validateField(dto.getCode(), container, "code");
+            ContainerProduct containerEntity = existingContainers.get(dto.getCode());
+            if (containerEntity == null) {
+                containerEntity = containerMapper.convertToContainerProduct(dto, product);
+                toSave.add(containerEntity);
+            } else {
+                if (!Objects.equals(containerEntity.getName(), dto.getName())
+                        || !Objects.equals(containerEntity.getVersion(), dto.getVersion())) {
+                    containerMapper.updateContainerProduct(containerEntity, dto, product);
+                    toSave.add(containerEntity);
                 }
-                List<Interface> allInterfaces = interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
-                markAsDeleted(existingOrCreatedInterface, allInterfaces);
             }
-        }
-        log.info("метод  createOrUpdateProductRelations method завершен");
-    }
-
-    private void validateField(String fieldValue, String entityName, String fieldName) {
-        if (fieldValue == null || fieldValue.isEmpty()) {
-            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s",
-                    entityName,
-                    fieldName));
+            List<InterfaceDTO> dtoInterfaces = dto.getInterfaces() != null ? dto.getInterfaces() : Collections.emptyList();
+            interfacesByCode.put(dto.getCode(), dtoInterfaces);
+            allInterfaces.addAll(dtoInterfaces);
+            dtoInterfaces.stream()
+                    .filter(dinterface -> dinterface.getMethods() != null)
+                    .forEach(dinterface -> allMethods.addAll(dinterface.getMethods()));
         }
     }
 
-    private ContainerProduct createOrUpdateContainer(ContainerDTO containerDTO, Product product, ContainerProduct containerProduct) {
-        if (containerProduct == null) {
-            log.info("Создание контейнера с code: " + containerDTO.getCode());
-            ContainerProduct saveContainerProduct = containerMapper.convertToContainerProduct(containerDTO, product);
-            containerRepository.save(saveContainerProduct);
-            return saveContainerProduct;
-        } else {
-            log.info("Обновление контейнера с code: " + containerDTO.getCode());
-            if (!containerProduct.getName().equals(containerDTO.getName()) || !containerProduct.getVersion()
-                    .equals(containerDTO.getVersion())) {
-                containerMapper.updateContainerProduct(containerProduct, containerDTO, product);
-                containerRepository.save(containerProduct);
-            }
-            return containerProduct;
-        }
+    private Map<String, Long> loadInterfaceCapabilityMap(List<InterfaceDTO> allInterfaces) {
+        List<String> allInterfaceCodes = allInterfaces.stream().map(InterfaceDTO::getCode).toList();
+        return capabilityClient.getIdCodes(allInterfaceCodes).stream()
+                .collect(Collectors.toMap(IdCodeDTO::getCode, IdCodeDTO::getId));
     }
 
-    private Interface createOrUpdateInterface(InterfaceDTO interfaceDTO, Integer containerId, Interface interfaceObj) {
-        if (interfaceDTO.getCapabilityCode() == null) {
+    private Map<String, Long> loadMethodCapabilityMap(List<MethodDTO> allMethods) {
+        List<String> allMethodCodes = allMethods.stream().map(MethodDTO::getCapabilityCode).filter(Objects::nonNull).toList();
+        return capabilityClient.getIdCodes(allMethodCodes).stream()
+                .collect(Collectors.toMap(IdCodeDTO::getCode, IdCodeDTO::getId));
+    }
+
+    private Map<Integer, List<InterfaceDTO>> buildContainerInterfacesMap(Map<String, ContainerProduct> existingContainers,
+                                                                         List<ContainerProduct> toSave,
+                                                                         Map<String, List<InterfaceDTO>> interfacesByCode) {
+        Map<Integer, List<InterfaceDTO>> containerInterfaces = new HashMap<>();
+        for (ContainerProduct cp : existingContainers.values()) {
+            containerInterfaces.put(cp.getId(), interfacesByCode.getOrDefault(cp.getCode(), Collections.emptyList()));
+        }
+        for (ContainerProduct cp : toSave) {
+            containerInterfaces.put(cp.getId(), interfacesByCode.getOrDefault(cp.getCode(), Collections.emptyList()));
+        }
+        return containerInterfaces;
+    }
+
+    private List<Interface> processInterfaces(List<InterfaceDTO> interfaces, Integer containerId,
+                                              Map<String, Long> codesIdMap, Map<String, Long> methodCodesIdMap) {
+        String method = "Method";
+        if (interfaces == null || interfaces.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> codes = interfaces.stream().map(InterfaceDTO::getCode).toList();
+        Map<String, Interface> existingInterfaces = interfaceRepository
+                .findAllByContainerIdAndCodeIn(containerId, codes)
+                .stream()
+                .collect(Collectors.toMap(Interface::getCode, i -> i));
+        List<Interface> toSave = new ArrayList<>();
+        List<Interface> result = new ArrayList<>();
+        for (InterfaceDTO dto : interfaces) {
+            Interface interfaceObj = createOrUpdateInterfaceObject(dto, containerId, codesIdMap, existingInterfaces, toSave, method);
+            result.add(interfaceObj);
+        }
+        if (!toSave.isEmpty()) {
+            interfaceRepository.saveAll(toSave);
+        }
+        for (int i = 0; i < interfaces.size(); i++) {
+            processInterfaceMethods(interfaces.get(i), result.get(i), methodCodesIdMap);
+        }
+        return result;
+    }
+
+    private Interface createOrUpdateInterfaceObject(InterfaceDTO dto, Integer containerId, Map<String, Long> codesIdMap,
+                                                    Map<String, Interface> existingInterfaces, List<Interface> toSave,
+                                                    String method) {
+        validateField(dto.getName(), method, "name");
+        validateField(dto.getCode(), method, "code");
+        if (dto.getCapabilityCode() == null) {
             throw new IllegalArgumentException("Capability code is empty");
         }
-        log.info("Запрос в /api/v1/find?search=" + interfaceDTO.getCapabilityCode());
-        List<SearchCapabilityDTO> searchCapabilityDTOS = capabilityClient.getCapabilities(interfaceDTO.getCapabilityCode());
-        Integer tcId = null;
-        if (searchCapabilityDTOS != null && !searchCapabilityDTOS.isEmpty()) {
-            SearchCapabilityDTO searchCapabilityDTO = searchCapabilityDTOS.get(0);
-            if (searchCapabilityDTO.getCode().equals(interfaceDTO.getCapabilityCode())) {
-                tcId = searchCapabilityDTO.getId();
-            }
-        }
+        Integer tcId = codesIdMap.get(dto.getCode()) != null ? codesIdMap.get(dto.getCode()).intValue() : null;
+        Interface interfaceObj = existingInterfaces.get(dto.getCode());
         if (interfaceObj == null) {
-            Interface newInterface = interfaceMapper.convertToInterface(interfaceDTO, containerId, tcId);
-            interfaceRepository.save(newInterface);
-            return newInterface;
+            interfaceObj = interfaceMapper.convertToInterface(dto, containerId, tcId);
+            toSave.add(interfaceObj);
         } else {
             if (interfaceObj.getDeletedDate() != null) {
                 interfaceObj.setDeletedDate(null);
                 interfaceObj.setUpdatedDate(new Date());
-                interfaceRepository.save(interfaceObj);
+                toSave.add(interfaceObj);
             }
-            if (!equalsInterfaces(interfaceObj, interfaceDTO, tcId)) {
-                interfaceMapper.updateInterface(interfaceObj, interfaceDTO, containerId, tcId);
-                interfaceRepository.save(interfaceObj);
+            if (!equalsInterfaces(interfaceObj, dto, tcId)) {
+                interfaceMapper.updateInterface(interfaceObj, dto, containerId, tcId);
+                toSave.add(interfaceObj);
             }
-            return interfaceObj;
+        }
+        return interfaceObj;
+    }
+
+    private void processInterfaceMethods(InterfaceDTO dto, Interface interfaceObj, Map<String, Long> methodCodesIdMap) {
+        if (dto.getMethods() == null || dto.getMethods().isEmpty()) return;
+        List<String> methodNames = dto.getMethods().stream().map(MethodDTO::getName).toList();
+        List<Operation> operations = operationRepository.findByNameInAndInterfaceId(methodNames, interfaceObj.getId());
+        Map<String, Operation> operationMap = operations.stream()
+                .collect(Collectors.toMap(Operation::getName, o -> o));
+        List<Operation> existingOrCreatedOperations = processMethods(dto.getMethods(), interfaceObj.getId(),
+                interfaceObj.getTcId(), operationMap, methodCodesIdMap);
+        List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceObj.getId());
+        markAsDeleted(existingOrCreatedOperations, allOperations);
+    }
+
+    private List<Operation> processMethods(List<MethodDTO> methods, Integer interfaceId, Integer tcIdInterface,
+                                           Map<String, Operation> operationMap, Map<String, Long> methodCodesIdMap) {
+        List<Operation> operations = createOrUpdateOperations(methods, interfaceId, tcIdInterface, operationMap, methodCodesIdMap);
+        List<Integer> operationIds = operations.stream()
+                .map(Operation::getId)
+                .toList();
+        Map<Integer, Sla> slaMap = loadSla(operationIds);
+        Map<Integer, List<Parameter>> paramsByOperation = loadParameters(operationIds);
+        processSlaAndParameters(methods, operations, slaMap, paramsByOperation);
+        return operations;
+    }
+
+    private List<Operation> createOrUpdateOperations(List<MethodDTO> methods, Integer interfaceId,
+                                                     Integer tcIdInterface, Map<String, Operation> operationMap,
+                                                     Map<String, Long> methodCodesIdMap) {
+        List<Operation> operations = new ArrayList<>();
+        List<Operation> operationsToSave = new ArrayList<>();
+        for (MethodDTO dto : methods) {
+            validateField(dto.getName(), "Method", "name");
+            Operation op = createOrUpdateMethod(dto, interfaceId, tcIdInterface, operationMap.get(dto.getName()),
+                    operationsToSave, methodCodesIdMap);
+            operations.add(op);
+        }
+        if (!operationsToSave.isEmpty()) {
+            operationRepository.saveAll(operationsToSave);
+        }
+        return operations;
+    }
+
+    private Map<Integer, Sla> loadSla(List<Integer> operationIds) {
+        return slaRepository.findAllByOperationIdIn(operationIds)
+                .stream()
+                .collect(Collectors.toMap(Sla::getOperationId, Function.identity()));
+    }
+
+    private Map<Integer, List<Parameter>> loadParameters(List<Integer> operationIds) {
+        return parameterRepository.findByOperationIdIn(operationIds).stream()
+                .collect(Collectors.groupingBy(Parameter::getOperationId));
+    }
+
+    private void processSlaAndParameters(List<MethodDTO> methods, List<Operation> operations,
+                                         Map<Integer, Sla> slaMap, Map<Integer, List<Parameter>> paramsByOperation) {
+        List<Sla> slaToSave = new ArrayList<>();
+        List<Parameter> parametersToSave = new ArrayList<>();
+        for (int i = 0; i < methods.size(); i++) {
+            MethodDTO dto = methods.get(i);
+            Operation op = operations.get(i);
+            if (dto.getSla() != null) {
+                Sla sla = slaMap.get(op.getId());
+                if (sla == null) {
+                    sla = slaMapper.convertToSla(dto, op.getId());
+                } else {
+                    slaMapper.updateSla(sla, dto);
+                }
+                slaToSave.add(sla);
+            }
+            if (dto.getParameters() != null && !dto.getParameters().isEmpty()) {
+                List<Parameter> existingOrCreated = processParameters(dto.getParameters(), op.getId());
+                parametersToSave.addAll(existingOrCreated);
+                List<Parameter> allParameters = paramsByOperation.getOrDefault(op.getId(), List.of());
+                markAsDeleted(existingOrCreated, allParameters);
+            }
+        }
+        if (!slaToSave.isEmpty()) {
+            slaRepository.saveAll(slaToSave);
+        }
+        if (!parametersToSave.isEmpty()) {
+            parameterRepository.saveAll(parametersToSave);
+        }
+    }
+
+    private Operation createOrUpdateMethod(MethodDTO methodDTO, Integer interfaceId, Integer tcIdInterface, Operation existingOperation,
+                                           List<Operation> operationsToSave, Map<String, Long> methodCodesIdMap) {
+        Integer tcId = null;
+        if (methodDTO.getCapabilityCode() != null) {
+            Long tcIdLong = methodCodesIdMap.get(methodDTO.getCapabilityCode());
+            tcId = (tcIdLong != null) ? tcIdLong.intValue() : null;
+        }
+        if (tcId == null) {
+            tcId = tcIdInterface;
+        }
+        if (existingOperation == null) {
+            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
+            operationsToSave.add(operation);
+            return operation;
+        } else {
+            if (existingOperation.getDeletedDate() != null) {
+                existingOperation.setDeletedDate(null);
+                existingOperation.setUpdatedDate(new Date());
+                operationsToSave.add(existingOperation);
+            }
+            if (!Objects.equals(methodDTO.getDescription(), existingOperation.getDescription())
+                    || !Objects.equals(methodDTO.getReturnType(), existingOperation.getReturnType())
+                    || !Objects.equals(tcId, existingOperation.getTcId())) {
+                operationMapper.updateOperation(existingOperation, methodDTO, tcId, interfaceId);
+                operationsToSave.add(existingOperation);
+            }
+            return existingOperation;
+        }
+    }
+
+    private List<Parameter> processParameters(List<ParameterDTO> parameters, Integer methodId) {
+        String parameter = "Parameter";
+        List<Parameter> existingOrCreatedParameters = new ArrayList<>();
+        for (ParameterDTO parameterDTO : parameters) {
+            validateField(parameterDTO.getName(), parameter, "name");
+            validateField(parameterDTO.getType(), parameter, "type");
+            existingOrCreatedParameters.add(createOrUpdateParameter(parameterDTO, methodId));
+        }
+        return existingOrCreatedParameters;
+    }
+
+    private void validateField(String fieldValue, String entityName, String fieldName) {
+        if (fieldValue == null || fieldValue.isEmpty()) {
+            throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s", entityName, fieldName));
         }
     }
 
@@ -412,56 +551,6 @@ public class ProductService {
                 .equals(interfaceDTO.getSpecLink()) && Objects.equals(getInterface.getTcId(),
                 tcId) && getInterface.getProtocol()
                 .equals(interfaceDTO.getProtocol());
-    }
-
-    private Operation createOrUpdateOperation(MethodDTO methodDTO, Integer interfaceId, Integer tcIdInterface, Operation existingOperation) {
-        Integer tcId = getTCId(methodDTO.getCapabilityCode());
-        if (tcId == null) {
-            tcId = tcIdInterface;
-        }
-        if (existingOperation == null) {
-            log.info("Создание метода с name: " + methodDTO.getName());
-            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
-            operationRepository.save(operation);
-            return operation;
-        } else {
-            log.info("Обновление метода с name: " + methodDTO.getName());
-            Operation updateOperation = existingOperation;
-            if (updateOperation.getDeletedDate() != null) {
-                updateOperation.setDeletedDate(null);
-                updateOperation.setUpdatedDate(new Date());
-                operationRepository.save(updateOperation);
-            }
-            if (!methodDTO.getDescription().equals(updateOperation.getDescription()) || !methodDTO.getReturnType()
-                    .equals(updateOperation.getReturnType()) || !Objects.equals(tcId, updateOperation.getTcId())) {
-                operationMapper.updateOperation(updateOperation, methodDTO, tcId, interfaceId);
-                operationRepository.save(updateOperation);
-            }
-            return updateOperation;
-        }
-    }
-
-    private Integer getTCId(String code) {
-        List<SearchCapabilityDTO> capabilities = capabilityClient.getCapabilities(code);
-        if (!capabilities.isEmpty()) {
-            SearchCapabilityDTO searchCapabilityDTO = capabilities.get(0);
-            if (searchCapabilityDTO.getCode().equals(code)) {
-                return searchCapabilityDTO.getId();
-            }
-        }
-        return null;
-    }
-
-    private void createOrUpdateSla(MethodDTO methodDTO, Integer operationId) {
-        Optional<Sla> optionalSla = slaRepository.findByOperationId(operationId);
-        Sla sla;
-        if (optionalSla.isEmpty()) {
-            sla = slaMapper.convertToSla(methodDTO, operationId);
-        } else {
-            sla = optionalSla.get();
-            slaMapper.updateSla(sla, methodDTO);
-        }
-        slaRepository.save(sla);
     }
 
     private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
@@ -480,7 +569,6 @@ public class ProductService {
             return optionalParameter.get();
         }
     }
-
 
     private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
         List<Parameter> parametersToDelete = new ArrayList<>();

@@ -289,7 +289,6 @@ public class ProductService {
         Map<String, List<InterfaceDTO>> interfacesByCode = new HashMap<>();
         List<InterfaceDTO> allInterfaces = new ArrayList<>();
         List<MethodDTO> allMethods = new ArrayList<>();
-
         prepareContainersAndCollectData(containerDTOS, product, existingContainers, toSave, interfacesByCode,
                 allInterfaces, allMethods);
         if (!toSave.isEmpty()) {
@@ -299,13 +298,17 @@ public class ProductService {
         Map<String, Long> methodCodesIdMap = loadMethodCapabilityMap(allMethods);
         Map<Integer, List<InterfaceDTO>> containerInterfaces = buildContainerInterfacesMap(existingContainers,
                 toSave, interfacesByCode);
-
         for (Map.Entry<Integer, List<InterfaceDTO>> entry : containerInterfaces.entrySet()) {
             List<Interface> existingOrCreated = processInterfaces(entry.getValue(), entry.getKey(),
                     codesIdMap, methodCodesIdMap);
             List<Interface> allDbInterfaces =
                     interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(entry.getKey());
             markAsDeleted(existingOrCreated, allDbInterfaces);
+            for (Interface dbInterface : allDbInterfaces) {
+                if (dbInterface.getDeletedDate() != null) {
+                    cascadeDeleteInterface(dbInterface);
+                }
+            }
         }
     }
 
@@ -368,7 +371,7 @@ public class ProductService {
         if (interfaces == null || interfaces.isEmpty()) {
             return Collections.emptyList();
         }
-        List<String> codes = interfaces.stream().map(InterfaceDTO::getCapabilityCode).toList();
+        List<String> codes = interfaces.stream().map(InterfaceDTO::getCode).toList();
         Map<String, Interface> existingInterfaces = interfaceRepository
                 .findAllByContainerIdAndCodeIn(containerId, codes)
                 .stream()
@@ -376,16 +379,82 @@ public class ProductService {
         List<Interface> toSave = new ArrayList<>();
         List<Interface> result = new ArrayList<>();
         for (InterfaceDTO dto : interfaces) {
-            Interface interfaceObj = createOrUpdateInterfaceObject(dto, containerId, codesIdMap, existingInterfaces, toSave, method);
+            Interface interfaceObj = createOrUpdateInterfaceObject(dto, containerId, codesIdMap, existingInterfaces,
+                    toSave, method);
             result.add(interfaceObj);
         }
         if (!toSave.isEmpty()) {
             interfaceRepository.saveAll(toSave);
         }
+        List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(containerId);
         for (int i = 0; i < interfaces.size(); i++) {
-            processInterfaceMethods(interfaces.get(i), result.get(i), methodCodesIdMap);
+            processInterfaceMethods(interfaces.get(i), result.get(i), methodCodesIdMap, allDbInterfaces);
         }
         return result;
+    }
+
+    private void processInterfaceMethods(InterfaceDTO dto, Interface interfaceObj, Map<String, Long> methodCodesIdMap,
+                                         List<Interface> allDbInterfaces) {
+        List<MethodDTO> methods = dto.getMethods();
+        if (methods == null || methods.isEmpty()) {
+            markOperationsAsDeleted(interfaceObj.getId(), Collections.emptyList());
+        } else {
+            List<String> methodNames = methods.stream()
+                    .map(MethodDTO::getName)
+                    .toList();
+            Map<String, Operation> operationMap = operationRepository
+                    .findByNameInAndInterfaceId(methodNames, interfaceObj.getId())
+                    .stream()
+                    .collect(Collectors.toMap(Operation::getName, o -> o));
+            processMethods(methods,
+                    interfaceObj.getId(),
+                    interfaceObj.getTcId(),
+                    operationMap,
+                    methodCodesIdMap
+            );
+            markOperationsAsDeleted(interfaceObj.getId(), methods);
+        }
+        List<Interface> interfacesInDto = Collections.singletonList(interfaceObj);
+        markAsDeleted(interfacesInDto, allDbInterfaces);
+    }
+
+    private void markOperationsAsDeleted(Integer interfaceId, List<MethodDTO> newMethods) {
+        List<Operation> allDbOperations = operationRepository.findAllByInterfaceId(interfaceId);
+        Set<String> newMethodNames = newMethods.stream()
+                .map(MethodDTO::getName)
+                .collect(Collectors.toSet());
+        Date now = new Date();
+        List<Operation> toDelete = new ArrayList<>();
+        for (Operation op : allDbOperations) {
+            if (!newMethodNames.contains(op.getName()) && op.getDeletedDate() == null) {
+                op.setDeletedDate(now);
+                toDelete.add(op);
+            }
+        }
+        if (!toDelete.isEmpty()) {
+            operationRepository.saveAll(toDelete);
+        }
+    }
+
+    private void cascadeDeleteInterface(Interface interfaceObj) {
+        List<Operation> ops = operationRepository.findAllByInterfaceId(interfaceObj.getId());
+        if (!ops.isEmpty()) {
+            Date now = new Date();
+            for (Operation op : ops) {
+                if (op.getDeletedDate() == null) {
+                    op.setDeletedDate(now);
+                }
+            }
+            operationRepository.saveAll(ops);
+            List<Integer> opIds = ops.stream().map(Operation::getId).toList();
+            Map<Integer, List<Parameter>> params = loadParameters(opIds);
+            params.values().forEach(paramList -> paramList.forEach(p -> {
+                if (p.getDeletedDate() == null) {
+                    p.setDeletedDate(now);
+                }
+            }));
+            params.values().forEach(parameterRepository::saveAll);
+        }
     }
 
     private Interface createOrUpdateInterfaceObject(InterfaceDTO dto, Integer containerId, Map<String, Long> codesIdMap,
@@ -414,18 +483,6 @@ public class ProductService {
             }
         }
         return interfaceObj;
-    }
-
-    private void processInterfaceMethods(InterfaceDTO dto, Interface interfaceObj, Map<String, Long> methodCodesIdMap) {
-        if (dto.getMethods() == null || dto.getMethods().isEmpty()) return;
-        List<String> methodNames = dto.getMethods().stream().map(MethodDTO::getName).toList();
-        List<Operation> operations = operationRepository.findByNameInAndInterfaceId(methodNames, interfaceObj.getId());
-        Map<String, Operation> operationMap = operations.stream()
-                .collect(Collectors.toMap(Operation::getName, o -> o));
-        List<Operation> existingOrCreatedOperations = processMethods(dto.getMethods(), interfaceObj.getId(),
-                interfaceObj.getTcId(), operationMap, methodCodesIdMap);
-        List<Operation> allOperations = operationRepository.findByInterfaceIdAndDeletedDateIsNull(interfaceObj.getId());
-        markAsDeleted(existingOrCreatedOperations, allOperations);
     }
 
     private List<Operation> processMethods(List<MethodDTO> methods, Integer interfaceId, Integer tcIdInterface,
@@ -484,11 +541,13 @@ public class ProductService {
                 }
                 slaToSave.add(sla);
             }
+            List<Parameter> allParameters = paramsByOperation.getOrDefault(op.getId(), List.of());
             if (dto.getParameters() != null && !dto.getParameters().isEmpty()) {
                 List<Parameter> existingOrCreated = processParameters(dto.getParameters(), op.getId());
                 parametersToSave.addAll(existingOrCreated);
-                List<Parameter> allParameters = paramsByOperation.getOrDefault(op.getId(), List.of());
-                markAsDeleted(existingOrCreated, allParameters);
+                markParametersAsDeletedIfMissing(existingOrCreated, allParameters);
+            } else {
+                markParametersAsDeletedIfMissing(Collections.emptyList(), allParameters);
             }
         }
         if (!slaToSave.isEmpty()) {
@@ -496,6 +555,19 @@ public class ProductService {
         }
         if (!parametersToSave.isEmpty()) {
             parameterRepository.saveAll(parametersToSave);
+        }
+    }
+
+    private void markParametersAsDeletedIfMissing(List<Parameter> existingOrCreated, List<Parameter> allParameters) {
+        Date now = new Date();
+        List<Parameter> toDelete = allParameters.stream()
+                .filter(p -> existingOrCreated.stream().noneMatch(e ->
+                        e.getParameterName().equals(p.getParameterName()) && e.getParameterType().equals(p.getParameterType())))
+                .filter(p -> p.getDeletedDate() == null)
+                .toList();
+        toDelete.forEach(p -> p.setDeletedDate(now));
+        if (!toDelete.isEmpty()) {
+            parameterRepository.saveAll(toDelete);
         }
     }
 
@@ -540,6 +612,25 @@ public class ProductService {
         return existingOrCreatedParameters;
     }
 
+    private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
+        Optional<Parameter> optionalParameter = parameterRepository.findByOperationIdAndParameterNameAndParameterType(
+                operationId,
+                parameterDTO.getName(),
+                parameterDTO.getType());
+        if (optionalParameter.isEmpty()) {
+            Parameter parameter = parameterMapper.convertToParameter(parameterDTO, operationId);
+            parameterRepository.save(parameter);
+            return parameter;
+        } else {
+            Parameter updateParameter = optionalParameter.get();
+            if (updateParameter.getDeletedDate() != null) {
+                updateParameter.setDeletedDate(null);
+                parameterRepository.save(updateParameter);
+            }
+            return optionalParameter.get();
+        }
+    }
+
     private void validateField(String fieldValue, String entityName, String fieldName) {
         if (fieldValue == null || fieldValue.isEmpty()) {
             throw new ValidationException(String.format("Отсутствует обязательное поле '%s': %s", entityName, fieldName));
@@ -554,40 +645,16 @@ public class ProductService {
                 .equals(interfaceDTO.getProtocol());
     }
 
-    private Parameter createOrUpdateParameter(ParameterDTO parameterDTO, Integer operationId) {
-        Optional<Parameter> optionalParameter = parameterRepository.findByOperationIdAndParameterNameAndParameterType(
-                operationId,
-                parameterDTO.getName(),
-                parameterDTO.getType());
-        if (optionalParameter.isEmpty()) {
-            Parameter parameter = parameterMapper.convertToParameter(parameterDTO, operationId);
-            parameterRepository.save(parameter);
-            return parameter;
-        } else {
-            Parameter updateParameter = optionalParameter.get();
-            updateParameter.setDeletedDate(null);
-            parameterRepository.save(updateParameter);
-            return optionalParameter.get();
-        }
-    }
-
     private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
-        List<Parameter> parametersToDelete = new ArrayList<>();
         List<Operation> operationsToDelete = new ArrayList<>();
         List<Interface> interfacesToDelete = new ArrayList<>();
         allEntities.stream().filter(entity -> !existingEntities.contains(entity)).forEach(entity -> {
-            if (entity instanceof Parameter) {
-                parametersToDelete.add((Parameter) entity);
-            } else if (entity instanceof Operation) {
+            if (entity instanceof Operation) {
                 operationsToDelete.add((Operation) entity);
             } else if (entity instanceof Interface) {
                 interfacesToDelete.add((Interface) entity);
             }
         });
-        if (!parametersToDelete.isEmpty()) {
-            parametersToDelete.forEach(parameter -> parameter.setDeletedDate(new Date()));
-            parameterRepository.saveAll(parametersToDelete);
-        }
         if (!operationsToDelete.isEmpty()) {
             operationsToDelete.forEach(operation -> operation.setDeletedDate(new Date()));
             operationRepository.saveAll(operationsToDelete);

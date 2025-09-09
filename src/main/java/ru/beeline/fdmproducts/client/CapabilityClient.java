@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import ru.beeline.fdmproducts.dto.IdCodeDTO;
 import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
 import ru.beeline.fdmproducts.dto.TcDTO;
 
@@ -67,8 +68,33 @@ public class CapabilityClient {
                     fullUrl,
                     HttpMethod.GET,
                     entity,
-                    new ParameterizedTypeReference<List<TcDTO>>() {}
+                    new ParameterizedTypeReference<List<TcDTO>>() {
+                    }
             );
+            log.debug("Статус ответа: {}", response.getStatusCode());
+            return response.getBody() != null ? response.getBody() : Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Ошибка при получении TcDTO: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    public List<IdCodeDTO> getIdCodes(List<String> codes) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
+            String tcCodeList = codes.stream()
+                    .filter(Objects::nonNull)
+                    .map(code -> "codes=" + code)
+                    .collect(Collectors.joining("&"));
+            String fullUrl = capabilityServerUrl + "/api/v1/tech-capabilities/by-code?" + tcCodeList;
+            log.debug("Запрос к сервису: {}", fullUrl);
+
+            ResponseEntity<List<IdCodeDTO>> response = restTemplate.exchange(
+                    fullUrl, HttpMethod.GET, entity, new ParameterizedTypeReference<>() {
+                    });
             log.debug("Статус ответа: {}", response.getStatusCode());
             return response.getBody() != null ? response.getBody() : Collections.emptyList();
         } catch (Exception e) {

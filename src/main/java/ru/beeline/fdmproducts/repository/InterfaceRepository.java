@@ -19,4 +19,8 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
     List<Interface> findAllByContainerId(Integer containerId);
 
     List<Interface> findByCodeInAndContainerId(List<String> code, Integer containerId);
+
+    List<Interface> findAllByContainerIdAndCodeIn(Integer containerId, List<String> interfaceCodes);
+
+
 }

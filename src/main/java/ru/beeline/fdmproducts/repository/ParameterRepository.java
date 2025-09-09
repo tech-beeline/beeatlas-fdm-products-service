@@ -14,4 +14,6 @@ public interface ParameterRepository extends JpaRepository<Parameter, Integer> {
     Optional<Parameter> findByOperationIdAndParameterNameAndParameterType(Integer operationId, String name, String type);
 
     List<Parameter> findByOperationId(Integer operationId);
+
+    List<Parameter>  findByOperationIdIn(List<Integer> operationIds);
 }

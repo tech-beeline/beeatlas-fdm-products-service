@@ -338,7 +338,7 @@ public class ProductService {
     }
 
     private Map<String, Long> loadInterfaceCapabilityMap(List<InterfaceDTO> allInterfaces) {
-        List<String> allInterfaceCodes = allInterfaces.stream().map(InterfaceDTO::getCode).toList();
+        List<String> allInterfaceCodes = allInterfaces.stream().map(InterfaceDTO::getCapabilityCode).toList();
         return capabilityClient.getIdCodes(allInterfaceCodes).stream()
                 .collect(Collectors.toMap(IdCodeDTO::getCode, IdCodeDTO::getId));
     }
@@ -368,7 +368,7 @@ public class ProductService {
         if (interfaces == null || interfaces.isEmpty()) {
             return Collections.emptyList();
         }
-        List<String> codes = interfaces.stream().map(InterfaceDTO::getCode).toList();
+        List<String> codes = interfaces.stream().map(InterfaceDTO::getCapabilityCode).toList();
         Map<String, Interface> existingInterfaces = interfaceRepository
                 .findAllByContainerIdAndCodeIn(containerId, codes)
                 .stream()
@@ -396,7 +396,8 @@ public class ProductService {
         if (dto.getCapabilityCode() == null) {
             throw new IllegalArgumentException("Capability code is empty");
         }
-        Integer tcId = codesIdMap.get(dto.getCode()) != null ? codesIdMap.get(dto.getCode()).intValue() : null;
+        Integer tcId = codesIdMap.get(dto.getCapabilityCode()) != null
+                ? codesIdMap.get(dto.getCapabilityCode()).intValue() : null;
         Interface interfaceObj = existingInterfaces.get(dto.getCode());
         if (interfaceObj == null) {
             interfaceObj = interfaceMapper.convertToInterface(dto, containerId, tcId);

@@ -367,7 +367,7 @@ public class ProductService {
 
     private List<Interface> processInterfaces(List<InterfaceDTO> interfaces, Integer containerId,
                                               Map<String, Long> codesIdMap, Map<String, Long> methodCodesIdMap) {
-        String method = "Method";
+        String method = "Interface";
         if (interfaces == null || interfaces.isEmpty()) {
             return Collections.emptyList();
         }
@@ -399,18 +399,12 @@ public class ProductService {
         if (methods == null || methods.isEmpty()) {
             markOperationsAsDeleted(interfaceObj.getId(), Collections.emptyList());
         } else {
-            List<String> methodNames = methods.stream()
-                    .map(MethodDTO::getName)
-                    .toList();
+            List<String> methodNames = methods.stream().map(MethodDTO::getName).toList();
             Map<String, Operation> operationMap = operationRepository
                     .findByNameInAndInterfaceId(methodNames, interfaceObj.getId())
                     .stream()
                     .collect(Collectors.toMap(Operation::getName, o -> o));
-            processMethods(methods,
-                    interfaceObj.getId(),
-                    interfaceObj.getTcId(),
-                    operationMap,
-                    methodCodesIdMap
+            processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap
             );
             markOperationsAsDeleted(interfaceObj.getId(), methods);
         }

@@ -278,8 +278,152 @@ public class ProductService {
         }
     }
 
-    public void createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
+    public ValidationErrorResponse createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
         log.info("Старт метода createOrUpdateProductRelations");
+        ValidationErrorResponse errorEntity = new ValidationErrorResponse();
+        validateContainers(containerDTOS, errorEntity);
+        validateInterfaces(containerDTOS, errorEntity);
+        validateMethods(containerDTOS, errorEntity);
+        if (!containerDTOS.isEmpty()) {
+            saveRelations(containerDTOS, code);
+        }
+        return errorEntity;
+    }
+
+    private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
+        Map<String, Long> codeCounts = containers.stream()
+                .filter(c -> c.getCode() != null)
+                .collect(Collectors.groupingBy(ContainerDTO::getCode, Collectors.counting()));
+        Set<String> duplicates = codeCounts.entrySet().stream()
+                .filter(e -> e.getValue() > 1)
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
+        if (!duplicates.isEmpty()) {
+            errorEntity.getContainerError().add("Контейнеры имеют одинаковый code: " + String.join(", ", duplicates));
+        }
+        containers.removeIf(c -> c.getCode() != null && duplicates.contains(c.getCode()));
+        Iterator<ContainerDTO> it = containers.iterator();
+        while (it.hasNext()) {
+            ContainerDTO c = it.next();
+            boolean invalid = false;
+            if ((c.getName() == null || c.getName().trim().isEmpty()) && (c.getCode() == null || c.getCode().trim().isEmpty())) {
+                errorEntity.getContainerError().add("Для контейнера не заполнен атрибут name и атрибут code");
+                invalid = true;
+            } else if (c.getName() == null || c.getName().trim().isEmpty()) {
+                errorEntity.getContainerError().add("Для контейнера с кодом " + c.getCode() + " не заполнен атрибут name");
+                invalid = true;
+            } else if (c.getCode() == null || c.getCode().trim().isEmpty()) {
+                errorEntity.getContainerError().add("Для контейнера с именем " + c.getName() + " не заполнен атрибут code");
+                invalid = true;
+            }
+            if (invalid) {
+                it.remove();
+            }
+        }
+    }
+
+    private void validateInterfaces(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
+        for (ContainerDTO container : containers) {
+            if (container.getInterfaces() == null) continue;
+            Map<String, Long> codeCounts = container.getInterfaces().stream()
+                    .filter(i -> i.getCode() != null)
+                    .collect(Collectors.groupingBy(InterfaceDTO::getCode, Collectors.counting()));
+            Set<String> duplicates = codeCounts.entrySet().stream()
+                    .filter(e -> e.getValue() > 1)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toSet());
+            if (!duplicates.isEmpty()) {
+                errorEntity.getInterfaceError().add("Интерфейсы имеют одинаковый code: " + String.join(", ", duplicates));
+            }
+            container.getInterfaces().removeIf(i -> i.getCode() != null && duplicates.contains(i.getCode()));
+            Iterator<InterfaceDTO> it = container.getInterfaces().iterator();
+            while (it.hasNext()) {
+                InterfaceDTO iface = it.next();
+                boolean invalid = false;
+                if (iface.getName() == null || iface.getName().trim().isEmpty()) {
+                    errorEntity.getInterfaceError().add("Для интерфейса с кодом " + iface.getCode() + " не заполнен атрибут name");
+                    invalid = true;
+                }
+                if (iface.getCode() == null || iface.getCode().trim().isEmpty()) {
+                    errorEntity.getInterfaceError().add("Для интерфейса с именем " + iface.getName() + " не заполнен атрибут code");
+                    invalid = true;
+                }
+                if (invalid) {
+                    it.remove();
+                }
+            }
+        }
+    }
+
+    private void validateMethods(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
+        for (ContainerDTO container : containers) {
+            if (container.getInterfaces() == null) continue;
+            for (InterfaceDTO iface : container.getInterfaces()) {
+                if (iface.getMethods() == null) continue;
+                Map<String, Long> nameCounts = iface.getMethods().stream()
+                        .filter(m -> m.getName() != null)
+                        .collect(Collectors.groupingBy(MethodDTO::getName, Collectors.counting()));
+                Set<String> duplicates = nameCounts.entrySet().stream()
+                        .filter(e -> e.getValue() > 1)
+                        .map(Map.Entry::getKey)
+                        .collect(Collectors.toSet());
+                if (!duplicates.isEmpty()) {
+                    errorEntity.getMethodError().add("Есть методы с одинаковым name: " + String.join(", ", duplicates));
+                }
+                Iterator<MethodDTO> it = iface.getMethods().iterator();
+                while (it.hasNext()) {
+                    MethodDTO method = it.next();
+                    boolean invalid = false;
+                    if (method.getName() == null || method.getName().trim().isEmpty()) {
+                        errorEntity.getMethodError().add("Есть методы с незаполенным name");
+                        invalid = true;
+                    }
+                    if (method.getName() != null && duplicates.contains(method.getName())) {
+                        invalid = true;
+                    }
+                    validateMethodParameters(method, errorEntity);
+                    if (invalid) {
+                        it.remove();
+                    } else {
+                        enrichMethodType(iface, method);
+                    }
+                }
+            }
+        }
+    }
+
+    private void validateMethodParameters(MethodDTO method, ValidationErrorResponse errorEntity) {
+        if (method.getParameters() == null) return;
+        Iterator<ParameterDTO> itParam = method.getParameters().iterator();
+        while (itParam.hasNext()) {
+            ParameterDTO param = itParam.next();
+            if (param.getName() == null || param.getName().trim().isEmpty()) {
+                errorEntity.getParameterError().add(
+                        "Для Parameters метода " + method.getName() + " не заполнен атрибут name");
+                itParam.remove();
+            }
+        }
+    }
+
+    private void enrichMethodType(InterfaceDTO iface, MethodDTO method) {
+        String protocol = iface.getProtocol();
+        if (protocol == null) return;
+        switch (protocol.toLowerCase()) {
+            case "rest" -> {
+                if (method.getName().contains(" ")) {
+                    String[] parts = method.getName().split(" ", 2);
+                    method.setType(parts[0]);
+                    method.setName(parts[1]);
+                } else {
+                    method.setType(null);
+                }
+            }
+            case "soap" -> method.setType("SOAP");
+            case "grpc" -> method.setType("gRPC");
+        }
+    }
+
+    public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
         Product product = getProductByCode(code);
         Map<String, ContainerProduct> existingContainers = containerRepository
                 .findAllByCodeIn(containerDTOS.stream().map(ContainerDTO::getCode).toList())
@@ -309,7 +453,6 @@ public class ProductService {
             }
         }
     }
-
 
     private void prepareContainersAndCollectData(List<ContainerDTO> containerDTOS,
                                                  Product product, Map<String, ContainerProduct> existingContainers,
@@ -411,28 +554,32 @@ public class ProductService {
         List<MethodDTO> methods = dto.getMethods();
         if (methods == null || methods.isEmpty()) {
             markOperationsAsDeleted(interfaceObj.getId(), Collections.emptyList());
-        } else {
-            List<String> methodNames = methods.stream()
-                    .map(MethodDTO::getName)
-                    .toList();
-            Map<String, Operation> operationMap = operationRepository
-                    .findByNameInAndInterfaceId(methodNames, interfaceObj.getId())
-                    .stream()
-                    .collect(Collectors.toMap(Operation::getName, o -> o));
-            processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap);
-            markOperationsAsDeleted(interfaceObj.getId(), methods);
+            return;
         }
+        List<String> keys = methods.stream()
+                .map(m -> m.getName() + "::" + (m.getType() != null ? m.getType() : ""))
+                .toList();
+        List<Operation> dbOperations = operationRepository.findAllByInterfaceId(interfaceObj.getId());
+        Map<String, Operation> operationMap = dbOperations.stream()
+                .filter(op -> keys.contains(op.getName() + "::" + (op.getType() != null ? op.getType() : "")))
+                .collect(Collectors.toMap(
+                        operation -> operation.getName() + "::" + (operation.getType() != null ? operation.getType() : ""),
+                        operation -> operation
+                ));
+        processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap);
+        markOperationsAsDeleted(interfaceObj.getId(), methods);
     }
 
     private void markOperationsAsDeleted(Integer interfaceId, List<MethodDTO> newMethods) {
         List<Operation> allDbOperations = operationRepository.findAllByInterfaceId(interfaceId);
-        Set<String> newMethodNames = newMethods.stream()
-                .map(MethodDTO::getName)
+        Set<String> newKeys = newMethods.stream()
+                .map(m -> m.getName() + "::" + (m.getType() != null ? m.getType() : ""))
                 .collect(Collectors.toSet());
         Date now = new Date();
         List<Operation> toDelete = new ArrayList<>();
         for (Operation op : allDbOperations) {
-            if (!newMethodNames.contains(op.getName()) && op.getDeletedDate() == null) {
+            String key = op.getName() + "::" + (op.getType() != null ? op.getType() : "");
+            if (!newKeys.contains(key) && op.getDeletedDate() == null) {
                 op.setDeletedDate(now);
                 toDelete.add(op);
             }
@@ -509,10 +656,10 @@ public class ProductService {
         List<Operation> operations = new ArrayList<>();
         List<Operation> operationsToSave = new ArrayList<>();
         for (MethodDTO dto : methods) {
-            validateField(dto.getName(), "Method", "name");
-            Operation op = createOrUpdateMethod(dto, interfaceId, tcIdInterface, operationMap.get(dto.getName()),
+            String key = dto.getName() + "::" + (dto.getType() != null ? dto.getType() : "");
+            Operation operation = createOrUpdateMethod(dto, interfaceId, tcIdInterface, operationMap.get(key),
                     operationsToSave, methodCodesIdMap);
-            operations.add(op);
+            operations.add(operation);
         }
         if (!operationsToSave.isEmpty()) {
             operationRepository.saveAll(operationsToSave);
@@ -588,9 +735,9 @@ public class ProductService {
             tcId = tcIdInterface;
         }
         if (existingOperation == null) {
-            Operation operation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
-            operationsToSave.add(operation);
-            return operation;
+            Operation newOperation = operationMapper.convertToOperation(methodDTO, interfaceId, tcId);
+            operationsToSave.add(newOperation);
+            return newOperation;
         } else {
             if (existingOperation.getDeletedDate() != null) {
                 existingOperation.setDeletedDate(null);

@@ -116,9 +116,7 @@ public class DiscoveredInterfaceService {
                         interfaceId));
             }
             Optional<DiscoveredOperation> existingOpOpt = discoveredOperationRepository.findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(
-                    interfaceId,
-                    operationDTO.getName(),
-                    operationDTO.getType());
+                    interfaceId, operationDTO.getName(), operationDTO.getType());
 
             DiscoveredOperation operation;
             operation = updateOperation(operationDTO, existingOpOpt, now, discoveredInterface);

@@ -880,7 +880,6 @@ public class ProductService {
         if (!discoveredInterfaces.isEmpty()) {
             discoveredInterfaces.forEach(discoveredInterface -> {
                 ProductMapicInterfaceDTO productMapicInterfaceDTO = createProductMapicInterface(discoveredInterface);
-
                 Interface anInterface = discoveredInterface.getConnectedInterface();
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         discoveredInterface.getId());
@@ -888,12 +887,14 @@ public class ProductService {
                     productMapicInterfaceDTO.setContextProvider(discoveredOperations.get(0).getContext());
                 }
                 List<ConnectOperationDTO> operationDTOS = discoveredOperations.stream()
-                        .filter(d -> d.getConnectionOperationId() != null)
                         .map(discoveredOperation -> {
                             log.info("connection getConnectionOperationId = {}",
                                     discoveredOperation.getConnectionOperationId());
-                            Operation operation = operationRepository.getById(discoveredOperation.getConnectionOperationId());
-                            log.info("operationId = {}", operation.getId());
+                            Operation operation = null;
+                            if (discoveredOperation.getConnectionOperationId() != null) {
+                                operation = operationRepository.findById(discoveredOperation.getConnectionOperationId()).get();
+                                log.info("operationId = {}", operation.getId());
+                            }
                             return createConnectOperationDTO(operation, discoveredOperation);
                         })
                         .collect(Collectors.toList());
@@ -903,6 +904,26 @@ public class ProductService {
             });
         }
         return result;
+    }
+
+    private ConnectOperationDTO createConnectOperationDTO(Operation operation,
+                                                          DiscoveredOperation discoveredOperation) {
+        ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()
+                .id(discoveredOperation.getId())
+                .name(discoveredOperation.getName())
+                .description(discoveredOperation.getDescription())
+                .type(discoveredOperation.getType())
+                .build();
+        if (operation != null) {
+            MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
+                    .id(discoveredOperation.getConnectionOperationId())
+                    .name(operation.getName())
+                    .description(operation.getDescription())
+                    .type(operation.getType())
+                    .build();
+            connectOperationDTO.setConnectOperation(mapicOperationDTO);
+        }
+        return connectOperationDTO;
     }
 
     public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb) {
@@ -993,26 +1014,6 @@ public class ProductService {
             operationDTO.setMapicOperation(mapicOperationDTO);
         }
         return operationDTO;
-    }
-
-    private ConnectOperationDTO createConnectOperationDTO(Operation operation,
-                                                          DiscoveredOperation discoveredOperation) {
-        ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()
-                .id(discoveredOperation.getId())
-                .name(discoveredOperation.getName())
-                .description(discoveredOperation.getDescription())
-                .type(discoveredOperation.getType())
-                .build();
-        if (discoveredOperation != null) {
-            MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
-                    .id(discoveredOperation.getConnectionOperationId())
-                    .name(operation.getName())
-                    .description(operation.getDescription())
-                    .type(operation.getType())
-                    .build();
-            connectOperationDTO.setConnectOperation(mapicOperationDTO);
-        }
-        return connectOperationDTO;
     }
 
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb) {

@@ -299,11 +299,9 @@ public class ProductService {
         Map<Integer, List<InterfaceDTO>> containerInterfaces = buildContainerInterfacesMap(existingContainers,
                 toSave, interfacesByCode);
         for (Map.Entry<Integer, List<InterfaceDTO>> entry : containerInterfaces.entrySet()) {
-            List<Interface> existingOrCreated = processInterfaces(entry.getValue(), entry.getKey(),
-                    codesIdMap, methodCodesIdMap);
-            List<Interface> allDbInterfaces =
-                    interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(entry.getKey());
-            markAsDeleted(existingOrCreated, allDbInterfaces);
+            processInterfaces(entry.getValue(), entry.getKey(), codesIdMap, methodCodesIdMap);
+            markInterfacesAsDeleted(entry.getKey(), entry.getValue());
+            List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(entry.getKey());
             for (Interface dbInterface : allDbInterfaces) {
                 if (dbInterface.getDeletedDate() != null) {
                     cascadeDeleteInterface(dbInterface);
@@ -311,6 +309,7 @@ public class ProductService {
             }
         }
     }
+
 
     private void prepareContainersAndCollectData(List<ContainerDTO> containerDTOS,
                                                  Product product, Map<String, ContainerProduct> existingContainers,
@@ -369,6 +368,7 @@ public class ProductService {
                                               Map<String, Long> codesIdMap, Map<String, Long> methodCodesIdMap) {
         String method = "Interface";
         if (interfaces == null || interfaces.isEmpty()) {
+            markInterfacesAsDeleted(containerId, Collections.emptyList());
             return Collections.emptyList();
         }
         List<String> codes = interfaces.stream().map(InterfaceDTO::getCode).toList();
@@ -386,30 +386,42 @@ public class ProductService {
         if (!toSave.isEmpty()) {
             interfaceRepository.saveAll(toSave);
         }
-        List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(containerId);
         for (int i = 0; i < interfaces.size(); i++) {
-            processInterfaceMethods(interfaces.get(i), result.get(i), methodCodesIdMap, allDbInterfaces);
+            processInterfaceMethods(interfaces.get(i), result.get(i), methodCodesIdMap);
         }
+        markInterfacesAsDeleted(containerId, interfaces);
         return result;
     }
 
-    private void processInterfaceMethods(InterfaceDTO dto, Interface interfaceObj, Map<String, Long> methodCodesIdMap,
-                                         List<Interface> allDbInterfaces) {
+    private void markInterfacesAsDeleted(Integer containerId, List<InterfaceDTO> newInterfaces) {
+        List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(containerId);
+        Set<String> dtoCodes = newInterfaces.stream().map(InterfaceDTO::getCode).collect(Collectors.toSet());
+        Date now = new Date();
+        List<Interface> toDelete = allDbInterfaces.stream()
+                .filter(dbIntf -> !dtoCodes.contains(dbIntf.getCode()))
+                .filter(dbIntf -> dbIntf.getDeletedDate() == null)
+                .peek(dbIntf -> dbIntf.setDeletedDate(now))
+                .toList();
+        if (!toDelete.isEmpty()) {
+            interfaceRepository.saveAll(toDelete);
+        }
+    }
+
+    private void processInterfaceMethods(InterfaceDTO dto, Interface interfaceObj, Map<String, Long> methodCodesIdMap) {
         List<MethodDTO> methods = dto.getMethods();
         if (methods == null || methods.isEmpty()) {
             markOperationsAsDeleted(interfaceObj.getId(), Collections.emptyList());
         } else {
-            List<String> methodNames = methods.stream().map(MethodDTO::getName).toList();
+            List<String> methodNames = methods.stream()
+                    .map(MethodDTO::getName)
+                    .toList();
             Map<String, Operation> operationMap = operationRepository
                     .findByNameInAndInterfaceId(methodNames, interfaceObj.getId())
                     .stream()
                     .collect(Collectors.toMap(Operation::getName, o -> o));
-            processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap
-            );
+            processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap);
             markOperationsAsDeleted(interfaceObj.getId(), methods);
         }
-        List<Interface> interfacesInDto = Collections.singletonList(interfaceObj);
-        markAsDeleted(interfacesInDto, allDbInterfaces);
     }
 
     private void markOperationsAsDeleted(Integer interfaceId, List<MethodDTO> newMethods) {
@@ -637,26 +649,6 @@ public class ProductService {
                 .equals(interfaceDTO.getSpecLink()) && Objects.equals(getInterface.getTcId(),
                 tcId) && getInterface.getProtocol()
                 .equals(interfaceDTO.getProtocol());
-    }
-
-    private void markAsDeleted(List<?> existingEntities, List<?> allEntities) {
-        List<Operation> operationsToDelete = new ArrayList<>();
-        List<Interface> interfacesToDelete = new ArrayList<>();
-        allEntities.stream().filter(entity -> !existingEntities.contains(entity)).forEach(entity -> {
-            if (entity instanceof Operation) {
-                operationsToDelete.add((Operation) entity);
-            } else if (entity instanceof Interface) {
-                interfacesToDelete.add((Interface) entity);
-            }
-        });
-        if (!operationsToDelete.isEmpty()) {
-            operationsToDelete.forEach(operation -> operation.setDeletedDate(new Date()));
-            operationRepository.saveAll(operationsToDelete);
-        }
-        if (!interfacesToDelete.isEmpty()) {
-            interfacesToDelete.forEach(interfaceEntity -> interfaceEntity.setDeletedDate(new Date()));
-            interfaceRepository.saveAll(interfacesToDelete);
-        }
     }
 
     public List<GetProductTechDto> getAllProductsAndTechRelations() {

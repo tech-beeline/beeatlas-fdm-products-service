@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
+import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
@@ -46,6 +47,12 @@ public class ProductController {
     @ApiOperation(value = "Получить продукт по alias", response = Product.class)
     public Product getProductsByCode(@PathVariable String code) {
         return productService.getProductByCode(code);
+    }
+
+    @GetMapping("/product/by-ids")
+    @ApiOperation(value = "Получить продукты по списку идентификаторов", response = List.class)
+    public List<GetProductsByIdsDTO> getProductsByIds(@RequestParam List<Integer> ids) {
+        return productService.getProductByIds(ids);
     }
 
     @GetMapping("/product/{code}/info")

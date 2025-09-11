@@ -5,6 +5,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
+import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
@@ -1144,5 +1145,9 @@ public class ProductService {
 
     public List<ProductInfoShortDTO> getProductInfo() {
         return productTechMapper.mapToProductInfoShortDTO(productRepository.findAll());
+    }
+
+    public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {
+        return productTechMapper.mapToGetProductsByIdsDTO(productRepository.findAllById(ids));
     }
 }

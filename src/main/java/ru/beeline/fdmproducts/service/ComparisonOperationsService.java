@@ -53,14 +53,14 @@ public class ComparisonOperationsService {
                     .collect(Collectors.toList()));
             log.info("[INTERFACE] Найдено интерфейсов: {}. ID: {}",
                     interfaceProductList.size(), interfaceProductList.stream().map(Interface::getId).collect(Collectors.toList()));
-            Optional<Operation> operation = operationRepository.findByNameAndTypeAndInterfaceIdIn(discoveredOperation.getName(),
+            Optional<Operation> operation = operationRepository.findByNameIgnoreCaseAndTypeAndInterfaceIdIn(discoveredOperation.getName(),
                     discoveredOperation.getType(), interfaceProductList.stream().map(Interface::getId).collect(Collectors.toList()));
             log.info("[ПОИСК_OPERATION] Попытка 1. Параметры: name='{}', type='{}', interfaceIds={}",
                     discoveredOperation.getName(), discoveredOperation.getType(),
                     interfaceProductList.stream().map(Interface::getId).collect(Collectors.toList()));
             log.info("[РЕЗУЛЬТАТ] Попытка 1. Операция найдена: {}", !operation.isEmpty());
             if (operation.isEmpty()) {
-                operation = operationRepository.findByNameAndTypeAndInterfaceIdIn(discoveredOperation.getContext() + discoveredOperation.getName(),
+                operation = operationRepository.findByNameIgnoreCaseAndTypeAndInterfaceIdIn(discoveredOperation.getContext() + discoveredOperation.getName(),
                         discoveredOperation.getType(), interfaceProductList.stream().map(Interface::getId).collect(Collectors.toList()));
                 log.info("[ПОИСК_OPERATION] Попытка 2. Параметры: name='{}', type='{}', interfaceIds={}",
                         discoveredOperation.getContext() + discoveredOperation.getName(), discoveredOperation.getType(),
@@ -68,7 +68,7 @@ public class ComparisonOperationsService {
                 log.info("[РЕЗУЛЬТАТ] Попытка 2. Операция найдена: {}", !operation.isEmpty());
             }
             if (operation.isEmpty()) {
-                operation = operationRepository.findByNameAndTypeAndInterfaceIdIn(discoveredOperation.getDiscoveredInterface()
+                operation = operationRepository.findByNameIgnoreCaseAndTypeAndInterfaceIdIn(discoveredOperation.getDiscoveredInterface()
                                 .getContext() + discoveredOperation.getName(),
                         discoveredOperation.getType(), interfaceProductList.stream().map(Interface::getId).collect(Collectors.toList()));
                 log.info("[ПОИСК_OPERATION] Попытка 3. Параметры: name='{}', type='{}', interfaceIds={}",

@@ -14,7 +14,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     List<Operation> findByInterfaceIdAndDeletedDateIsNull(Integer id);
 
-    Optional<Operation> findByNameAndTypeAndInterfaceIdIn(String name, String type, List<Integer> ids);
+    Optional<Operation> findByNameIgnoreCaseAndTypeAndInterfaceIdIn(String name, String type, List<Integer> ids);
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 

@@ -15,6 +15,7 @@ import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.Map;
 
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
 import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
@@ -166,8 +167,11 @@ public class ProductController {
     @PutMapping("/product/{code}/relations")
     @ApiOperation(value = "Создание и обновление связей продукта")
     public ResponseEntity putProductRelations(@PathVariable String code, @RequestBody List<ContainerDTO> containerDTO) {
-        productService.createOrUpdateProductRelations(containerDTO, code);
-        return new ResponseEntity<>(HttpStatus.OK);
+        ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code);
+        if (errorEntity.hasErrors()) {
+            return ResponseEntity.status(207).body(Map.of("errorEntity", errorEntity));
+        }
+        return ResponseEntity.ok(Map.of("message", "Сущности успешно сохранены"));
     }
 
     @PatchMapping("product/{code}/workspace")

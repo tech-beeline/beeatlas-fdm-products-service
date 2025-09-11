@@ -2,6 +2,8 @@ package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
 
+import java.util.List;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -13,7 +15,7 @@ public class OperationFullDTO {
     private String name;
     private String description;
     private String type;
-    private MapicOperationFullDTO mapicOperation;
+    private List<MapicOperationFullDTO> mapicOperations;
     private TcDTO techCapability;
     private SlaV2DTO sla;
 }

@@ -23,7 +23,7 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
 
-    Optional<DiscoveredInterface> findByConnectionInterfaceId(Integer interfaceId);
+    List<DiscoveredInterface> findAllByConnectionInterfaceId(Integer interfaceId);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 

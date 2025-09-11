@@ -18,6 +18,6 @@ public class InterfaceMethodDTO {
     private String protocol;
     private String version;
     private TcDTO techCapability;
-    private MapicInterfaceDTO mapicInterface;
+    private List<MapicInterfaceDTO> mapicInterfaces;
     private List<OperationFullDTO> operations;
 }

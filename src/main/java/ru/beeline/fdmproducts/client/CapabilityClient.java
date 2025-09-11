@@ -52,6 +52,11 @@ public class CapabilityClient {
     }
 
     public List<TcDTO> getTcs(List<Integer> tcIds) {
+        List<Integer> filteredIds = tcIds.stream().filter(Objects::nonNull).toList();
+        if (tcIds == null || tcIds.isEmpty() || filteredIds.isEmpty()) {
+            log.debug("Список tcIds пустой — возврат пустого списка");
+            return Collections.emptyList();
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -74,12 +79,16 @@ public class CapabilityClient {
             log.debug("Статус ответа: {}", response.getStatusCode());
             return response.getBody() != null ? response.getBody() : Collections.emptyList();
         } catch (Exception e) {
-            log.error("Ошибка при получении TcDTO: {}", e.getMessage());
+            log.error("Ошибка при получении TcDTO: {}", e.getMessage(), e);
             return Collections.emptyList();
         }
     }
 
     public List<IdCodeDTO> getIdCodes(List<String> codes) {
+        if (codes == null || codes.isEmpty()) {
+            log.debug("Список codes пустой — возврат пустого списка");
+            return Collections.emptyList();
+        }
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

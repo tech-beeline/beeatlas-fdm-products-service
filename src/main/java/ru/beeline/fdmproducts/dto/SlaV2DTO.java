@@ -11,5 +11,5 @@ public class SlaV2DTO {
 
     private Integer rps;
     private Integer latency;
-    private Integer errorRate;
+    private Double errorRate;
 }

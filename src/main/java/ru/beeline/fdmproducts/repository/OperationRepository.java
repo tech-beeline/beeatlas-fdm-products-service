@@ -16,7 +16,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     List<Operation> findByInterfaceIdAndDeletedDateIsNull(Integer id);
 
-    @Query(value = "SELECT * FROM operation o " +
+    @Query(value = "SELECT * FROM product.operation o " +
             "WHERE o.name ILIKE :name " +
             "AND o.type ILIKE :type " +
             "AND o.interface_id IN (:ids) " +

@@ -19,4 +19,12 @@ public interface InfraProductRepository extends JpaRepository<InfraProduct, Inte
             "(SELECT i.id FROM product.infra i WHERE i.cmdb_id NOT IN :cmdbIds) " +
             "AND ip.deleted_date IS NULL", nativeQuery = true)
     int markInfraProductsDeleted(@Param("productId") Integer productId, @Param("cmdbIds") List<String> cmdbIds, @Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query(value = "UPDATE product.infra_product ip SET deleted_date = NULL " +
+            "WHERE ip.product_id = :productId AND ip.infra_id IN " +
+            "(SELECT i.id FROM product.infra i WHERE i.cmdb_id IN :cmdbIds) " +
+            "AND ip.deleted_date IS NOT NULL", nativeQuery = true)
+    int restoreInfraProducts(@Param("productId") Integer productId, @Param("cmdbIds") List<String> cmdbIds);
+
 }

@@ -12,9 +12,6 @@ import java.util.Optional;
 @Repository
 public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
-    Optional<Operation> findByNameAndInterfaceId(String name, Integer interfaceId);
-
-    List<Operation> findByInterfaceIdAndDeletedDateIsNull(Integer id);
 
     @Query(value = "SELECT * FROM product.operation o " +
             "WHERE o.name ILIKE :name " +
@@ -27,6 +24,5 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 
-    List<Operation> findByNameInAndInterfaceId (List<String> names, Integer interfaceId);
 
 }

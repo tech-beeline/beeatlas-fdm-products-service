@@ -156,14 +156,11 @@ public class DiscoveredInterfaceService {
         }
     }
 
-    private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO,
-                                                Optional<DiscoveredOperation> existingOpOpt,
-                                                LocalDateTime now,
-                                                DiscoveredInterface discoveredInterface) {
+    private DiscoveredOperation updateOperation(DiscoveredInterfaceOperationDTO operationDTO, Optional<DiscoveredOperation> existingOpOpt,
+                                                LocalDateTime now, DiscoveredInterface discoveredInterface) {
         if (existingOpOpt.isPresent()) {
             DiscoveredOperation operation;
             operation = existingOpOpt.get();
-
             boolean needUpdate = false;
 
             if (!equalsNullable(operation.getContext(), operationDTO.getContext())) {
@@ -187,6 +184,7 @@ public class DiscoveredInterfaceService {
         } else {
             return discoveredOperationRepository.save(DiscoveredOperation.builder()
                     .name(operationDTO.getName())
+                    .context(operationDTO.getContext())
                     .discoveredInterface(discoveredInterface)
                     .description(operationDTO.getDescription())
                     .type(operationDTO.getType())

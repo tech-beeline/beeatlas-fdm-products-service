@@ -831,10 +831,6 @@ public class ProductService {
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
         }
-        Optional<LocalAssessment> existingAssessment = assessmentRepository.findBySourceIdAndProduct(sourceId, product);
-        if (existingAssessment.isPresent()) {
-            throw new IllegalArgumentException("Оценка для данного источника и продукта уже существует.");
-        }
         LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder()
                 .sourceId(sourceId)
                 .product(product)

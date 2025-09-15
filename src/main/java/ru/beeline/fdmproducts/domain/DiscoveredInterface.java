@@ -1,6 +1,7 @@
 package ru.beeline.fdmproducts.domain;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -67,6 +68,7 @@ public class DiscoveredInterface {
     @OneToMany(mappedBy = "discoveredInterface")
     private List<DiscoveredOperation> operations;
 
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "connection_interface_id", insertable = false, updatable = false)
     private Interface connectedInterface;

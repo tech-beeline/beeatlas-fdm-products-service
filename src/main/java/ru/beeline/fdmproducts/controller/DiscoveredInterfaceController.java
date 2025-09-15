@@ -37,7 +37,7 @@ public class DiscoveredInterfaceController {
     }
 
     @GetMapping("/discovered-interface")
-    @ApiOperation(value = "Создание и обновление операций интерфейса по id")
+    @ApiOperation(value = "Получение интерфейса")
     public ResponseEntity<DiscoveredInterfaceDTO> getInterfaceOperations(@RequestParam(name = "id", required = false) Integer interfaceId,
                                                                          @RequestParam(name = "external-id", required = false) Integer externalId,
                                                                          @RequestParam(name = "api-id", required = false) Integer apiId) {

@@ -819,10 +819,8 @@ public class ProductService {
         }
     }
 
-    public void postFitnessFunctions(String alias,
-                                     String sourceType,
-                                     List<FitnessFunctionDTO> requests,
-                                     Integer sourceId) {
+    public void postFitnessFunctions(String alias, String sourceType, List<FitnessFunctionDTO> requests, Integer sourceId) {
+        log.info("Старт метода: postFitnessFunctions");
         validateRequest(requests);
         Product product = productRepository.findByAliasCaseInsensitive(alias);
         if (product == null) {
@@ -844,6 +842,7 @@ public class ProductService {
                 .createdTime(LocalDateTime.now())
                 .build());
         requests.forEach(request -> processAssessmentCheck(request, assessment));
+        log.info("метод: postFitnessFunctions успешно завершен");
     }
 
     public AssessmentResponseDTO getFitnessFunctions(String alias, Integer sourceId, String sourceType) {

@@ -43,19 +43,19 @@ public class InfraService {
         if (product == null) {
             throw new EntityNotFoundException("Продукт не найден");
         }
-
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         if (!processedCmdbIds.isEmpty()) {
             infraProductRepository.restoreInfraProducts(product.getId(), processedCmdbIds);
-        }
-        if (!processedCmdbIds.isEmpty()) {
             infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
         }
         Map<String, Infra> existingInfraMap = infraRepository.findInfrasByProductId(product.getId())
                 .stream()
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
         processInfras(request.getInfra(), product, existingInfraMap);
+        request.getInfra().clear();
         processRelations(request.getRelations(), existingInfraMap);
+        existingInfraMap.clear();
+        request.getRelations().clear();
         log.info("The syncInfrastructure method is completed");
     }
 
@@ -67,9 +67,8 @@ public class InfraService {
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
         saveUpdatedInfras(updatedInfras);
-
         processAllProperties(requestInfras, existingInfraMap);
-
+        requestInfras.clear();
     }
 
     private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
@@ -193,6 +192,9 @@ public class InfraService {
         log.info("Saved {} new properties", toCreate.size());
         propertyRepository.saveAll(toUpdate);
         log.info("Updated {} existing properties", toUpdate.size());
+        toDelete.clear();
+        toCreate.clear();
+        toUpdate.clear();
         log.info("Finished processing all InfraDTO properties");
     }
 
@@ -252,6 +254,8 @@ public class InfraService {
         cacheInfra.clear();
 
         relationRepository.saveAll(relationsForSave);
+        relationsForSave.clear();
+        relations.clear();
         log.info("The processRelations method is completed");
     }
 

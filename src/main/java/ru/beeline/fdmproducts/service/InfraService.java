@@ -52,10 +52,10 @@ public class InfraService {
                 .stream()
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
         processInfras(request.getInfra(), product, existingInfraMap);
-        request.getInfra().clear();
         processRelations(request.getRelations(), existingInfraMap);
         existingInfraMap.clear();
         request.getRelations().clear();
+        request.getInfra().clear();
         log.info("The syncInfrastructure method is completed");
     }
 
@@ -192,9 +192,6 @@ public class InfraService {
         log.info("Saved {} new properties", toCreate.size());
         propertyRepository.saveAll(toUpdate);
         log.info("Updated {} existing properties", toUpdate.size());
-        toDelete.clear();
-        toCreate.clear();
-        toUpdate.clear();
         log.info("Finished processing all InfraDTO properties");
     }
 
@@ -254,8 +251,6 @@ public class InfraService {
         cacheInfra.clear();
 
         relationRepository.saveAll(relationsForSave);
-        relationsForSave.clear();
-        relations.clear();
         log.info("The processRelations method is completed");
     }
 

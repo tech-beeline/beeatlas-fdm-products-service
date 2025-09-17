@@ -14,7 +14,7 @@ env:
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/test/func/fdm#capabilityserver"
   INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/test/func/fdm#techradarserverurl"
   INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/test/func/ambassador#authsso"
-
+  OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/test/func/fdm#opentelemetry"
   JWKS: "vault:eafdmmart/data/test/func/fdm#jwks"
 
 podAnnotations:

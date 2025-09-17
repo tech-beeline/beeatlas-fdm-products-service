@@ -14,6 +14,7 @@ env:
   INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#techradarserverurl"
   INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/test/e2e/ambassador#authsso"
   JWKS: "vault:eafdmmart/data/test/e2e/fdm#jwks"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/test/e2e/fdm#opentelemetry"
 
 
 podAnnotations:

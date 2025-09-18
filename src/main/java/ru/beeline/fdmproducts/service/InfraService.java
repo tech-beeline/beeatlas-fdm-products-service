@@ -142,29 +142,41 @@ public class InfraService {
     }
 
     private void saveNewInfrasAndProducts(List<Infra> newInfras, Product product, Map<String, Infra> existingInfraMap) {
-        if (newInfras.isEmpty())
+        if (newInfras.isEmpty()) {
             return;
-        List<Infra> savedInfras = infraRepository.saveAllAndFlush(newInfras);
+        }
         List<InfraProduct> newInfraProducts = new ArrayList<>();
-        for (Infra infra : savedInfras) {
-            boolean hasLink = infra.getInfraProducts()
-                    .stream()
-                    .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
-            if (!hasLink) {
-                InfraProduct infraProduct = InfraProduct.builder()
-                        .createdDate(LocalDateTime.now())
-                        .infra(infra)
-                        .product(product)
-                        .build();
-                infra.getInfraProducts().add(infraProduct);
-                newInfraProducts.add(infraProduct);
+        for (int i = 0; i < newInfras.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, newInfras.size());
+            List<Infra> batch = newInfras.subList(i, end);
+            List<Infra> savedBatch = infraRepository.saveAllAndFlush(batch);
+            for (Infra infra : savedBatch) {
+                boolean hasLink = infra.getInfraProducts()
+                        .stream()
+                        .anyMatch(ip -> ip.getProduct().getId().equals(product.getId()));
+                if (!hasLink) {
+                    InfraProduct infraProduct = InfraProduct.builder()
+                            .createdDate(LocalDateTime.now())
+                            .infra(infra)
+                            .product(product)
+                            .build();
+                    infra.getInfraProducts().add(infraProduct);
+                    newInfraProducts.add(infraProduct);
+                }
+                existingInfraMap.put(infra.getCmdbId(), infra);
             }
-            existingInfraMap.put(infra.getCmdbId(), infra);
+            entityManager.clear();
         }
         if (!newInfraProducts.isEmpty()) {
-            infraProductRepository.saveAll(newInfraProducts);
-            infraProductRepository.flush();
+            for (int i = 0; i < newInfraProducts.size(); i += BATCH_SIZE) {
+                int end = Math.min(i + BATCH_SIZE, newInfraProducts.size());
+                List<InfraProduct> batch = newInfraProducts.subList(i, end);
+                infraProductRepository.saveAll(batch);
+                infraProductRepository.flush();
+            }
         }
+        newInfras.clear();
+        newInfraProducts.clear();
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {

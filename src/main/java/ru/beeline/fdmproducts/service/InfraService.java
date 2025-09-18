@@ -12,6 +12,8 @@ import ru.beeline.fdmproducts.dto.RelationDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.*;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -33,6 +35,9 @@ public class InfraService {
     private RelationRepository relationRepository;
     @Autowired
     private InfraProductRepository infraProductRepository;
+    @PersistenceContext
+    private EntityManager entityManager;
+    private static final int BATCH_SIZE = 1000;
 
     public void syncInfrastructure(String alias, InfraRequestDTO request) {
         log.info("start of the Product Infrastructure Synchronization method");
@@ -52,10 +57,10 @@ public class InfraService {
                 .stream()
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
         processInfras(request.getInfra(), product, existingInfraMap);
+        request.getInfra().clear();
         processRelations(request.getRelations(), existingInfraMap);
         existingInfraMap.clear();
         request.getRelations().clear();
-        request.getInfra().clear();
         System.gc();
         log.info("The syncInfrastructure method is completed");
     }
@@ -67,7 +72,9 @@ public class InfraService {
         List<Infra> updatedInfras = new ArrayList<>();
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
+        newInfras.clear();
         saveUpdatedInfras(updatedInfras);
+        updatedInfras.clear();
         processAllProperties(requestInfras, existingInfraMap);
         requestInfras.clear();
     }
@@ -168,33 +175,53 @@ public class InfraService {
 
     private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
         log.info("Received {} InfraDTOs to process", requestInfras.size());
+
         List<Integer> infraIds = requestInfras.stream()
                 .map(dto -> existingInfraMap.get(dto.getCmdbId()))
                 .filter(Objects::nonNull)
                 .map(Infra::getId)
                 .toList();
-        List<Property> allProperties = propertyRepository.findByInfraIdIn(infraIds);
-        log.info("Fetched total {} properties for all Infra", allProperties.size());
-        Map<Integer, List<Property>> propertiesByInfraId = allProperties.stream()
-                .collect(Collectors.groupingBy(p -> p.getInfra().getId()));
-        List<Property> toCreate = new ArrayList<>();
-        List<Property> toUpdate = new ArrayList<>();
-        List<Property> toDelete = new ArrayList<>();
-        for (InfraDTO infraDTO : requestInfras) {
-            Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
-            if (infra != null) {
-                List<Property> existingProperties = propertiesByInfraId.getOrDefault(infra.getId(), List.of());
-                processProperties(infra, infraDTO.getProperties(), existingProperties, toCreate, toUpdate, toDelete);
+
+        for (int i = 0; i < infraIds.size(); i += BATCH_SIZE) {
+            List<Integer> batchInfraIds = infraIds.subList(i, Math.min(i + BATCH_SIZE, infraIds.size()));
+            List<Property> allProperties = propertyRepository.findByInfraIdIn(batchInfraIds);
+            log.info("Fetched {} properties for batch of {} Infra", allProperties.size(), batchInfraIds.size());
+
+            Map<Integer, List<Property>> propertiesByInfraId = allProperties.stream()
+                    .collect(Collectors.groupingBy(p -> p.getInfra().getId()));
+            List<Property> toCreate = new ArrayList<>();
+            List<Property> toUpdate = new ArrayList<>();
+            List<Property> toDelete = new ArrayList<>();
+            for (InfraDTO infraDTO : requestInfras) {
+                Infra infra = existingInfraMap.get(infraDTO.getCmdbId());
+                if (infra != null && batchInfraIds.contains(infra.getId())) {
+                    List<Property> existingProperties = propertiesByInfraId.getOrDefault(infra.getId(), List.of());
+                    processProperties(infra, infraDTO.getProperties(), existingProperties, toCreate, toUpdate, toDelete);
+                }
             }
+
+            saveInBatches(toDelete, "deleted properties");
+            saveInBatches(toCreate, "new properties");
+            saveInBatches(toUpdate, "existing properties");
+
+            entityManager.clear();
         }
-        propertyRepository.saveAll(toDelete);
-        log.info("Updated {} deleted properties", toUpdate.size());
-        propertyRepository.saveAll(toCreate);
-        log.info("Saved {} new properties", toCreate.size());
-        propertyRepository.saveAll(toUpdate);
-        log.info("Updated {} existing properties", toUpdate.size());
+
         log.info("Finished processing all InfraDTO properties");
     }
+
+    private void saveInBatches(List<Property> props, String label) {
+        for (int i = 0; i < props.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, props.size());
+            List<Property> batch = props.subList(i, end);
+            propertyRepository.saveAll(batch);
+            propertyRepository.flush();
+            log.info("Saved batch of {} {}", batch.size(), label);
+        }
+        props.clear();
+    }
+
+
 
     private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties,
                                    List<Property> toCreate, List<Property> toUpdate, List<Property> toDelete) {
@@ -229,31 +256,39 @@ public class InfraService {
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
-        log.info("start process for Relations with size" + relations.size());
+        log.info("start process for Relations with size " + relations.size());
         List<Relation> relationsForSave = new ArrayList<>();
-        Map<String, List<Relation>> children = relationRepository.findByParentIdIn(relations.stream()
-                        .map(RelationDTO::getCmdbId)
-                        .collect(Collectors.toList()))
+        Map<String, List<Relation>> children = relationRepository.findByParentIdIn(
+                        relations.stream()
+                                .map(RelationDTO::getCmdbId)
+                                .collect(Collectors.toList()))
                 .stream()
                 .collect(Collectors.groupingBy(Relation::getParentId));
+
         List<String> chldIds = relations.stream()
                 .flatMap(r -> r.getChildren().stream())
-                .collect(Collectors.toList());
-        List<String> cacheInfra = new ArrayList<>();
-        if (!chldIds.isEmpty()) {
-            cacheInfra = infraRepository.findCmdbIdByCmdbIdIn(chldIds);
-        }
+                .toList();
+        List<String> cacheInfra = chldIds.isEmpty() ? Collections.emptyList() : infraRepository.findCmdbIdByCmdbIdIn(chldIds);
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
                 processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, children, cacheInfra);
             }
+            if (relationsForSave.size() >= BATCH_SIZE) {
+                relationRepository.saveAll(relationsForSave);
+                relationRepository.flush();
+                relationsForSave.clear();
+            }
+        }
+        if (!relationsForSave.isEmpty()) {
+            relationRepository.saveAll(relationsForSave);
+            relationRepository.flush();
+            relationsForSave.clear();
         }
         children.clear();
         cacheInfra.clear();
-
-        relationRepository.saveAll(relationsForSave);
         log.info("The processRelations method is completed");
     }
+
 
     private void processRelation(String cmdbId, RelationDTO relationDTO, List<Relation> relationsForSave,
                                  Map<String, List<Relation>> childrenRelation, List<String> cacheInfra) {

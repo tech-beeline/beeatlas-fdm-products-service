@@ -56,6 +56,7 @@ public class InfraService {
         existingInfraMap.clear();
         request.getRelations().clear();
         request.getInfra().clear();
+        System.gc();
         log.info("The syncInfrastructure method is completed");
     }
 

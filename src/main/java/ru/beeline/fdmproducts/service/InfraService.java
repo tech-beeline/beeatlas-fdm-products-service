@@ -58,9 +58,11 @@ public class InfraService {
                 .collect(Collectors.toMap(Infra::getCmdbId, Function.identity()));
         processInfras(request.getInfra(), product, existingInfraMap);
         request.getInfra().clear();
+        request.setInfra(null);
         processRelations(request.getRelations(), existingInfraMap);
         existingInfraMap.clear();
         request.getRelations().clear();
+        request.setRelations(null);
         System.gc();
         log.info("The syncInfrastructure method is completed");
     }
@@ -145,11 +147,11 @@ public class InfraService {
         if (newInfras.isEmpty()) {
             return;
         }
-        List<InfraProduct> newInfraProducts = new ArrayList<>();
         for (int i = 0; i < newInfras.size(); i += BATCH_SIZE) {
             int end = Math.min(i + BATCH_SIZE, newInfras.size());
             List<Infra> batch = newInfras.subList(i, end);
             List<Infra> savedBatch = infraRepository.saveAllAndFlush(batch);
+            List<InfraProduct> infraProductsBatch = new ArrayList<>();
             for (Infra infra : savedBatch) {
                 boolean hasLink = infra.getInfraProducts()
                         .stream()
@@ -161,22 +163,17 @@ public class InfraService {
                             .product(product)
                             .build();
                     infra.getInfraProducts().add(infraProduct);
-                    newInfraProducts.add(infraProduct);
+                    infraProductsBatch.add(infraProduct);
                 }
                 existingInfraMap.put(infra.getCmdbId(), infra);
             }
-            entityManager.clear();
-        }
-        if (!newInfraProducts.isEmpty()) {
-            for (int i = 0; i < newInfraProducts.size(); i += BATCH_SIZE) {
-                int end = Math.min(i + BATCH_SIZE, newInfraProducts.size());
-                List<InfraProduct> batch = newInfraProducts.subList(i, end);
-                infraProductRepository.saveAll(batch);
+            if (!infraProductsBatch.isEmpty()) {
+                infraProductRepository.saveAll(infraProductsBatch);
                 infraProductRepository.flush();
             }
+            entityManager.clear();
         }
         newInfras.clear();
-        newInfraProducts.clear();
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {
@@ -187,13 +184,11 @@ public class InfraService {
 
     private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
         log.info("Received {} InfraDTOs to process", requestInfras.size());
-
         List<Integer> infraIds = requestInfras.stream()
                 .map(dto -> existingInfraMap.get(dto.getCmdbId()))
                 .filter(Objects::nonNull)
                 .map(Infra::getId)
                 .toList();
-
         for (int i = 0; i < infraIds.size(); i += BATCH_SIZE) {
             List<Integer> batchInfraIds = infraIds.subList(i, Math.min(i + BATCH_SIZE, infraIds.size()));
             List<Property> allProperties = propertyRepository.findByInfraIdIn(batchInfraIds);
@@ -211,14 +206,11 @@ public class InfraService {
                     processProperties(infra, infraDTO.getProperties(), existingProperties, toCreate, toUpdate, toDelete);
                 }
             }
-
             saveInBatches(toDelete, "deleted properties");
             saveInBatches(toCreate, "new properties");
             saveInBatches(toUpdate, "existing properties");
-
             entityManager.clear();
         }
-
         log.info("Finished processing all InfraDTO properties");
     }
 
@@ -232,7 +224,6 @@ public class InfraService {
         }
         props.clear();
     }
-
 
 
     private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties,

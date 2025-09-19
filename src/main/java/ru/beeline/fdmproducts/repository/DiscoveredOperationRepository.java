@@ -25,7 +25,7 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             + "WHERE do.interfaceId = :interfaceId "
             + "AND NOT EXISTS (" + "   SELECT 1 FROM DiscoveredOperation do2 JOIN Operation o ON do2.connectionOperationId = o.id "
             + "   WHERE do2.interfaceId = :interfaceId "
-            + "     AND o.id NOT IN :operationIds" + ")")
+            + "     AND o.id NOT IN (:operationIds))")
     List<DiscoveredOperation> getRows(@Param("interfaceId") Integer interfaceId,
                                       @Param("operationIds") List<Integer> operationIds);
 }

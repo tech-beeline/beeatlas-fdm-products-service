@@ -12,7 +12,7 @@ import java.util.List;
 @Repository
 public interface InfraRepository extends JpaRepository<Infra, Integer> {
 
-    @Query("select i.cmdbId from Infra i where i.cmdbId in :cmdbIds")
+    @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
     List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);
 
     List<Infra> findByCmdbIdIn(Collection<String> cmdbIds);

@@ -43,7 +43,6 @@ public class InfraService {
         log.info("start of the Product Infrastructure Synchronization method");
         String productAlias = URLDecoder.decode(alias, StandardCharsets.UTF_8);
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
-        log.info("product is" + product);
 
         if (product == null) {
             throw new EntityNotFoundException("Продукт не найден");
@@ -61,6 +60,7 @@ public class InfraService {
         request.setInfra(null);
         processRelations(request.getRelations(), existingInfraMap);
         existingInfraMap.clear();
+        existingInfraMap = null;
         request.getRelations().clear();
         request.setRelations(null);
         System.gc();
@@ -68,17 +68,16 @@ public class InfraService {
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
-        log.info("requestInfras size: " + requestInfras.size());
         loadMissingInfras(requestInfras, existingInfraMap);
         List<Infra> newInfras = new ArrayList<>();
         List<Infra> updatedInfras = new ArrayList<>();
         processCreateOrUpdateInfras(requestInfras, existingInfraMap, product, newInfras, updatedInfras);
         saveNewInfrasAndProducts(newInfras, product, existingInfraMap);
-        newInfras.clear();
+        newInfras = null;
         saveUpdatedInfras(updatedInfras);
-        updatedInfras.clear();
+        updatedInfras = null;
         processAllProperties(requestInfras, existingInfraMap);
-        requestInfras.clear();
+        requestInfras = null;
     }
 
     private void loadMissingInfras(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
@@ -174,6 +173,7 @@ public class InfraService {
             entityManager.clear();
         }
         newInfras.clear();
+        newInfras= null;
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {
@@ -183,7 +183,6 @@ public class InfraService {
     }
 
     private void processAllProperties(List<InfraDTO> requestInfras, Map<String, Infra> existingInfraMap) {
-        log.info("Received {} InfraDTOs to process", requestInfras.size());
         List<Integer> infraIds = requestInfras.stream()
                 .map(dto -> existingInfraMap.get(dto.getCmdbId()))
                 .filter(Objects::nonNull)
@@ -192,7 +191,6 @@ public class InfraService {
         for (int i = 0; i < infraIds.size(); i += BATCH_SIZE) {
             List<Integer> batchInfraIds = infraIds.subList(i, Math.min(i + BATCH_SIZE, infraIds.size()));
             List<Property> allProperties = propertyRepository.findByInfraIdIn(batchInfraIds);
-            log.info("Fetched {} properties for batch of {} Infra", allProperties.size(), batchInfraIds.size());
 
             Map<Integer, List<Property>> propertiesByInfraId = allProperties.stream()
                     .collect(Collectors.groupingBy(p -> p.getInfra().getId()));
@@ -211,7 +209,6 @@ public class InfraService {
             saveInBatches(toUpdate, "existing properties");
             entityManager.clear();
         }
-        log.info("Finished processing all InfraDTO properties");
     }
 
     private void saveInBatches(List<Property> props, String label) {
@@ -220,9 +217,9 @@ public class InfraService {
             List<Property> batch = props.subList(i, end);
             propertyRepository.saveAll(batch);
             propertyRepository.flush();
-            log.info("Saved batch of {} {}", batch.size(), label);
         }
         props.clear();
+        props = null;
     }
 
 
@@ -259,7 +256,7 @@ public class InfraService {
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
-        log.info("start process for Relations with size " + relations.size());
+
         List<Relation> relationsForSave = new ArrayList<>();
         Map<String, List<Relation>> children = relationRepository.findByParentIdIn(
                         relations.stream()
@@ -279,17 +276,20 @@ public class InfraService {
             if (relationsForSave.size() >= BATCH_SIZE) {
                 relationRepository.saveAll(relationsForSave);
                 relationRepository.flush();
-                relationsForSave.clear();
+
             }
         }
         if (!relationsForSave.isEmpty()) {
             relationRepository.saveAll(relationsForSave);
             relationRepository.flush();
-            relationsForSave.clear();
         }
+        relationsForSave = null;
+
         children.clear();
         cacheInfra.clear();
-        log.info("The processRelations method is completed");
+        children = null;
+        cacheInfra = null;
+
     }
 
 

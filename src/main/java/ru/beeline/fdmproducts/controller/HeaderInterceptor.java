@@ -59,6 +59,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
             logger.info("Set headers complete");
             return true;
         } catch (Exception e) {
+            logger.info("failed " + request.getRequestURI());
             throw new ForbiddenException("403 Forbidden.");
         }
     }

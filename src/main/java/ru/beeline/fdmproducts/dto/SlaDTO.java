@@ -13,5 +13,5 @@ public class SlaDTO {
     private Integer rps;
     private Integer latency;
     @JsonProperty("error_rate")
-    private Integer errorRate;
+    private Double errorRate;
 }

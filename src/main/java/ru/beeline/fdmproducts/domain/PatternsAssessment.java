@@ -3,7 +3,9 @@ package ru.beeline.fdmproducts.domain;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
@@ -26,8 +28,9 @@ public class PatternsAssessment {
     @Column(name = "product_id")
     private Integer productId;
 
-    @Column(name = "source_type_id")
-    private Integer sourceTypeId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "source_type_id", nullable = false)
+    private EnumSourceType sourceType;
 
     @Column(name = "source_id")
     private Integer sourceId;
@@ -35,6 +38,8 @@ public class PatternsAssessment {
     @Column(name = "create_date")
     private LocalDateTime createDate;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     @OneToMany(mappedBy = "assessment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PatternsCheck> checks;
 }

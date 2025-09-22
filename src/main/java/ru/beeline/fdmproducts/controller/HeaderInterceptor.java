@@ -29,10 +29,14 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")
-                    || request.getRequestURI().contains("/api/v1/product")
+                    || (request.getRequestURI().contains("/api/v1/product") && !(request.getRequestURI().contains("/interface/arch")
+                    || request.getRequestURI().contains("/interface/mapic")))
                     || request.getRequestURI().contains("/api/v1/infra")
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")
+                    || request.getRequestURI().contains("/api/v1/discovered-interfaces")
+                    || request.getRequestURI().contains("/api/v1/discovered-interface")
+                    || request.getRequestURI().contains("/api/v1/mapic")
                     || request.getRequestURI().contains("/api/v1/service")) {
                 return true;
             }
@@ -55,6 +59,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
             logger.info("Set headers complete");
             return true;
         } catch (Exception e) {
+            logger.info("failed " + request.getRequestURI());
             throw new ForbiddenException("403 Forbidden.");
         }
     }

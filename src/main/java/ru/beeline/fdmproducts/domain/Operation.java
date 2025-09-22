@@ -27,7 +27,7 @@ public class Operation {
     @Column(name = "name")
     private String name;
 
-    @Column(name="description")
+    @Column(name = "description")
     private String description;
 
     @Column(name = "type")
@@ -44,4 +44,7 @@ public class Operation {
 
     @Column(name = "deleted_date")
     private Date deletedDate;
+
+    @Column(name = "tc_id")
+    private Integer tcId;
 }

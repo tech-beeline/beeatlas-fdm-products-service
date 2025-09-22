@@ -50,7 +50,7 @@ public class Infra implements Serializable {
     @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<InfraProduct> infraProducts = new HashSet<>();
 
-    @OneToMany(mappedBy = "infra", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "infra", orphanRemoval = true)
     private Set<Property> properties = new HashSet<>();
 
     @Override

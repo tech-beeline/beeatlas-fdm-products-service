@@ -4,8 +4,17 @@ env:
   SPRING_DATASOURCE_USERNAME: "vault:eafdmmart/data/dev/fdm#username"
   SPRING_DATASOURCE_PASSWORD: "vault:eafdmmart/data/dev/fdm#password"
   SPRING_DATASOURCE_DRIVER_CLASS_NAME: "vault:eafdmmart/data/dev/fdm#driver"
+  SPRING_RABBITMQ_TEMPLATE_ROUTING_KEY: "vault:eafdmmart/data/dev/fdm#rabbitmqtemplateroutingkey"
+  SPRING_RABBITMQ_HOST: "vault:eafdmmart/data/dev/fdm#rabbitmqhost"
+  SPRING_RABBITMQ_PORT: "vault:eafdmmart/data/dev/fdm#rabbitmqport"
+  SPRING_RABBITMQ_USERNAME: "vault:eafdmmart/data/dev/fdm#rabbitmqusername"
+  SPRING_RABBITMQ_PASSWORD: "vault:eafdmmart/data/dev/fdm#rabbitmqpassword"
+  SPRING_RABBITMQ_VIRTUAL_HOST: "vault:eafdmmart/data/dev/fdm#rabbitmqvirtualhost"
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/dev/fdm#capabilityserver"
+  INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/dev/fdm#techradarserverurl"
+  INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/dev/ambassador#authsso"
   JWKS: "vault:eafdmmart/data/dev/fdm#jwks"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/dev/fdm#opentelemetry"
 
 podAnnotations:
   vault.security.banzaicloud.io/vault-addr: "https://vault-test.vimpelcom.ru/"
@@ -23,8 +32,8 @@ ingress:
 
 resources:
   limits:
-    cpu: 500m
-    memory: 1512Mi
+    cpu: 3000m
+    memory: 5500Mi
   requests:
-    cpu: 100m
-    memory: 1256Mi
+    cpu: 600m
+    memory: 3000Mi

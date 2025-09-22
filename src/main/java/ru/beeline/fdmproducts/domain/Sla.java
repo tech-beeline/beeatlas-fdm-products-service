@@ -30,5 +30,5 @@ public class Sla {
     private Integer latency;
 
     @Column(name = "error_rate")
-    private Integer errorRate;
+    private Double errorRate;
 }

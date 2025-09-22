@@ -16,4 +16,6 @@ public class MethodDTO {
     private String returnType;
     private List<ParameterDTO> parameters;
     private SlaDTO sla;
+    private String capabilityCode;
+    private String type;
 }

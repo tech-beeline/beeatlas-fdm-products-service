@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
 import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Builder
@@ -48,4 +49,9 @@ public class Product {
     @JsonManagedReference
     @OneToMany(mappedBy = "product")
     private List<TechProduct> techProducts;
+
+    @ToString.Exclude
+    @OneToMany(mappedBy = "product")
+    @JsonManagedReference
+    private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
 }

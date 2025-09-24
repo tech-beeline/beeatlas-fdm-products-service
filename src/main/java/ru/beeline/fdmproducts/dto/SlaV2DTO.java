@@ -9,7 +9,7 @@ import lombok.*;
 @Builder
 public class SlaV2DTO {
 
-    private Integer rps;
-    private Integer latency;
+    private Double rps;
+    private Double latency;
     private Double errorRate;
 }

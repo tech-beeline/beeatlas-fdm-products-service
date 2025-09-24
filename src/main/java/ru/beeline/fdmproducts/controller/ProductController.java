@@ -166,8 +166,10 @@ public class ProductController {
 
     @PutMapping("/product/{code}/relations")
     @ApiOperation(value = "Создание и обновление связей продукта")
-    public ResponseEntity putProductRelations(@PathVariable String code, @RequestBody List<ContainerDTO> containerDTO) {
-        ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code);
+    public ResponseEntity putProductRelations(@PathVariable String code,
+                                              @RequestBody List<ContainerDTO> containerDTO,
+                                              @RequestParam(name = "source", required = false) String source) {
+        ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code, source);
         if (errorEntity.hasErrors()) {
             return ResponseEntity.status(207).body(Map.of("errorEntity", errorEntity));
         }

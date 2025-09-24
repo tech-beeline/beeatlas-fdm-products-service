@@ -49,7 +49,7 @@ public class InfraService {
         }
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         if (!processedCmdbIds.isEmpty()) {
-            infraProductRepository.restoreInfraProducts(product.getId(), processedCmdbIds);
+            infraProductRepository.restoreInfraProducts(product.getId(), processedCmdbIds, LocalDateTime.now());
             infraProductRepository.markInfraProductsDeleted(product.getId(), processedCmdbIds, LocalDateTime.now());
         }
         Map<String, Infra> existingInfraMap = infraRepository.findInfrasByProductId(product.getId())
@@ -222,7 +222,6 @@ public class InfraService {
         props = null;
     }
 
-
     private void processProperties(Infra infra, List<PropertyDTO> properties, List<Property> existingProperties,
                                    List<Property> toCreate, List<Property> toUpdate, List<Property> toDelete) {
         Map<String, Property> existingPropertyMap = existingProperties.stream()
@@ -232,16 +231,19 @@ public class InfraService {
                 .filter(property -> !incomingKeys.contains(property.getName()) && property.getDeletedDate() == null)
                 .peek(p -> p.setDeletedDate(LocalDateTime.now()))
                 .collect(Collectors.toList()));
-
         for (PropertyDTO dto : properties) {
             Property existing = existingPropertyMap.get(dto.getKey());
             if (existing == null) {
                 toCreate.add(buildNewProperty(infra, dto));
-            } else if (!Objects.equals(existing.getValue(), dto.getValue())) {
-                existing.setValue(dto.getValue());
-                existing.setDeletedDate(null);
-                existing.setLastModifiedDate(LocalDateTime.now());
-                toUpdate.add(existing);
+            } else {
+                boolean valueChanged = !Objects.equals(existing.getValue(), dto.getValue());
+                boolean wasDeleted = existing.getDeletedDate() != null;
+                if (valueChanged || wasDeleted) {
+                    existing.setValue(dto.getValue());
+                    existing.setDeletedDate(null);
+                    existing.setLastModifiedDate(LocalDateTime.now());
+                    toUpdate.add(existing);
+                }
             }
         }
     }
@@ -256,18 +258,12 @@ public class InfraService {
     }
 
     private void processRelations(List<RelationDTO> relations, Map<String, Infra> existingInfraMap) {
-
         List<Relation> relationsForSave = new ArrayList<>();
         Map<String, List<Relation>> children = relationRepository.findByParentIdIn(
-                        relations.stream()
-                                .map(RelationDTO::getCmdbId)
-                                .collect(Collectors.toList()))
-                .stream()
-                .collect(Collectors.groupingBy(Relation::getParentId));
+                        relations.stream().map(RelationDTO::getCmdbId).collect(Collectors.toList()))
+                .stream().collect(Collectors.groupingBy(Relation::getParentId));
 
-        List<String> chldIds = relations.stream()
-                .flatMap(r -> r.getChildren().stream())
-                .toList();
+        List<String> chldIds = relations.stream().flatMap(r -> r.getChildren().stream()).toList();
         List<String> cacheInfra = chldIds.isEmpty() ? Collections.emptyList() : infraRepository.findCmdbIdByCmdbIdIn(chldIds);
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
@@ -284,14 +280,11 @@ public class InfraService {
             relationRepository.flush();
         }
         relationsForSave = null;
-
         children.clear();
         cacheInfra.clear();
         children = null;
         cacheInfra = null;
-
     }
-
 
     private void processRelation(String cmdbId, RelationDTO relationDTO, List<Relation> relationsForSave,
                                  Map<String, List<Relation>> childrenRelation, List<String> cacheInfra) {

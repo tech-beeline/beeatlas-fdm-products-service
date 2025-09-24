@@ -24,10 +24,10 @@ public class Sla {
     private Integer operationId;
 
     @Column(name = "rps")
-    private Integer rps;
+    private Double rps;
 
     @Column(name = "latency")
-    private Integer latency;
+    private Double latency;
 
     @Column(name = "error_rate")
     private Double errorRate;

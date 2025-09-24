@@ -279,7 +279,7 @@ public class ProductService {
         }
     }
 
-    public ValidationErrorResponse createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code) {
+    public ValidationErrorResponse createOrUpdateProductRelations(List<ContainerDTO> containerDTOS, String code, String source) {
         log.info("Старт метода createOrUpdateProductRelations");
         ValidationErrorResponse errorEntity = new ValidationErrorResponse();
         validateContainers(containerDTOS, errorEntity);
@@ -288,6 +288,10 @@ public class ProductService {
         if (!containerDTOS.isEmpty()) {
             saveRelations(containerDTOS, code);
         }
+        Product product = getProductByCode(code);
+        product.setSource(source);
+        product.setUploadDate(LocalDateTime.now());
+        productRepository.save(product);
         return errorEntity;
     }
 

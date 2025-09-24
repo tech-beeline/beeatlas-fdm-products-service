@@ -10,8 +10,8 @@ import lombok.*;
 @Builder
 public class SlaDTO {
 
-    private Integer rps;
-    private Integer latency;
+    private Double rps;
+    private Double latency;
     @JsonProperty("error_rate")
     private Double errorRate;
 }

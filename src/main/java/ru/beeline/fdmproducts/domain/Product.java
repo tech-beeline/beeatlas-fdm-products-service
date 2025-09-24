@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
 import javax.persistence.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,6 +46,12 @@ public class Product {
 
     @Column(name = "structurizr_api_url")
     private String structurizrApiUrl;
+
+    @Column(name = "source")
+    private String source;
+
+    @Column(name = "upload_date ")
+    private LocalDateTime uploadDate ;
 
     @JsonManagedReference
     @OneToMany(mappedBy = "product")

@@ -79,6 +79,8 @@ public class ProductTechMapper {
                         .name(product.getName())
                         .structurizrApiUrl(product.getStructurizrApiUrl())
                         .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                        .uploadSource(product.getSource())
+                        .uploadDate(product.getUploadDate())
                         .build())
                 .collect(Collectors.toList());
     }

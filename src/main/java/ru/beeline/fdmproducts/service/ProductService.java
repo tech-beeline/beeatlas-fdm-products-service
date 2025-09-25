@@ -1314,4 +1314,14 @@ public class ProductService {
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {
         return productTechMapper.mapToGetProductsByIdsDTO(productRepository.findAllById(ids));
     }
+
+    public void patchProductSource(String cmdb, String sourceName) {
+        if (sourceName == null || sourceName.isEmpty()) {
+            throw new IllegalArgumentException("Не передан параметр source-name");
+        }
+        Product product = getProductByCode(cmdb);
+        product.setSource(sourceName);
+        product.setUploadDate(LocalDateTime.now());
+        productRepository.save(product);
+    }
 }

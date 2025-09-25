@@ -2,6 +2,8 @@ package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -16,5 +18,6 @@ public class ProductInfoShortDTO {
     private String name;
     private String structurizrApiUrl;
     private String structurizrWorkspaceName;
-
+    private String uploadSource;
+    private LocalDateTime uploadDate;
 }

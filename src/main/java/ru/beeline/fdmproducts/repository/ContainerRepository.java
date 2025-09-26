@@ -17,4 +17,6 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     List<ContainerProduct> findAllByProductIdAndDeletedDateIsNull(Integer productId);
 
     List<ContainerProduct> findAllByCodeIn(List<String> codes);
+
+    List<ContainerProduct> findAllByCodeInAndProductId(List<String> codes, Integer productId);
 }

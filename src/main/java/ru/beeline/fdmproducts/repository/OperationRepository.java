@@ -23,6 +23,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                                                      @Param("ids") List<Integer> ids);
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
+    List<Operation> findAllByInterfaceIdIn(List<Integer> interfaceIds);
 
     List<Operation> findAllByInterfaceIdAndDeletedDateIsNull(Integer interfaceId);
 

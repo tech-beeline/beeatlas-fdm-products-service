@@ -24,6 +24,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Transactional
 @Service
@@ -1442,5 +1443,23 @@ public class ProductService {
                 .uploadSource(product.getSource())
                 .uploadDate(product.getUploadDate())
                 .build();
+    }
+
+    public List<Integer> getTCIdsByProductId(Integer id) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(id);
+        if (containerProducts == null && containerProducts.size() == 0) {
+            return new ArrayList<Integer>();
+        }
+        List<Interface> interfaces = interfaceRepository.findAllByContainerIdIn(containerProducts.stream()
+                                                                                        .map(ContainerProduct::getId)
+                                                                                        .collect(Collectors.toList()));
+        List<Operation> operations = operationRepository.findAllByInterfaceIdIn(interfaces.stream()
+                                                                                        .map(Interface::getId)
+                                                                                        .collect(Collectors.toList()));
+        return Stream.of(interfaces.stream().map(Interface::getTcId), operations.stream().map(Operation::getTcId))
+                .flatMap(Function.identity())
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

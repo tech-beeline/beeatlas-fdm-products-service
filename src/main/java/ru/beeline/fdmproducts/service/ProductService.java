@@ -429,9 +429,10 @@ public class ProductService {
     }
 
     public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
+        log.info("Обработка контейнеров продукта с code: " + code);
         Product product = getProductByCode(code);
         Map<String, ContainerProduct> existingContainers = containerRepository
-                .findAllByCodeIn(containerDTOS.stream().map(ContainerDTO::getCode).toList())
+                .findAllByCodeInAndProductId(containerDTOS.stream().map(ContainerDTO::getCode).toList(), product.getId())
                 .stream()
                 .collect(Collectors.toMap(ContainerProduct::getCode, c -> c));
         List<ContainerProduct> toSave = new ArrayList<>();
@@ -441,6 +442,7 @@ public class ProductService {
         prepareContainersAndCollectData(containerDTOS, product, existingContainers, toSave, interfacesByCode,
                 allInterfaces, allMethods);
         if (!toSave.isEmpty()) {
+            log.info("Сохранение контейнеров. Количество: " + toSave.size());
             containerRepository.saveAll(toSave);
         }
         Map<String, Long> codesIdMap = loadInterfaceCapabilityMap(allInterfaces);
@@ -479,6 +481,7 @@ public class ProductService {
                 }
             }
             List<InterfaceDTO> dtoInterfaces = dto.getInterfaces() != null ? dto.getInterfaces() : Collections.emptyList();
+            log.info("В контейнере " + dto.getCode() + " Интерфесов: " + dtoInterfaces.size());
             interfacesByCode.put(dto.getCode(), dtoInterfaces);
             allInterfaces.addAll(dtoInterfaces);
             dtoInterfaces.stream()

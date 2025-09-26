@@ -50,6 +50,12 @@ public class ProductController {
         return productService.getProductByCode(code);
     }
 
+    @GetMapping("/product/{cmdb}/influence")
+    @ApiOperation(value = "Получить массив связанных систем для продукта по cmdb мнемонике", response = List.class)
+    public SystemRelationDto getInfluencesByCmdb(@PathVariable String cmdb) {
+        return productService.getInfluencesByCmdb(cmdb);
+    }
+
     @GetMapping("/product/by-ids")
     @ApiOperation(value = "Получить продукты по списку идентификаторов", response = List.class)
     public List<GetProductsByIdsDTO> getProductsByIds(@RequestParam List<Integer> ids) {

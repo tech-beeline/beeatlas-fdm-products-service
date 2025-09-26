@@ -429,9 +429,10 @@ public class ProductService {
     }
 
     public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
+        log.info("Обработка контейнеров продукта с code: " + code);
         Product product = getProductByCode(code);
         Map<String, ContainerProduct> existingContainers = containerRepository
-                .findAllByCodeIn(containerDTOS.stream().map(ContainerDTO::getCode).toList())
+                .findAllByCodeInAndProductId(containerDTOS.stream().map(ContainerDTO::getCode).toList(), product.getId())
                 .stream()
                 .collect(Collectors.toMap(ContainerProduct::getCode, c -> c));
         List<ContainerProduct> toSave = new ArrayList<>();
@@ -441,6 +442,7 @@ public class ProductService {
         prepareContainersAndCollectData(containerDTOS, product, existingContainers, toSave, interfacesByCode,
                 allInterfaces, allMethods);
         if (!toSave.isEmpty()) {
+            log.info("Сохранение контейнеров. Количество: " + toSave.size());
             containerRepository.saveAll(toSave);
         }
         Map<String, Long> codesIdMap = loadInterfaceCapabilityMap(allInterfaces);
@@ -479,6 +481,7 @@ public class ProductService {
                 }
             }
             List<InterfaceDTO> dtoInterfaces = dto.getInterfaces() != null ? dto.getInterfaces() : Collections.emptyList();
+            log.info("В контейнере " + dto.getCode() + " Интерфесов: " + dtoInterfaces.size());
             interfacesByCode.put(dto.getCode(), dtoInterfaces);
             allInterfaces.addAll(dtoInterfaces);
             dtoInterfaces.stream()
@@ -1071,10 +1074,10 @@ public class ProductService {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
         }
         List<ProductInterfaceDTO> result = new ArrayList<>();
-        List<ContainerProduct> containerProducts = containerRepository.findAllByProductId(product.getId());
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
         if (!containerProducts.isEmpty()) {
             List<Integer> containerIds = containerProducts.stream().map(ContainerProduct::getId).toList();
-            List<Interface> interfaces = interfaceRepository.findAllByContainerIdIn(containerIds);
+            List<Interface> interfaces = interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(containerIds);
             if (!interfaces.isEmpty()) {
                 for (Interface interfaceObj : interfaces) {
                     ProductInterfaceDTO productInterfaceDTO = createProductInterface(interfaceObj);
@@ -1086,7 +1089,7 @@ public class ProductService {
                                 mapicInterfaceDTOS.add(createMapicInterfaceDTO(discoveredInterface)));
                         productInterfaceDTO.setMapicInterfaces(mapicInterfaceDTOS);
                     }
-                    List<Operation> operations = operationRepository.findAllByInterfaceId(interfaceObj.getId());
+                    List<Operation> operations = operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(interfaceObj.getId());
                     if (!operations.isEmpty()) {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
@@ -1109,6 +1112,9 @@ public class ProductService {
                 .name(interfaceObj.getName())
                 .version(interfaceObj.getVersion())
                 .description(interfaceObj.getDescription())
+                .code(interfaceObj.getCode())
+                .createDate(interfaceObj.getCreatedDate())
+                .updateDate(interfaceObj.getUpdatedDate())
                 .build();
     }
 
@@ -1146,6 +1152,8 @@ public class ProductService {
                 .name(operation.getName())
                 .description(operation.getDescription())
                 .type(operation.getType())
+                .createDate(operation.getCreatedDate())
+                .updateDate(operation.getUpdatedDate())
                 .build();
         List<MapicOperationDTO> result = new ArrayList<>();
         if (discoveredOperations != null && !discoveredOperations.isEmpty()) {
@@ -1168,13 +1176,15 @@ public class ProductService {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
         }
         List<ContainerInterfacesDTO> result = new ArrayList<>();
-        List<ContainerProduct> containerProducts = containerRepository.findAllByProductId(product.getId());
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
         if (!containerProducts.isEmpty()) {
             for (ContainerProduct containerProduct : containerProducts) {
                 result.add(ContainerInterfacesDTO.builder()
                         .id(containerProduct.getId())
                         .name(containerProduct.getName())
                         .code(containerProduct.getCode())
+                        .createDate(containerProduct.getCreatedDate())
+                        .updateDate(containerProduct.getUpdatedDate())
                         .interfaces(createInterfaceMethodDTOS(containerProduct.getId()))
                         .build());
             }
@@ -1184,7 +1194,7 @@ public class ProductService {
 
     private List<InterfaceMethodDTO> createInterfaceMethodDTOS(Integer containerId) {
         List<InterfaceMethodDTO> result = new ArrayList<>();
-        List<Interface> interfaces = interfaceRepository.findAllByContainerId(containerId);
+        List<Interface> interfaces = interfaceRepository.findAllByContainerIdAndDeletedDateIsNull(containerId);
         if (interfaces.isEmpty()) {
             return Collections.emptyList();
         }
@@ -1202,9 +1212,12 @@ public class ProductService {
                     .protocol(interfaceObj.getProtocol())
                     .description(interfaceObj.getDescription())
                     .version(interfaceObj.getVersion())
+                    .code(interfaceObj.getCode())
+                    .createDate(interfaceObj.getCreatedDate())
+                    .updateDate(interfaceObj.getUpdatedDate())
                     .mapicInterfaces(createMapicInterface(discoveredInterfaceMap.get(interfaceObj.getId())))
                     .operations(createOperations(
-                            operationRepository.findAllByInterfaceId(interfaceObj.getId())))
+                            operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(interfaceObj.getId())))
                     .techCapability(tcDTOMap.get(interfaceObj.getTcId()))
                     .build());
         }
@@ -1254,6 +1267,8 @@ public class ProductService {
                     .mapicOperations(createMapicOperationFullDTO(discoveredOperationMap.get(operation.getId())))
                     .sla(createSlaV2DTO(slaMap.get(operation.getId())))
                     .techCapability(tcDTOMap.get(operation.getTcId()))
+                    .createdDate(operation.getCreatedDate())
+                    .updateDate(operation.getUpdatedDate())
                     .build());
         }
         return result;
@@ -1301,5 +1316,15 @@ public class ProductService {
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {
         return productTechMapper.mapToGetProductsByIdsDTO(productRepository.findAllById(ids));
+    }
+
+    public void patchProductSource(String cmdb, String sourceName) {
+        if (sourceName == null || sourceName.isEmpty()) {
+            throw new IllegalArgumentException("Не передан параметр source-name");
+        }
+        Product product = getProductByCode(cmdb);
+        product.setSource(sourceName);
+        product.setUploadDate(LocalDateTime.now());
+        productRepository.save(product);
     }
 }

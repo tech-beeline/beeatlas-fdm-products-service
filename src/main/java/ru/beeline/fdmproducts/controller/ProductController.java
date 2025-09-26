@@ -182,4 +182,12 @@ public class ProductController {
         productService.patchProduct(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @PatchMapping("product/{cmdb}/source")
+    @ApiOperation(value = "Проставление источника обновления продукта и время подгрузки данных.")
+    public ResponseEntity patchProductsSource(@PathVariable String cmdb,
+                                        @RequestParam(name = "source-name", required = false) String sourceName) {
+        productService.patchProductSource(cmdb, sourceName);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

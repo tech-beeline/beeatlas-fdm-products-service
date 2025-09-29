@@ -44,7 +44,7 @@ public class DeleteArchRelationsConsumer {
             JsonNode jsonNode = objectMapper.readTree(message);
             if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
                 if (jsonNode.get("changeType").asText().equals("DELETE")) {
-                    archContainerRelationsService.processInterafaceDelete(jsonNode.get("entityId").asInt());
+                    archContainerRelationsService.processInterfaceDelete(jsonNode.get("entityId").asInt());
                 }
             } else {
                 log.error("Message does not match the required format");

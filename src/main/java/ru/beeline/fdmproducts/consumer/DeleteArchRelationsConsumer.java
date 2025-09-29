@@ -55,4 +55,22 @@ public class DeleteArchRelationsConsumer {
         }
     }
 
+    @RabbitListener(queues = "${queue.delete-arch-operation-relations.name}")
+    public void operationQueue(String message) {
+        log.info("Received message from delete-arch-operation-relations: " + message, new String(message.getBytes()));
+        try {
+            JsonNode jsonNode = objectMapper.readTree(message);
+            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+                if (jsonNode.get("changeType").asText().equals("DELETE")) {
+                    archContainerRelationsService.processOperationDelete(jsonNode.get("entityId").asInt());
+                }
+            } else {
+                log.error("Message does not match the required format");
+            }
+
+        } catch (Exception e) {
+            log.error("Internal server Error: " + e.getMessage());
+        }
+    }
+
 }

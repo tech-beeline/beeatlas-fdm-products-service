@@ -29,4 +29,10 @@ public class ArchContainerRelationsService {
         discoveredInterfaceRepository.clearConnectionInterfaceIdByInterfaceId(entityId);
         discoveredOperationRepository.clearConnectionOperationIdByInterfaceId(entityId);
     }
+
+    public void processOperationDelete(int entityId) {
+        log.info("[СТАРТ] Начало обработки processOperationDelete entityId={}", entityId);
+        discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
+        discoveredInterfaceRepository.clearConnectionInterfaceIdByOperationId(entityId);
+    }
 }

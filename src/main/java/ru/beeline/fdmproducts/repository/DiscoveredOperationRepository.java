@@ -41,6 +41,12 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             "  WHERE i.id = :interfaceId)", nativeQuery = true)
     int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE discovered_operation SET connection_operation_id = NULL " +
+            "WHERE connection_operation_id = :operationId", nativeQuery = true)
+    int clearConnectionOperationIdByOperationId(@Param("operationId") Integer operationId);
+
     @Query("SELECT do FROM DiscoveredOperation do "
             + "WHERE do.interfaceId = :interfaceId "
             + "AND NOT EXISTS (" + "   SELECT 1 FROM DiscoveredOperation do2 JOIN Operation o ON do2.connectionOperationId = o.id "

@@ -34,6 +34,13 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
             "WHERE connection_interface_id  = :interfaceId", nativeQuery = true)
     int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
 
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE discovered_interface i SET connection_interface_id = NULL " +
+            "  JOIN discovered_operation o ON o.interface_id = i.id " +
+            "WHERE connection_operation_id  = :operationId", nativeQuery = true)
+    int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
+
     List<DiscoveredInterface> findAllByConnectionInterfaceId(Integer interfaceId);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);

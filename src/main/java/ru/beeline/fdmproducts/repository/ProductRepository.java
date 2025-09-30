@@ -20,7 +20,7 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
     @Query("SELECT p.alias FROM Product p")
     List<String> findAllAliases();
 
-    @Query("SELECT p FROM Product p WHERE LOWER(p.alias) IN :aliases")
-    List<Product> findByAliasInIgnoreCase(@Param("aliases") List<String> aliases);
+    @Query("SELECT p FROM Product p WHERE LOWER(p.alias) IN :lowerAliases")
+    List<Product> findByAliasInIgnoreCase(@Param("lowerAliases") List<String> lowerAliases);
 
 }

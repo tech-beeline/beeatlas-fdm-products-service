@@ -1398,16 +1398,22 @@ public class ProductService {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
         }
         ProductInfluenceDTO influences = graphClient.getInfluences(cmdb);
+        log.info("influences: " + influences);
         if (influences == null) {
             return SystemRelationDto.builder()
                     .influencingSystems(new ArrayList<>())
                     .dependentSystems(new ArrayList<>())
                     .build();
         }
-        Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(influences.getInfluencingSystems())
+        List<String> lowerAliases = influences.getInfluencingSystems().stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
+        Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-        Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(influences.getDependentSystems())
+        log.info("influenceProducts: " + influenceProducts);
+        Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
 
@@ -1423,6 +1429,8 @@ public class ProductService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
+        log.info("dependentSystems: " + dependentSystems);
+        log.info("influencingSystems: " + influencingSystems);
         return SystemRelationDto.builder()
                 .dependentSystems(dependentSystems)
                 .influencingSystems(influencingSystems)
@@ -1448,7 +1456,7 @@ public class ProductService {
     }
 
     public List<Integer> getTCIdsByProductId(Integer id) {
-        Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
+        productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
         List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(id);
         if (containerProducts == null && containerProducts.size() == 0) {
             return new ArrayList<Integer>();

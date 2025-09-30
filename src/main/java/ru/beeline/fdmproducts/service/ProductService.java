@@ -1398,7 +1398,6 @@ public class ProductService {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
         }
         ProductInfluenceDTO influences = graphClient.getInfluences(cmdb);
-        log.info("influences: " + influences);
         if (influences == null) {
             return SystemRelationDto.builder()
                     .influencingSystems(new ArrayList<>())
@@ -1412,7 +1411,6 @@ public class ProductService {
         Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-        log.info("influenceProducts: " + influenceProducts);
         Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
@@ -1429,8 +1427,6 @@ public class ProductService {
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        log.info("dependentSystems: " + dependentSystems);
-        log.info("influencingSystems: " + influencingSystems);
         return SystemRelationDto.builder()
                 .dependentSystems(dependentSystems)
                 .influencingSystems(influencingSystems)
@@ -1458,17 +1454,23 @@ public class ProductService {
     public List<Integer> getTCIdsByProductId(Integer id) {
         productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
         List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(id);
+        log.info("containerProducts: " + containerProducts);
         if (containerProducts == null && containerProducts.size() == 0) {
             return new ArrayList<Integer>();
         }
         List<Interface> interfaces = interfaceRepository.findAllByContainerIdIn(containerProducts.stream()
                                                                                         .map(ContainerProduct::getId)
                                                                                         .collect(Collectors.toList()));
+        log.info("interfaces: " + interfaces);
         List<Operation> operations = operationRepository.findAllByInterfaceIdIn(interfaces.stream()
                                                                                         .map(Interface::getId)
                                                                                         .collect(Collectors.toList()));
-        return Stream.of(interfaces.stream().map(Interface::getTcId), operations.stream().map(Operation::getTcId))
-                .flatMap(Function.identity())
+        log.info("operations: " + operations);
+        return Stream.concat(
+                        interfaces.stream().map(Interface::getTcId),
+                        operations.stream().map(Operation::getTcId)
+                )
+                .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
     }

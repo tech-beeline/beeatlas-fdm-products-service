@@ -1404,16 +1404,21 @@ public class ProductService {
                     .dependentSystems(new ArrayList<>())
                     .build();
         }
-        List<String> lowerAliases = influences.getInfluencingSystems().stream()
+        List<String> lowerAliasesInfl = influences.getInfluencingSystems().stream()
                 .map(String::toLowerCase)
                 .collect(Collectors.toList());
 
-        Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
+        List<String> lowerAliasesDepens = influences.getDependentSystems().stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+
+        Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesInfl)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-        Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliases)
+        Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesDepens)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
+        log.info("influences.getDependentSystems() " + influences.getDependentSystems());
 
         List<SystemInfoDTO> dependentSystems = influences.getDependentSystems() == null ? new ArrayList<>() : influences.getDependentSystems()
                 .stream()

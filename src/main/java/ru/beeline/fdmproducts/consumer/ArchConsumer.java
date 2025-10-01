@@ -13,7 +13,7 @@ import ru.beeline.fdmproducts.service.ArchContainerRelationsService;
 @Slf4j
 @Component
 @EnableRabbit
-public class DeleteArchRelationsConsumer {
+public class ArchConsumer {
 
     @Autowired
     ArchContainerRelationsService archContainerRelationsService;
@@ -63,6 +63,28 @@ public class DeleteArchRelationsConsumer {
             if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
                 if (jsonNode.get("changeType").asText().equals("DELETE")) {
                     archContainerRelationsService.processOperationDelete(jsonNode.get("entityId").asInt());
+                }
+            } else {
+                log.error("Message does not match the required format");
+            }
+
+        } catch (Exception e) {
+            log.error("Internal server Error: " + e.getMessage());
+        }
+    }
+
+    @RabbitListener(queues = "${queue.comparison-arch-operations.name}")
+    public void comparisonArchOperations(String message) {
+        log.info("Received message from comparison-arch-operations: " + message, new String(message.getBytes()));
+        try {
+            JsonNode jsonNode = objectMapper.readTree(message);
+            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+                String name = jsonNode.get("name") == null ? "" : jsonNode.get("name").asText();
+                String type = jsonNode.get("changeType").asText();
+                if (type.equals("CREATE") || type.equals("UPDATE")) {
+                    archContainerRelationsService.processOperationComparison(jsonNode.get("entityId").asInt(),
+                                                                             name,
+                                                                             type);
                 }
             } else {
                 log.error("Message does not match the required format");

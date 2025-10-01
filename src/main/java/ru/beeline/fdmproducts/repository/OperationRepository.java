@@ -29,4 +29,5 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     List<Operation> findAllByInterfaceIdAndDeletedDateIsNull(Integer interfaceId);
 
 
+    List<Operation> findAllByIdIn(List<Integer> ids);
 }

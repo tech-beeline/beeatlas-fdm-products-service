@@ -43,6 +43,11 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllByConnectionInterfaceId(Integer interfaceId);
 
+    @Query(value = "SELECT * FROM product.discovered_interface di "
+            + "WHERE di.product_id = :productId "
+            + "AND di.connection_interface_id is null", nativeQuery = true)
+    List<DiscoveredInterface> findAllByProductIdAndConnectionInterfaceIdIsNull(@Param("productId") Integer productId);
+
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 
     List<DiscoveredInterface> findAllByProduct(Product product);

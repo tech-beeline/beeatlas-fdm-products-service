@@ -24,9 +24,9 @@ public class ArchConsumer {
         log.info("Received message from delete-arch-container-relations: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
-            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+            if (jsonNode.has("id") && jsonNode.has("changeType")) {
                 if (jsonNode.get("changeType").asText().equals("DELETE")) {
-                    archContainerRelationsService.processContainerDelete(jsonNode.get("entityId").asInt());
+                    archContainerRelationsService.processContainerDelete(jsonNode.get("id").asInt());
                 }
             } else {
                 log.error("Message does not match the required format");
@@ -42,9 +42,9 @@ public class ArchConsumer {
         log.info("Received message from delete-arch-interface-relations: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
-            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+            if (jsonNode.has("id") && jsonNode.has("changeType")) {
                 if (jsonNode.get("changeType").asText().equals("DELETE")) {
-                    archContainerRelationsService.processInterfaceDelete(jsonNode.get("entityId").asInt());
+                    archContainerRelationsService.processInterfaceDelete(jsonNode.get("id").asInt());
                 }
             } else {
                 log.error("Message does not match the required format");
@@ -60,9 +60,9 @@ public class ArchConsumer {
         log.info("Received message from delete-arch-operation-relations: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
-            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+            if (jsonNode.has("id") && jsonNode.has("changeType")) {
                 if (jsonNode.get("changeType").asText().equals("DELETE")) {
-                    archContainerRelationsService.processOperationDelete(jsonNode.get("entityId").asInt());
+                    archContainerRelationsService.processOperationDelete(jsonNode.get("id").asInt());
                 }
             } else {
                 log.error("Message does not match the required format");
@@ -78,11 +78,11 @@ public class ArchConsumer {
         log.info("Received message from comparison-arch-operations: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
-            if (jsonNode.has("entityId") && jsonNode.has("changeType")) {
+            if (jsonNode.has("id") && jsonNode.has("changeType")) {
                 String name = jsonNode.get("name") == null ? "" : jsonNode.get("name").asText();
                 String type = jsonNode.get("changeType").asText();
                 if (type.equals("CREATE") || type.equals("UPDATE")) {
-                    archContainerRelationsService.processOperationComparison(jsonNode.get("entityId").asInt(),
+                    archContainerRelationsService.processOperationComparison(jsonNode.get("id").asInt(),
                                                                              name,
                                                                              type);
                 }

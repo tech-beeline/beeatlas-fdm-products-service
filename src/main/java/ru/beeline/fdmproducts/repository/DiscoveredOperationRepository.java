@@ -25,25 +25,25 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_operation SET connection_operation_id = NULL " +
+    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
             "WHERE connection_operation_id IN (" +
-            "  SELECT o.id FROM operation o " +
-            "  JOIN interface i ON o.interface_id = i.id " +
+            "  SELECT o.id FROM product.operation o " +
+            "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.container_id = :entityId)", nativeQuery = true)
     int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId);
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_operation SET connection_operation_id = NULL " +
+    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
             "WHERE connection_operation_id IN (" +
-            "  SELECT o.id FROM operation o " +
-            "  JOIN interface i ON o.interface_id = i.id " +
+            "  SELECT o.id FROM product.operation o " +
+            "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.id = :interfaceId)", nativeQuery = true)
     int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_operation SET connection_operation_id = NULL " +
+    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
             "WHERE connection_operation_id = :operationId", nativeQuery = true)
     int clearConnectionOperationIdByOperationId(@Param("operationId") Integer operationId);
 

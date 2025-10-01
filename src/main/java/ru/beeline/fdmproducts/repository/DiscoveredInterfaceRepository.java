@@ -24,20 +24,20 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_interface SET connection_interface_id = NULL " +
-            "WHERE connection_interface_id IN (SELECT id FROM interface WHERE container_id = :entityId)", nativeQuery = true)
+    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
+            "WHERE connection_interface_id IN (SELECT id FROM product.interface WHERE container_id = :entityId)", nativeQuery = true)
     int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId);
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_interface SET connection_interface_id = NULL " +
+    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
             "WHERE connection_interface_id  = :interfaceId", nativeQuery = true)
     int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
 
     @Modifying
     @Transactional
-    @Query(value = "UPDATE discovered_interface i SET connection_interface_id = NULL " +
-            "  JOIN discovered_operation o ON o.interface_id = i.id " +
+    @Query(value = "UPDATE product.discovered_interface i SET connection_interface_id = NULL " +
+            "  JOIN product.discovered_operation o ON o.interface_id = i.id " +
             "WHERE connection_operation_id  = :operationId", nativeQuery = true)
     int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
 

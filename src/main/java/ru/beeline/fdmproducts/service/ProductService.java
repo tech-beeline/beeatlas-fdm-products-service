@@ -1418,7 +1418,6 @@ public class ProductService {
         Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesDepens)
                 .stream()
                 .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-        log.info("influences.getDependentSystems() " + influences.getDependentSystems());
 
         List<SystemInfoDTO> dependentSystems = influences.getDependentSystems() == null ? new ArrayList<>() : influences.getDependentSystems()
                 .stream()

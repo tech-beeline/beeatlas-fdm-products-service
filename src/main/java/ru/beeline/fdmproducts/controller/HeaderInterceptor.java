@@ -37,6 +37,8 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/api/v1/discovered-interfaces")
                     || request.getRequestURI().contains("/api/v1/discovered-interface")
                     || request.getRequestURI().contains("/api/v1/mapic")
+                    || request.getRequestURI().contains("/influence")
+                    || request.getRequestURI().contains("/tc-implementation")
                     || request.getRequestURI().contains("/api/v1/service")) {
                 return true;
             }

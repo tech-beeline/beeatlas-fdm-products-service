@@ -16,6 +16,7 @@ env:
   INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/test/func/ambassador#authsso"
   OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/test/func/fdm#opentelemetry"
   JWKS: "vault:eafdmmart/data/test/func/fdm#jwks"
+  INTEGRATION_GRAPH_SERVER_URL: "vault:eafdmmart/data/test/func/fdm#graphserverurl"
 
 podAnnotations:
   vault.security.banzaicloud.io/vault-addr: "https://vault-test.vimpelcom.ru/"

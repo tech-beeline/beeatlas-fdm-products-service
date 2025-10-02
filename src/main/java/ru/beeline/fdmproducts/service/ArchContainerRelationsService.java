@@ -65,29 +65,33 @@ public class ArchContainerRelationsService {
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
                     if (discoveredOperation.getName().equals(name) && discoveredOperation.getType().equals(type)) {
                         discoveredOperation.setConnectionOperationId(entityId);
+                        log.debug("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", name, type, discoveredOperation.getId());
                     } else {
                         if (concatContext(discoveredOperation.getContext(),
-                                          discoveredOperation.getName()).equals(name) && type.equals(discoveredOperation.getType())) {
+                                discoveredOperation.getName()).equals(name) && type.equals(discoveredOperation.getType())) {
                             discoveredOperation.setConnectionOperationId(entityId);
+                            log.debug("[ШАГ 2] Сопоставлено по context+name='{}', type={} (operationId={})",
+                                    concatContext(discoveredOperation.getContext(), discoveredOperation.getName()), type, discoveredOperation.getId());
                         } else {
                             if (concatContext(discoveredInterface.getContext(), discoveredInterface.getName()).equals(
                                     name) && type.equals(discoveredOperation.getType())) {
                                 discoveredOperation.setConnectionOperationId(entityId);
+                                log.debug("[ШАГ 3] Сопоставлено по parentContext+name='{}', type={} (operationId={})",
+                                        concatContext(discoveredInterface.getContext(), discoveredInterface.getName()), type, discoveredOperation.getId());
                             }
                         }
                     }
                     if (discoveredOperation.getConnectionOperationId() == null) {
                         discoveredOperationCounter.getAndSet(discoveredOperationCounter.get() + 1);
                     }
-
                 });
                 if (discoveredOperationCounter.get() == 0) {
                     List<Operation> operationList = operationRepository.findAllByIdIn(discoveredInterface.getOperations()
-                                                                                              .stream()
-                                                                                              .map(DiscoveredOperation::getConnectionOperationId)
-                                                                                              .filter(Objects::nonNull)
-                                                                                              .distinct()
-                                                                                              .collect(Collectors.toList()));
+                            .stream()
+                            .map(DiscoveredOperation::getConnectionOperationId)
+                            .filter(Objects::nonNull)
+                            .distinct()
+                            .collect(Collectors.toList()));
                     boolean sameInterface = operationList.stream()
                             .map(Operation::getInterfaceId)
                             .distinct()
@@ -96,16 +100,15 @@ public class ArchContainerRelationsService {
                         Integer connectionInterfaceId = operationList.get(0).getInterfaceId();
                         discoveredInterface.setConnectionInterfaceId(connectionInterfaceId);
                         discoveredInterfaceRepository.save(discoveredInterface);
+                        log.debug("Связан интерфейс: connectionInterfaceId={} (discoveredInterfaceId={})",
+                                connectionInterfaceId, discoveredInterface.getId());
                     }
                 }
                 discoveredOperationRepository.saveAll(discoveredInterface.getOperations());
-
             });
-
-
         }
-
     }
+
 
     private String concatContext(String context, String name) {
         if (context == null)

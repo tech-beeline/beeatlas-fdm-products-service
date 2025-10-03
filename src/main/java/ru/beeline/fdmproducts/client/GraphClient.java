@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import ru.beeline.fdmlib.dto.graph.ProductInfluenceDTO;
 
@@ -29,7 +30,9 @@ public class GraphClient {
                                                                                  HttpMethod.GET,
                                                                                  requestEntity,
                                                                                  ProductInfluenceDTO.class);
-            return response.getStatusCode() != HttpStatus.NOT_FOUND ? response.getBody() : null;
+            return response.getBody();
+        } catch (HttpClientErrorException.NotFound e) {log.warn("Product not found (404) for cmdb: " + cmdb);
+            return null;
         } catch (Exception e) {
             log.error("Error while posting product to CMDB: " + e.getMessage(), e);
             throw new RuntimeException("Error during post request", e);

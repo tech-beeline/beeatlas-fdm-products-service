@@ -456,8 +456,10 @@ public class ProductService {
     public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
         log.info("Обработка контейнеров продукта с code: " + code);
         Product product = getProductByCode(code);
-        Map<String, ContainerProduct> existingContainers = containerRepository
-                .findAllByCodeInAndProductId(containerDTOS.stream().map(ContainerDTO::getCode).toList(), product.getId())
+        Map<String, ContainerProduct> existingContainers = containerRepository.findAllByCodeInAndProductId(containerDTOS.stream()
+                                                                                                                   .map(ContainerDTO::getCode)
+                                                                                                                   .toList(),
+                                                                                                           product.getId())
                 .stream()
                 .collect(Collectors.toMap(ContainerProduct::getCode, c -> c));
         List<ContainerProduct> toSave = new ArrayList<>();
@@ -1398,43 +1400,45 @@ public class ProductService {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
         }
         ProductInfluenceDTO influences = graphClient.getInfluences(cmdb);
-        if (influences == null) {
-            return SystemRelationDto.builder()
-                    .influencingSystems(new ArrayList<>())
-                    .dependentSystems(new ArrayList<>())
-                    .build();
-        }
-        List<String> lowerAliasesInfl = influences.getInfluencingSystems().stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toList());
-
-        List<String> lowerAliasesDepens = influences.getDependentSystems().stream()
-                .map(String::toLowerCase)
-                .collect(Collectors.toList());
-
-        Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesInfl)
-                .stream()
-                .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-        Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesDepens)
-                .stream()
-                .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-
-        List<SystemInfoDTO> dependentSystems = influences.getDependentSystems() == null ? new ArrayList<>() : influences.getDependentSystems()
-                .stream()
-                .map(system -> enrichSystemWithProduct(system, dependProducts))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        List<SystemInfoDTO> influencingSystems = influences.getInfluencingSystems() == null ? new ArrayList<>() : influences.getInfluencingSystems()
-                .stream()
-                .map(system -> enrichSystemWithProduct(system, influenceProducts))
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-
-        return SystemRelationDto.builder()
-                .dependentSystems(dependentSystems)
-                .influencingSystems(influencingSystems)
+        SystemRelationDto result = SystemRelationDto.builder()
+                .influencingSystems(new ArrayList<>())
+                .dependentSystems(new ArrayList<>())
                 .build();
+        if (influences != null) {
+            List<String> lowerAliasesInfl = influences.getInfluencingSystems()
+                    .stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+
+            List<String> lowerAliasesDepens = influences.getDependentSystems()
+                    .stream()
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+
+            Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesInfl)
+                    .stream()
+                    .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
+            Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesDepens)
+                    .stream()
+                    .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
+
+            List<SystemInfoDTO> dependentSystems = influences.getDependentSystems() == null ? new ArrayList<>() : influences.getDependentSystems()
+                    .stream()
+                    .map(system -> enrichSystemWithProduct(system, dependProducts))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            List<SystemInfoDTO> influencingSystems = influences.getInfluencingSystems() == null ? new ArrayList<>() : influences.getInfluencingSystems()
+                    .stream()
+                    .map(system -> enrichSystemWithProduct(system, influenceProducts))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            result.setDependentSystems(dependentSystems);
+            result.setInfluencingSystems(influencingSystems);
+        }
+
+        return result;
     }
 
     private SystemInfoDTO enrichSystemWithProduct(String system, Map<String, Product> productMap) {
@@ -1470,10 +1474,7 @@ public class ProductService {
                                                                                         .map(Interface::getId)
                                                                                         .collect(Collectors.toList()));
         log.info("operations: " + operations);
-        return Stream.concat(
-                        interfaces.stream().map(Interface::getTcId),
-                        operations.stream().map(Operation::getTcId)
-                )
+        return Stream.concat(interfaces.stream().map(Interface::getTcId), operations.stream().map(Operation::getTcId))
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());

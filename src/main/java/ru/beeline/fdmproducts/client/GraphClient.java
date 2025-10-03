@@ -31,7 +31,8 @@ public class GraphClient {
                                                                                  requestEntity,
                                                                                  ProductInfluenceDTO.class);
             return response.getBody();
-        } catch (HttpClientErrorException.NotFound e) {log.warn("Product not found (404) for cmdb: " + cmdb);
+        } catch (HttpClientErrorException.NotFound e) {
+            log.warn("Product not found (404) for cmdb: " + cmdb);
             return null;
         } catch (Exception e) {
             log.error("Error while posting product to CMDB: " + e.getMessage(), e);

@@ -48,8 +48,8 @@ public class ArchContainerRelationsService {
 
     public void processOperationDelete(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationDelete entityId={}", entityId);
-        discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
         discoveredInterfaceRepository.clearConnectionInterfaceIdByOperationId(entityId);
+        discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
     }
 
     public void processOperationComparison(int entityId, String name, String type) {

@@ -79,12 +79,9 @@ public class ArchConsumer {
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
             if (jsonNode.has("id") && jsonNode.has("changeType")) {
-                String name = jsonNode.get("name") == null ? "" : jsonNode.get("name").asText();
                 String type = jsonNode.get("changeType").asText();
                 if (type.equals("CREATE") || type.equals("UPDATE")) {
-                    archContainerRelationsService.processOperationComparison(jsonNode.get("id").asInt(),
-                                                                             name,
-                                                                             type);
+                    archContainerRelationsService.processOperationComparison(jsonNode.get("id").asInt());
                 }
             } else {
                 log.error("Message does not match the required format");

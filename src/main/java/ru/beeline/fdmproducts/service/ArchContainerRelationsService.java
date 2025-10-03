@@ -52,7 +52,7 @@ public class ArchContainerRelationsService {
         discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
     }
 
-    public void processOperationComparison(int entityId, String name, String type) {
+    public void processOperationComparison(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationComparison entityId={}", entityId);
         Optional<Operation> operation = operationRepository.findById(entityId);
         if (operation.isPresent()) {
@@ -66,21 +66,21 @@ public class ArchContainerRelationsService {
                 AtomicReference<Integer> discoveredOperationCounter = new AtomicReference<>(0);
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
                     log.info("[ШАГ ] discoveredOperation is ", discoveredOperation);
-                    if (discoveredOperation.getName().equals(name) && discoveredOperation.getType().equals(type)) {
+                    if (discoveredOperation.getName().equals(operation.get().getName()) && discoveredOperation.getType().equals(operation.get().getType())) {
                         discoveredOperation.setConnectionOperationId(entityId);
-                        log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", name, type, discoveredOperation.getId());
+                        log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", operation.get().getName(), operation.get().getType(), discoveredOperation.getId());
                     } else {
                         if (concatContext(discoveredOperation.getContext(),
-                                discoveredOperation.getName()).equals(name) && type.equals(discoveredOperation.getType())) {
+                                discoveredOperation.getName()).equals(operation.get().getName()) && operation.get().getType().equals(discoveredOperation.getType())) {
                             discoveredOperation.setConnectionOperationId(entityId);
                             log.info("[ШАГ 2] Сопоставлено по context+name='{}', type={} (operationId={})",
-                                    concatContext(discoveredOperation.getContext(), discoveredOperation.getName()), type, discoveredOperation.getId());
+                                    concatContext(discoveredOperation.getContext(), discoveredOperation.getName()), operation.get().getType(), discoveredOperation.getId());
                         } else {
                             if (concatContext(discoveredInterface.getContext(), discoveredInterface.getName()).equals(
-                                    name) && type.equals(discoveredOperation.getType())) {
+                                    operation.get().getName()) && operation.get().getType().equals(discoveredOperation.getType())) {
                                 discoveredOperation.setConnectionOperationId(entityId);
                                 log.info("[ШАГ 3] Сопоставлено по parentContext+name='{}', type={} (operationId={})",
-                                        concatContext(discoveredInterface.getContext(), discoveredInterface.getName()), type, discoveredOperation.getId());
+                                        concatContext(discoveredInterface.getContext(), discoveredInterface.getName()), operation.get().getType(), discoveredOperation.getId());
                             }
                         }
                     }

@@ -12,10 +12,12 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
 import ru.beeline.fdmproducts.client.GraphClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
+import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
+import ru.beeline.fdmproducts.exception.ForbiddenException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
@@ -1479,5 +1481,16 @@ public class ProductService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
+    }
+
+    public ApiKeyDTO getKey(Integer id) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
+        if (!RequestContext.getUserProducts().contains(id)) {
+            throw new ForbiddenException("403 Forbidden.");
+        }
+        return ApiKeyDTO.builder()
+                .structurizrApiKey(product.getStructurizrApiKey())
+                .structurizrApiSecret(product.getStructurizrApiSecret())
+                .build();
     }
 }

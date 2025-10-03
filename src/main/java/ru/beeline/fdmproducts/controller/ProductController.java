@@ -134,6 +134,12 @@ public class ProductController {
         return productService.getProductsFromMapic(cmdb);
     }
 
+    @GetMapping("/product/{id}/structurizr-key")
+    @ApiOperation(value = "Получение ключей structurizr членом команды")
+    public ApiKeyDTO getKey(@PathVariable Integer id) {
+        return productService.getKey(id);
+    }
+
     @GetMapping("/product/{cmdb}/container")
     @ApiOperation(value = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb) {

@@ -631,7 +631,7 @@ public class ProductService {
         for (Operation op : allDbOperations) {
             String key = op.getName() + "::" + (op.getType() != null ? op.getType() : "");
             if (!newKeys.contains(key) && op.getDeletedDate() == null) {
-                op.setDeletedDate(LocalDateTime.now();
+                op.setDeletedDate(LocalDateTime.now());
                 toDelete.add(op);
             }
         }
@@ -646,7 +646,7 @@ public class ProductService {
             LocalDateTime now = LocalDateTime.now();
             for (Operation op : ops) {
                 if (op.getDeletedDate() == null) {
-                    op.setDeletedDate(LocalDateTime.now();
+                    op.setDeletedDate(LocalDateTime.now());
                 }
             }
             operationRepository.saveAll(ops);
@@ -780,14 +780,13 @@ public class ProductService {
     }
 
     private void markParametersAsDeletedIfMissing(List<Parameter> existingOrCreated, List<Parameter> allParameters) {
-        Date now = new Date();
         List<Parameter> toDelete = allParameters.stream()
                 .filter(p -> existingOrCreated.stream()
                         .noneMatch(e -> e.getParameterName().equals(p.getParameterName()) && e.getParameterType()
                                 .equals(p.getParameterType())))
                 .filter(p -> p.getDeletedDate() == null)
                 .toList();
-        toDelete.forEach(p -> p.setDeletedDate(now));
+        toDelete.forEach(p -> p.setDeletedDate(LocalDateTime.now()));
         if (!toDelete.isEmpty()) {
             parameterRepository.saveAll(toDelete);
         }

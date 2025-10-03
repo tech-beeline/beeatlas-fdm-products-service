@@ -594,11 +594,10 @@ public class ProductService {
     private void markInterfacesAsDeleted(Integer containerId, List<InterfaceDTO> newInterfaces) {
         List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(containerId);
         Set<String> dtoCodes = newInterfaces.stream().map(InterfaceDTO::getCode).collect(Collectors.toSet());
-        Date now = new Date();
         List<Interface> toDelete = allDbInterfaces.stream()
                 .filter(dbIntf -> !dtoCodes.contains(dbIntf.getCode()))
                 .filter(dbIntf -> dbIntf.getDeletedDate() == null)
-                .peek(dbIntf -> dbIntf.setDeletedDate(now))
+                .peek(dbIntf -> dbIntf.setDeletedDate(LocalDateTime.now()))
                 .toList();
         if (!toDelete.isEmpty()) {
             interfaceRepository.saveAll(toDelete);
@@ -628,12 +627,11 @@ public class ProductService {
         Set<String> newKeys = newMethods.stream()
                 .map(m -> m.getName() + "::" + (m.getType() != null ? m.getType() : ""))
                 .collect(Collectors.toSet());
-        Date now = new Date();
         List<Operation> toDelete = new ArrayList<>();
         for (Operation op : allDbOperations) {
             String key = op.getName() + "::" + (op.getType() != null ? op.getType() : "");
             if (!newKeys.contains(key) && op.getDeletedDate() == null) {
-                op.setDeletedDate(now);
+                op.setDeletedDate(LocalDateTime.now();
                 toDelete.add(op);
             }
         }
@@ -645,10 +643,10 @@ public class ProductService {
     private void cascadeDeleteInterface(Interface interfaceObj) {
         List<Operation> ops = operationRepository.findAllByInterfaceId(interfaceObj.getId());
         if (!ops.isEmpty()) {
-            Date now = new Date();
+            LocalDateTime now = LocalDateTime.now();
             for (Operation op : ops) {
                 if (op.getDeletedDate() == null) {
-                    op.setDeletedDate(now);
+                    op.setDeletedDate(LocalDateTime.now();
                 }
             }
             operationRepository.saveAll(ops);
@@ -683,7 +681,7 @@ public class ProductService {
         } else {
             if (interfaceObj.getDeletedDate() != null) {
                 interfaceObj.setDeletedDate(null);
-                interfaceObj.setUpdatedDate(new Date());
+                interfaceObj.setUpdatedDate(LocalDateTime.now());
                 toSave.add(interfaceObj);
             }
             if (!equalsInterfaces(interfaceObj, dto, tcId)) {
@@ -816,7 +814,7 @@ public class ProductService {
         } else {
             if (existingOperation.getDeletedDate() != null) {
                 existingOperation.setDeletedDate(null);
-                existingOperation.setUpdatedDate(new Date());
+                existingOperation.setUpdatedDate(LocalDateTime.now());
                 operationsToSave.add(existingOperation);
             }
             if (!Objects.equals(methodDTO.getDescription(), existingOperation.getDescription()) || !Objects.equals(
@@ -1124,6 +1122,8 @@ public class ProductService {
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .description(discoveredOperation.getDescription())
+                .createDate(operation.getCreatedDate())
+                .updateDate(operation.getUpdatedDate())
                 .type(discoveredOperation.getType())
                 .build();
         if (operation != null) {
@@ -1196,6 +1196,8 @@ public class ProductService {
                 .version(interfaceObj.getVersion())
                 .description(interfaceObj.getDescription())
                 .externalId(interfaceObj.getExternalId())
+                .createDate(interfaceObj.getCreatedDate())
+                .updateDate(interfaceObj.getUpdatedDate())
                 .apiId(interfaceObj.getApiId())
                 .context(interfaceObj.getContext())
                 .build();

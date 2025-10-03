@@ -1,7 +1,9 @@
 package ru.beeline.fdmproducts.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -16,6 +18,10 @@ public class ProductMapicInterfaceDTO {
     private String version;
     private Integer externalId;
     private Integer apiId;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS")
+    private LocalDateTime updateDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS")
+    private LocalDateTime createDate;
     private String description;
     private String context;
     private String contextProvider;

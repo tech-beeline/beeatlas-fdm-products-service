@@ -65,18 +65,18 @@ public class ArchContainerRelationsService {
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
                     if (discoveredOperation.getName().equals(name) && discoveredOperation.getType().equals(type)) {
                         discoveredOperation.setConnectionOperationId(entityId);
-                        log.debug("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", name, type, discoveredOperation.getId());
+                        log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", name, type, discoveredOperation.getId());
                     } else {
                         if (concatContext(discoveredOperation.getContext(),
                                 discoveredOperation.getName()).equals(name) && type.equals(discoveredOperation.getType())) {
                             discoveredOperation.setConnectionOperationId(entityId);
-                            log.debug("[ШАГ 2] Сопоставлено по context+name='{}', type={} (operationId={})",
+                            log.info("[ШАГ 2] Сопоставлено по context+name='{}', type={} (operationId={})",
                                     concatContext(discoveredOperation.getContext(), discoveredOperation.getName()), type, discoveredOperation.getId());
                         } else {
                             if (concatContext(discoveredInterface.getContext(), discoveredInterface.getName()).equals(
                                     name) && type.equals(discoveredOperation.getType())) {
                                 discoveredOperation.setConnectionOperationId(entityId);
-                                log.debug("[ШАГ 3] Сопоставлено по parentContext+name='{}', type={} (operationId={})",
+                                log.info("[ШАГ 3] Сопоставлено по parentContext+name='{}', type={} (operationId={})",
                                         concatContext(discoveredInterface.getContext(), discoveredInterface.getName()), type, discoveredOperation.getId());
                             }
                         }
@@ -100,7 +100,7 @@ public class ArchContainerRelationsService {
                         Integer connectionInterfaceId = operationList.get(0).getInterfaceId();
                         discoveredInterface.setConnectionInterfaceId(connectionInterfaceId);
                         discoveredInterfaceRepository.save(discoveredInterface);
-                        log.debug("Связан интерфейс: connectionInterfaceId={} (discoveredInterfaceId={})",
+                        log.info("Связан интерфейс: connectionInterfaceId={} (discoveredInterfaceId={})",
                                 connectionInterfaceId, discoveredInterface.getId());
                     }
                 }

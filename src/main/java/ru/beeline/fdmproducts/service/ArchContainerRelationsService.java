@@ -60,9 +60,12 @@ public class ArchContainerRelationsService {
             ContainerProduct containerProduct = containerRepository.findById(interfaceEntity.getContainerId()).get();
             List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllByProductIdAndConnectionInterfaceIdIsNull(
                     containerProduct.getProductId());
+            log.info("[ШАГ ] discoveredInterfaces size is ", discoveredInterfaces.size());
             discoveredInterfaces.forEach(discoveredInterface -> {
+                log.info("[ШАГ ] discoveredInterface is ", discoveredInterface);
                 AtomicReference<Integer> discoveredOperationCounter = new AtomicReference<>(0);
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
+                    log.info("[ШАГ ] discoveredOperation is ", discoveredOperation);
                     if (discoveredOperation.getName().equals(name) && discoveredOperation.getType().equals(type)) {
                         discoveredOperation.setConnectionOperationId(entityId);
                         log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", name, type, discoveredOperation.getId());
@@ -85,6 +88,7 @@ public class ArchContainerRelationsService {
                         discoveredOperationCounter.getAndSet(discoveredOperationCounter.get() + 1);
                     }
                 });
+                log.info("[ШАГ ] discoveredOperationCounter.get() ", discoveredOperationCounter.get());
                 if (discoveredOperationCounter.get() == 0) {
                     List<Operation> operationList = operationRepository.findAllByIdIn(discoveredInterface.getOperations()
                             .stream()
@@ -97,6 +101,7 @@ public class ArchContainerRelationsService {
                             .distinct()
                             .count() == 1;
                     if (sameInterface) {
+                        log.info("[ШАГ ] sameInterface is ", sameInterface);
                         Integer connectionInterfaceId = operationList.get(0).getInterfaceId();
                         discoveredInterface.setConnectionInterfaceId(connectionInterfaceId);
                         discoveredInterfaceRepository.save(discoveredInterface);

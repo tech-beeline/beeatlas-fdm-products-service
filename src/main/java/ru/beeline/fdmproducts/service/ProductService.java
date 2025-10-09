@@ -1123,8 +1123,8 @@ public class ProductService {
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .description(discoveredOperation.getDescription())
-                .createDate(operation.getCreatedDate())
-                .updateDate(operation.getUpdatedDate())
+                .createDate(discoveredOperation.getCreatedDate())
+                .updateDate(discoveredOperation.getUpdatedDate())
                 .type(discoveredOperation.getType())
                 .build();
         if (operation != null) {

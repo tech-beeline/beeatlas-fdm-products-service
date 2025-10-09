@@ -4,6 +4,7 @@ import org.springframework.stereotype.Component;
 import ru.beeline.fdmproducts.domain.Parameter;
 import ru.beeline.fdmproducts.dto.ParameterDTO;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 
 @Component
@@ -13,7 +14,7 @@ public class ParameterMapper {
                 .operationId(operationId)
                 .parameterName(parameterDTO.getName())
                 .parameterType(parameterDTO.getType())
-                .createdDate(new Date())
+                .createdDate(LocalDateTime.now())
                 .build();
     }
 }

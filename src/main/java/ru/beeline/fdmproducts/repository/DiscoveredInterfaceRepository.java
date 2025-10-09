@@ -22,8 +22,31 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     @Query("UPDATE DiscoveredInterface di SET di.connectionInterfaceId = null WHERE di.id <> :mapicInterfaceId AND di.connectionInterfaceId = :archInterfaceId")
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId);
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
+            "WHERE connection_interface_id IN (SELECT id FROM product.interface WHERE container_id = :entityId)", nativeQuery = true)
+    int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
+            "WHERE connection_interface_id  = :interfaceId", nativeQuery = true)
+    int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
+            "WHERE id IN (SELECT o.interface_id FROM product.discovered_operation o WHERE o.connection_operation_id = :operationId)",
+            nativeQuery = true)
+    int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceId(Integer interfaceId);
+
+    @Query(value = "SELECT * FROM product.discovered_interface di "
+            + "WHERE di.product_id = :productId "
+            + "AND di.connection_interface_id is null", nativeQuery = true)
+    List<DiscoveredInterface> findAllByProductIdAndConnectionInterfaceIdIsNull(@Param("productId") Integer productId);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 

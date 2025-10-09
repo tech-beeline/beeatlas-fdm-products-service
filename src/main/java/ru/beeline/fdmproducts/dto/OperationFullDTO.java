@@ -2,6 +2,7 @@ package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
 
@@ -19,6 +20,6 @@ public class OperationFullDTO {
     private List<MapicOperationFullDTO> mapicOperations;
     private TcDTO techCapability;
     private SlaV2DTO sla;
-    private Date createdDate;
-    private Date updateDate;
+    private LocalDateTime createdDate;
+    private LocalDateTime updateDate;
 }

@@ -62,10 +62,10 @@ public class ArchContainerRelationsService {
                     containerProduct.getProductId());
             log.info("[ШАГ ] discoveredInterfaces size is ", discoveredInterfaces.size());
             discoveredInterfaces.forEach(discoveredInterface -> {
-                log.info("[ШАГ ] discoveredInterface is ", discoveredInterface);
+                log.info("[ШАГ ] discoveredInterface is ", discoveredInterface.getName());
                 AtomicReference<Integer> discoveredOperationCounter = new AtomicReference<>(0);
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
-                    log.info("[ШАГ ] discoveredOperation is ", discoveredOperation);
+                    log.info("[ШАГ ] discoveredOperation is ", discoveredOperation.getName());
                     if (discoveredOperation.getName().equals(operation.get().getName()) && discoveredOperation.getType().equals(operation.get().getType())) {
                         discoveredOperation.setConnectionOperationId(entityId);
                         log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", operation.get().getName(), operation.get().getType(), discoveredOperation.getId());
@@ -118,7 +118,7 @@ public class ArchContainerRelationsService {
     private String concatContext(String context, String name) {
         if (context == null)
             context = "";
-        if (context.endsWith("/")) {
+        if (context.endsWith("/") || name.startsWith("/")) {
             return context + name;
         } else {
             return context + "/" + name;

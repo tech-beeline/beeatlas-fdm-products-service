@@ -29,8 +29,8 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")
-                    || (request.getRequestURI().contains("/api/v1/product") && !(request.getRequestURI().contains("/interface/arch")
-                    || request.getRequestURI().contains("/interface/mapic")))
+                    || (request.getRequestURI().contains("/api/v1/product") && !request.getRequestURI().contains(
+                            "/structurizr-key") && !(request.getRequestURI().contains("/interface/arch") || request.getRequestURI().contains("/interface/mapic")))
                     || request.getRequestURI().contains("/api/v1/infra")
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")

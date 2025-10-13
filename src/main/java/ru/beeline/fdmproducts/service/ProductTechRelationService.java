@@ -15,12 +15,11 @@ import java.util.List;
 public class ProductTechRelationService {
     private final ProductService productService;
     private final TechService techService;
-    private final ProductTechMapper productTechMapper;
+    
 
-    public ProductTechRelationService(ProductService productService, TechService techService, ProductTechMapper productTechMapper) {
+    public ProductTechRelationService(ProductService productService, TechService techService) {
         this.productService = productService;
         this.techService = techService;
-        this.productTechMapper = productTechMapper;
     }
 
     public void addRelation(Integer techId, ProductTechRelationDTO productTechRelationDTO) {
@@ -28,7 +27,7 @@ public class ProductTechRelationService {
     }
 
     public List<ProductDTO> getProductsWithTech() {
-        return productTechMapper.mapToDto(productService.findAllWithTechProductNotDeleted());
+        return ProductTechMapper.mapToDto(productService.findAllWithTechProductNotDeleted());
     }
 
     public void deleteRelation(Integer techId, Integer productId) {

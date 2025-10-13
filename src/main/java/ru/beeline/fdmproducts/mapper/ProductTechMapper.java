@@ -1,6 +1,5 @@
 package ru.beeline.fdmproducts.mapper;
 
-import org.springframework.stereotype.Component;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmproducts.domain.Product;
@@ -8,11 +7,11 @@ import ru.beeline.fdmproducts.dto.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
-@Component
 public class ProductTechMapper {
-    public List<ProductDTO> mapToDto(List<Product> products) {
+    public static List<ProductDTO> mapToDto(List<Product> products) {
         if (products != null && !products.isEmpty()) {
             return products.stream()
                     .filter(product -> product.getTechProducts() != null && !product.getTechProducts().isEmpty())
@@ -32,7 +31,7 @@ public class ProductTechMapper {
         return new ArrayList<>();
     }
 
-    public GetProductsDTO mapToGetProductsDTO(Product product) {
+    public static GetProductsDTO mapToGetProductsDTO(Product product) {
         if (product == null) {
             return null;
         }
@@ -44,7 +43,7 @@ public class ProductTechMapper {
                 .build();
     }
 
-    public ProductInfoDTO mapToProductInfoDTO(Product product) {
+    public static ProductInfoDTO mapToProductInfoDTO(Product product) {
         return ProductInfoDTO.builder()
                 .alias(product.getAlias())
                 .description(product.getDescription())
@@ -56,7 +55,6 @@ public class ProductTechMapper {
                 .techProducts(product.getTechProducts()
                                       .stream()
                                       .filter(techProduct -> techProduct.getDeletedDate() == null)
-                                      //.filter(techProduct -> techProduct.rew() == null)
                                       .map(techProduct -> TechInfoDTO.builder()
                                               .id(techProduct.getId())
                                               .techId(techProduct.getTechId())
@@ -69,7 +67,7 @@ public class ProductTechMapper {
                 .build();
     }
 
-    public List<ProductInfoShortDTO> mapToProductInfoShortDTO(List<Product> products) {
+    public static List<ProductInfoShortDTO> mapToProductInfoShortDTO(List<Product> products) {
         return products.stream()
                 .map(product -> ProductInfoShortDTO.builder()
                         .alias(product.getAlias())
@@ -85,7 +83,7 @@ public class ProductTechMapper {
                 .collect(Collectors.toList());
     }
 
-    public List<GetProductsByIdsDTO> mapToGetProductsByIdsDTO(List<Product> products) {
+    public static List<GetProductsByIdsDTO> mapToGetProductsByIdsDTO(List<Product> products) {
         return products.stream()
                 .map(product -> GetProductsByIdsDTO.builder()
                         .id(product.getId())
@@ -94,5 +92,23 @@ public class ProductTechMapper {
                         .struturizrURL(product.getStructurizrApiUrl())
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    public static SystemInfoDTO enrichSystemWithProduct(String system, Map<String, Product> productMap) {
+        Product product = productMap.get(system.toLowerCase());
+        if (product == null) {
+            return null;
+        }
+        return SystemInfoDTO.builder()
+                .alias(product.getAlias())
+                .description(product.getDescription())
+                .gitUrl(product.getGitUrl())
+                .id(product.getId().toString())
+                .name(product.getName())
+                .structurizrApiUrl(product.getStructurizrApiUrl())
+                .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                .uploadSource(product.getSource())
+                .uploadDate(product.getUploadDate())
+                .build();
     }
 }

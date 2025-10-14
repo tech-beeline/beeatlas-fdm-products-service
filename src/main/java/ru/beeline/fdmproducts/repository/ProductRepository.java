@@ -11,7 +11,7 @@ import java.util.List;
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
     @Query(value = "SELECT * FROM product WHERE alias ILIKE :code", nativeQuery = true)
-    Product findByAliasCaseInsensitiveNative(@Param("code") String code);
+    Product findByAliasCaseInsensitive(@Param("code") String code);
 
     Product findByStructurizrApiKey(String apiKey);
 

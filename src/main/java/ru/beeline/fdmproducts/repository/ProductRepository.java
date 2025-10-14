@@ -10,8 +10,9 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
-    @Query("SELECT p FROM Product p WHERE LOWER(p.alias) = LOWER(:code)")
+    @Query("SELECT p FROM Product p WHERE p.alias ILIKE :code")
     Product findByAliasCaseInsensitive(@Param("code") String code);
+
     Product findByStructurizrApiKey(String apiKey);
 
     @Query("SELECT DISTINCT p FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")

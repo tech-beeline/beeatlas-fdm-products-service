@@ -10,8 +10,8 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
-    @Query("SELECT p FROM Product p WHERE p.alias ILIKE :code")
-    Product findByAliasCaseInsensitive(@Param("code") String code);
+    @Query(value = "SELECT * FROM product WHERE alias ILIKE :code", nativeQuery = true)
+    Product findByAliasCaseInsensitiveNative(@Param("code") String code);
 
     Product findByStructurizrApiKey(String apiKey);
 

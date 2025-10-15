@@ -213,11 +213,10 @@ public class ProductService {
         }
     }
 
-    public void postUserProduct(List<String> aliasList, String id) {
+    public void postUserProduct(List<String> aliasList, Integer userId) {
         if (aliasList.isEmpty()) {
             throw new IllegalArgumentException("400: Массив пустой. ");
         }
-        Integer userId = Integer.valueOf(id);
         List<String> notFoundAliases = new ArrayList<>();
         for (String alias : aliasList) {
             Product product = productRepository.findByAliasCaseInsensitive(alias);
@@ -1381,6 +1380,10 @@ public class ProductService {
             product.setCritical(critical);
             product.setOwnerID(userInfo.getId());
             productRepository.save(product);
+        }
+        if(userProductRepository.existsByUserIdAndProductId(userInfo.getId(), product.getId())){
+            UserProduct userProduct = UserProduct.builder().userId(userInfo.getId()).product(product).build();
+            userProductRepository.save(userProduct);
         }
     }
 

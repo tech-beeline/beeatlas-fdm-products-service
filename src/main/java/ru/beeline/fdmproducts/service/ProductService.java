@@ -1381,7 +1381,7 @@ public class ProductService {
             product.setOwnerID(userInfo.getId());
             productRepository.save(product);
         }
-        if(userProductRepository.existsByUserIdAndProductId(userInfo.getId(), product.getId())){
+        if(!userProductRepository.existsByUserIdAndProductId(userInfo.getId(), product.getId())){
             UserProduct userProduct = UserProduct.builder().userId(userInfo.getId()).product(product).build();
             userProductRepository.save(userProduct);
         }

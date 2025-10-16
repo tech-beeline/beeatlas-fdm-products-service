@@ -148,7 +148,7 @@ public class ProductController {
 
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
-    public ResponseEntity postUserProducts(@PathVariable String id, @RequestBody List<String> aliasLIst) {
+    public ResponseEntity postUserProducts(@PathVariable Integer id, @RequestBody List<String> aliasLIst) {
         productService.postUserProduct(aliasLIst, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }

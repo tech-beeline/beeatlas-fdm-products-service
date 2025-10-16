@@ -35,11 +35,11 @@ public class ComparisonOperationsService {
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
     }
 
-    public void process(Integer entityId) {
-        log.info("[СТАРТ] Начало обработки entityId={}", entityId);
+    public void process(Integer id) {
+        log.info("[СТАРТ] Начало обработки id={}", id);
 
-        DiscoveredOperation discoveredOperation = discoveredOperationRepository.findById(entityId)
-                .orElseThrow(() -> new IllegalArgumentException("Отсутствует DiscoveredOperation с id=" + entityId));
+        DiscoveredOperation discoveredOperation = discoveredOperationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Отсутствует DiscoveredOperation с id=" + id));
         log.info("[DISCOVERED_OPERATION] id={}, name='{}', type='{}', interfaceId={}, context='{}'",
                  discoveredOperation.getId(),
                  discoveredOperation.getName(),

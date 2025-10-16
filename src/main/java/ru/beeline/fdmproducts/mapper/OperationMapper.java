@@ -1,11 +1,16 @@
 package ru.beeline.fdmproducts.mapper;
 
 import org.springframework.stereotype.Component;
+import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.dto.MapicOperationDTO;
 import ru.beeline.fdmproducts.dto.MethodDTO;
+import ru.beeline.fdmproducts.dto.OperationDTO;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 @Component
 public class OperationMapper {
@@ -29,5 +34,29 @@ public class OperationMapper {
         operation.setReturnType(methodDTO.getReturnType());
         operation.setType(methodDTO.getType());
         operation.setUpdatedDate(LocalDateTime.now());
+    }
+
+    public OperationDTO createOperationDTO(Operation operation, List<DiscoveredOperation> discoveredOperations) {
+        OperationDTO operationDTO = OperationDTO.builder()
+                .id(operation.getId())
+                .name(operation.getName())
+                .description(operation.getDescription())
+                .type(operation.getType())
+                .createDate(operation.getCreatedDate())
+                .updateDate(operation.getUpdatedDate())
+                .build();
+        List<MapicOperationDTO> result = new ArrayList<>();
+        if (discoveredOperations != null && !discoveredOperations.isEmpty()) {
+            for (DiscoveredOperation dOperation : discoveredOperations) {
+                result.add(MapicOperationDTO.builder()
+                                   .id(dOperation.getId())
+                                   .name(dOperation.getName())
+                                   .description(dOperation.getDescription())
+                                   .type(dOperation.getType())
+                                   .build());
+            }
+        }
+        operationDTO.setMapicOperations(result);
+        return operationDTO;
     }
 }

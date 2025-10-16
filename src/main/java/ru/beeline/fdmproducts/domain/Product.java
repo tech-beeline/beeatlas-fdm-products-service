@@ -50,6 +50,12 @@ public class Product {
     @Column(name = "source")
     private String source;
 
+    @Column(name = "critical")
+    private String critical;
+
+    @Column(name = "owner_id")
+    private Integer ownerID;
+
     @Column(name = "upload_date ")
     private LocalDateTime uploadDate ;
 

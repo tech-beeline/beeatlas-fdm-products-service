@@ -13,6 +13,7 @@ env:
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/dev/fdm#capabilityserver"
   INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/dev/fdm#techradarserverurl"
   INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/dev/ambassador#authsso"
+  INTEGRATION_AUTH_SERVER_URL: "vault:eafdmmart/data/dev/fdm#authserverurl"
   JWKS: "vault:eafdmmart/data/dev/fdm#jwks"
   OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/dev/fdm#opentelemetry"
   INTEGRATION_GRAPH_SERVER_URL: "vault:eafdmmart/data/dev/fdm#graphserverurl"

@@ -13,6 +13,7 @@ env:
   INTEGRATION_CAPABILITY_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#capabilityserver"
   INTEGRATION_TECHRADAR_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#techradarserverurl"
   INTEGRATION_AUTHSSO_SERVER_URL: "vault:eafdmmart/data/test/e2e/ambassador#authsso"
+  INTEGRATION_AUTH_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#authserverurl"
   JWKS: "vault:eafdmmart/data/test/e2e/fdm#jwks"
   OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/test/e2e/fdm#opentelemetry"
   INTEGRATION_GRAPH_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#graphserverurl"

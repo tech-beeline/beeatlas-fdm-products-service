@@ -116,6 +116,12 @@ public class ProductController {
         return productService.getProductPatterns(alias, sourceId, sourceType);
     }
 
+    @GetMapping("/product/parent")
+    @ApiOperation(value = "Получение мнемоники продукта для дочерних сущностей")
+    public ProductInfoShortV2DTO getParent(@RequestParam Integer id, @RequestParam String type) {
+        return productService.getParent(id, type);
+    }
+
     @GetMapping("/products/mnemonic")
     @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
     public List<String> getAllMnemonics() {
@@ -204,7 +210,7 @@ public class ProductController {
     @PatchMapping("product/{cmdb}/source")
     @ApiOperation(value = "Проставление источника обновления продукта и время подгрузки данных.")
     public ResponseEntity patchProductsSource(@PathVariable String cmdb,
-                                        @RequestParam(name = "source-name", required = false) String sourceName) {
+                                              @RequestParam(name = "source-name", required = false) String sourceName) {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }

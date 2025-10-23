@@ -91,7 +91,6 @@ public class ProductService {
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
                           DiscoveredOperationRepository discoveredOperationRepository) {
         this.containerMapper = containerMapper;
-
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
         this.slaMapper = slaMapper;
@@ -213,11 +212,10 @@ public class ProductService {
         }
     }
 
-    public void postUserProduct(List<String> aliasList, String id) {
+    public void postUserProduct(List<String> aliasList, Integer userId) {
         if (aliasList.isEmpty()) {
             throw new IllegalArgumentException("400: Массив пустой. ");
         }
-        Integer userId = Integer.valueOf(id);
         List<String> notFoundAliases = new ArrayList<>();
         for (String alias : aliasList) {
             Product product = productRepository.findByAliasCaseInsensitive(alias);
@@ -1103,7 +1101,8 @@ public class ProductService {
         List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllByProduct(product);
         if (!discoveredInterfaces.isEmpty()) {
             discoveredInterfaces.forEach(discoveredInterface -> {
-                ProductMapicInterfaceDTO productMapicInterfaceDTO = InterfaceMapper.createProductMapicInterface(discoveredInterface);
+                ProductMapicInterfaceDTO productMapicInterfaceDTO = InterfaceMapper.createProductMapicInterface(
+                        discoveredInterface);
                 Interface anInterface = discoveredInterface.getConnectedInterface();
                 List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByInterfaceId(
                         discoveredInterface.getId());
@@ -1156,8 +1155,8 @@ public class ProductService {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
                             operationDTOS.add(operationMapper.createOperationDTO(operation,
-                                    discoveredOperationRepository.findAllByConnectionOperationId(
-                                            operation.getId())));
+                                                                                 discoveredOperationRepository.findAllByConnectionOperationId(
+                                                                                         operation.getId())));
                         }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }
@@ -1258,16 +1257,17 @@ public class ProductService {
         Map<Integer, TcDTO> tcDTOMap = loadTcDTOMap(tcIds);
         for (Operation operation : operations) {
             result.add(OperationFullDTO.builder()
-                    .id(operation.getId())
-                    .description(operation.getDescription())
-                    .name(operation.getName())
-                    .type(operation.getType())
-                    .mapicOperations(discoveredOperationMapper.createMapicOperationFullDTO(discoveredOperationMap.get(operation.getId())))
-                    .sla(createSlaV2DTO(slaMap.get(operation.getId())))
-                    .techCapability(tcDTOMap.get(operation.getTcId()))
-                    .createdDate(operation.getCreatedDate())
-                    .updateDate(operation.getUpdatedDate())
-                    .build());
+                               .id(operation.getId())
+                               .description(operation.getDescription())
+                               .name(operation.getName())
+                               .type(operation.getType())
+                               .mapicOperations(discoveredOperationMapper.createMapicOperationFullDTO(
+                                       discoveredOperationMap.get(operation.getId())))
+                               .sla(createSlaV2DTO(slaMap.get(operation.getId())))
+                               .techCapability(tcDTOMap.get(operation.getTcId()))
+                               .createdDate(operation.getCreatedDate())
+                               .updateDate(operation.getUpdatedDate())
+                               .build());
         }
         return result;
     }
@@ -1389,6 +1389,28 @@ public class ProductService {
             product.setOwnerID(userInfo.getId());
             productRepository.save(product);
         }
+        if (!userProductRepository.existsByUserIdAndProductId(userInfo.getId(), product.getId())) {
+            UserProduct userProduct = UserProduct.builder().userId(userInfo.getId()).product(product).build();
+            userProductRepository.save(userProduct);
+        }
     }
 
+    public ProductInfoShortV2DTO getParent(Integer id, String type) {
+        ProductInfoShortV2DTO result = null;
+        switch (type) {
+            case "arch_container" -> {
+                result = ProductTechMapper.mapToProductInfoShortV2DTO(productRepository.findProductByContainerProductID(
+                        id).orElseThrow(() -> new EntityNotFoundException("not" + " found")));
+            }
+            case "arch_interface" -> {
+                result = ProductTechMapper.mapToProductInfoShortV2DTO(productRepository.findProductByInterfaceId(
+                        id).orElseThrow(() -> new EntityNotFoundException("not" + " found")));
+            }
+            case "arch_operation" ->{
+                result = ProductTechMapper.mapToProductInfoShortV2DTO(productRepository.findProductByOperationID(
+                        id).orElseThrow(() -> new EntityNotFoundException("not" + " found")));
+            }
+            default -> throw new IllegalArgumentException("Не валидный аттрибут type");
+        } return result;
+    }
 }

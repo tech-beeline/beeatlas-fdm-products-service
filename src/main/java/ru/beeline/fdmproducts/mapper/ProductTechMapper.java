@@ -83,6 +83,18 @@ public class ProductTechMapper {
                 .collect(Collectors.toList());
     }
 
+    public static ProductInfoShortV2DTO mapToProductInfoShortV2DTO(Product product) {
+        return ProductInfoShortV2DTO.builder()
+                .alias(product.getAlias())
+                .description(product.getDescription())
+                .gitUrl(product.getGitUrl())
+                .id(product.getId().toString())
+                .name(product.getName())
+                .structurizrApiUrl(product.getStructurizrApiUrl())
+                .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                .build();
+    }
+
     public static List<GetProductsByIdsDTO> mapToGetProductsByIdsDTO(List<Product> products) {
         return products.stream()
                 .map(product -> GetProductsByIdsDTO.builder()

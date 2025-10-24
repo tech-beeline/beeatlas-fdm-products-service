@@ -27,12 +27,4 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
     List<Interface> findByCodeInAndContainerId(List<String> code, Integer containerId);
 
     List<Interface> findAllByContainerIdAndCodeIn(Integer containerId, List<String> interfaceCodes);
-
-    @Modifying
-    @Query("UPDATE Interface i SET i.deletedDate = :deletedDate WHERE i.containerId = :containerId AND i.code NOT IN :codes AND i.deletedDate IS NULL")
-    void markInterfacesAsDeleted(@Param("containerId") Integer containerId,
-                                 @Param("codes") List<String> codes,
-                                 @Param("deletedDate") LocalDateTime deletedDate);
-
-    List<Interface> findAllByContainerIdAndDeletedDate(Integer containerId,LocalDateTime now);
 }

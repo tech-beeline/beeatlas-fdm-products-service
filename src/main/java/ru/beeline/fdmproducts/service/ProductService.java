@@ -485,7 +485,6 @@ public class ProductService {
         for (Map.Entry<Integer, List<InterfaceDTO>> entry : containerInterfaces.entrySet()) {
             processInterfaces(entry.getValue(), entry.getKey(), codesIdMap, methodCodesIdMap);
             markInterfacesAsDeleted(entry.getKey(), entry.getValue());
-            List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(entry.getKey());
         }
     }
 
@@ -605,13 +604,18 @@ public class ProductService {
     }
 
     private void markInterfacesAsDeleted(Integer containerId, List<InterfaceDTO> newInterfaces) {
-        List<String> dtoCodes = newInterfaces.stream().map(InterfaceDTO::getCode).toList();
-        LocalDateTime now = LocalDateTime.now();
-        interfaceRepository.markInterfacesAsDeleted(containerId, dtoCodes, now);
-        List<Interface> markedInterfaces = interfaceRepository
-                .findAllByContainerIdAndDeletedDate(containerId, now);
-        for (Interface interfaceObj : markedInterfaces) {
-            cascadeDeleteInterface(interfaceObj);
+        List<Interface> allDbInterfaces = interfaceRepository.findAllByContainerId(containerId);
+        Set<String> dtoCodes = newInterfaces.stream().map(InterfaceDTO::getCode).collect(Collectors.toSet());
+        List<Interface> toDelete = allDbInterfaces.stream()
+                .filter(dbIntf -> !dtoCodes.contains(dbIntf.getCode()))
+                .filter(dbIntf -> dbIntf.getDeletedDate() == null)
+                .peek(dbIntf -> dbIntf.setDeletedDate(LocalDateTime.now()))
+                .toList();
+        if (!toDelete.isEmpty()) {
+            interfaceRepository.saveAll(toDelete);
+            for (Interface interfaceObj : toDelete) {
+                cascadeDeleteInterface(interfaceObj);
+            }
         }
     }
 
@@ -803,12 +807,9 @@ public class ProductService {
         }
     }
 
-    private Operation createOrUpdateMethod(MethodDTO methodDTO,
-                                           Integer interfaceId,
-                                           Integer tcIdInterface,
-                                           Operation existingOperation,
-                                           List<Operation> operationsToSave,
-                                           Map<String, Long> methodCodesIdMap) {
+    private Operation createOrUpdateMethod(MethodDTO methodDTO, Integer interfaceId,
+                                           Integer tcIdInterface, Operation existingOperation,
+                                           List<Operation> operationsToSave, Map<String, Long> methodCodesIdMap) {
         Integer tcId = null;
         if (methodDTO.getCapabilityCode() != null) {
             Long tcIdLong = methodCodesIdMap.get(methodDTO.getCapabilityCode());
@@ -1155,8 +1156,8 @@ public class ProductService {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
                             operationDTOS.add(operationMapper.createOperationDTO(operation,
-                                                                                 discoveredOperationRepository.findAllByConnectionOperationId(
-                                                                                         operation.getId())));
+                                    discoveredOperationRepository.findAllByConnectionOperationId(
+                                            operation.getId())));
                         }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }
@@ -1257,17 +1258,17 @@ public class ProductService {
         Map<Integer, TcDTO> tcDTOMap = loadTcDTOMap(tcIds);
         for (Operation operation : operations) {
             result.add(OperationFullDTO.builder()
-                               .id(operation.getId())
-                               .description(operation.getDescription())
-                               .name(operation.getName())
-                               .type(operation.getType())
-                               .mapicOperations(discoveredOperationMapper.createMapicOperationFullDTO(
-                                       discoveredOperationMap.get(operation.getId())))
-                               .sla(createSlaV2DTO(slaMap.get(operation.getId())))
-                               .techCapability(tcDTOMap.get(operation.getTcId()))
-                               .createdDate(operation.getCreatedDate())
-                               .updateDate(operation.getUpdatedDate())
-                               .build());
+                    .id(operation.getId())
+                    .description(operation.getDescription())
+                    .name(operation.getName())
+                    .type(operation.getType())
+                    .mapicOperations(discoveredOperationMapper.createMapicOperationFullDTO(
+                            discoveredOperationMap.get(operation.getId())))
+                    .sla(createSlaV2DTO(slaMap.get(operation.getId())))
+                    .techCapability(tcDTOMap.get(operation.getTcId()))
+                    .createdDate(operation.getCreatedDate())
+                    .updateDate(operation.getUpdatedDate())
+                    .build());
         }
         return result;
     }
@@ -1406,11 +1407,12 @@ public class ProductService {
                 result = ProductTechMapper.mapToProductInfoShortV2DTO(productRepository.findProductByInterfaceId(
                         id).orElseThrow(() -> new EntityNotFoundException("not" + " found")));
             }
-            case "arch_operation" ->{
+            case "arch_operation" -> {
                 result = ProductTechMapper.mapToProductInfoShortV2DTO(productRepository.findProductByOperationID(
                         id).orElseThrow(() -> new EntityNotFoundException("not" + " found")));
             }
             default -> throw new IllegalArgumentException("Не валидный аттрибут type");
-        } return result;
+        }
+        return result;
     }
 }

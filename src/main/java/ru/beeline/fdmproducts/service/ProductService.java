@@ -5,6 +5,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.auth.UserInfoDTO;
+import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.graph.ProductInfluenceDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
@@ -1310,42 +1311,44 @@ public class ProductService {
                 .dependentSystems(new ArrayList<>())
                 .build();
         if (influences != null) {
-            List<String> lowerAliasesInfl = influences.getInfluencingSystems()
-                    .stream()
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toList());
-
-            List<String> lowerAliasesDepens = influences.getDependentSystems()
-                    .stream()
-                    .map(String::toLowerCase)
-                    .collect(Collectors.toList());
-
-            Map<String, Product> influenceProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesInfl)
-                    .stream()
-                    .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-            Map<String, Product> dependProducts = productRepository.findByAliasInIgnoreCase(lowerAliasesDepens)
-                    .stream()
-                    .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
-
-            List<SystemInfoDTO> dependentSystems = influences.getDependentSystems() == null ? new ArrayList<>() : influences.getDependentSystems()
-                    .stream()
-                    .map(system -> ProductTechMapper.enrichSystemWithProduct(system, dependProducts))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-
-            List<SystemInfoDTO> influencingSystems = influences.getInfluencingSystems() == null ? new ArrayList<>() : influences.getInfluencingSystems()
-                    .stream()
-                    .map(system -> ProductTechMapper.enrichSystemWithProduct(system, influenceProducts))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-
-            result.setDependentSystems(dependentSystems);
-            result.setInfluencingSystems(influencingSystems);
+            result.setDependentSystems(processSystems(influences.getDependentSystems(),
+                    findProductsByAlias(lowerAliases(influences.getDependentSystems()))
+            ));
+            result.setInfluencingSystems(processSystems(influences.getInfluencingSystems(),
+                    findProductsByAlias(lowerAliases(influences.getInfluencingSystems()))
+            ));
         }
-
         return result;
     }
 
+    private List<SystemInfoDTO> processSystems(List<String> systems, Map<String, Product> products) {
+        if (systems == null) {
+            return new ArrayList<>();
+        }
+        Map<Integer, UserProfileShortDTO> userProfiles = getUserProfiles(products);
+        return systems.stream()
+                .map(system -> ProductTechMapper.enrichSystemWithProduct(system, products, userProfiles))
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private List<String> lowerAliases(List<String> list) {
+        return list.stream()
+                .map(String::toLowerCase)
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, Product> findProductsByAlias(List<String> Aliases) {
+        return productRepository.findByAliasInIgnoreCase(Aliases)
+                .stream()
+                .collect(Collectors.toMap(p -> p.getAlias().toLowerCase(), Function.identity()));
+    }
+
+    private Map<Integer, UserProfileShortDTO> getUserProfiles(Map<String, Product> products) {
+        List<UserProfileShortDTO> userProfiles =
+                userClient.findUserProfiles(products.values().stream().map(Product::getOwnerID).toList());
+        return userProfiles.stream().collect(Collectors.toMap(UserProfileShortDTO::getId, Function.identity()));
+    }
 
     public List<Integer> getTCIdsByProductId(Integer id) {
         productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));

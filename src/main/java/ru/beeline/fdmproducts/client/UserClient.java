@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.beeline.fdmlib.dto.auth.UserInfoDTO;
+import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
 import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 
 import java.util.ArrayList;
@@ -63,6 +64,24 @@ public class UserClient {
         } catch (Exception e) {
             log.error("Error fetching user profiles: {}", e.getMessage());
             return new ArrayList<>();
+        }
+    }
+
+    public UserProfileDTO findUserProfilesById(Integer id) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<List<Integer>> entity = new HttpEntity<>(headers);
+            ResponseEntity<UserProfileDTO> response = restTemplate.exchange(
+                    userServerUrl + "/api/v1/user/" + id,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<>() {
+                    });
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Error fetching user profiles: {}", e.getMessage());
+            return null;
         }
     }
 }

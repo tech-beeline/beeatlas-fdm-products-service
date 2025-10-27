@@ -45,9 +45,9 @@ public class ProductController {
     }
 
     @GetMapping("/product/{code}")
-    @ApiOperation(value = "Получить продукт по alias", response = Product.class)
-    public Product getProductsByCode(@PathVariable String code) {
-        return productService.getProductByCode(code);
+    @ApiOperation(value = "Получить продукт по alias", response = ProductFullDTO.class)
+    public ProductFullDTO getProductsByCode(@PathVariable String code) {
+        return productService.getProductDTOByCode(code);
     }
 
     @GetMapping("/product/{cmdb}/influence")

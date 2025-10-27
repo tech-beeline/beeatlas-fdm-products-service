@@ -5,6 +5,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmlib.dto.auth.UserInfoDTO;
+import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
 import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.graph.ProductInfluenceDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
@@ -151,6 +152,12 @@ public class ProductService {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
         return product;
+    }
+
+    public ProductFullDTO getProductDTOByCode(String code) {
+        Product product = getProductByCode(code);
+        UserProfileDTO user = userClient.findUserProfilesById(product.getOwnerID());
+        return ProductTechMapper.mapToProductFullDTO(product, user);
     }
 
     public ProductInfoDTO getProductInfoByCode(String code) {

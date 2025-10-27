@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.mapper;
 
+import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmproducts.domain.Product;
@@ -19,12 +20,12 @@ public class ProductTechMapper {
                             .productId(product.getId())
                             .alias(product.getAlias())
                             .tech(product.getTechProducts()
-                                          .stream()
-                                          .map(techProduct -> TechDTO.builder()
-                                                  .id(techProduct.getTechId())
-                                                  .label("")
-                                                  .build())
-                                          .collect(Collectors.toList()))
+                                    .stream()
+                                    .map(techProduct -> TechDTO.builder()
+                                            .id(techProduct.getTechId())
+                                            .label("")
+                                            .build())
+                                    .collect(Collectors.toList()))
                             .build())
                     .collect(Collectors.toList());
         }
@@ -53,17 +54,17 @@ public class ProductTechMapper {
                 .structurizrApiUrl(product.getStructurizrApiUrl())
                 .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
                 .techProducts(product.getTechProducts()
-                                      .stream()
-                                      .filter(techProduct -> techProduct.getDeletedDate() == null)
-                                      .map(techProduct -> TechInfoDTO.builder()
-                                              .id(techProduct.getId())
-                                              .techId(techProduct.getTechId())
-                                              .createdDate(techProduct.getCreatedDate())
-                                              .lastModifiedDate(techProduct.getLastModifiedDate())
-                                              .deletedDate(techProduct.getDeletedDate())
-                                              .source(techProduct.getSource())
-                                              .build())
-                                      .collect(Collectors.toList()))
+                        .stream()
+                        .filter(techProduct -> techProduct.getDeletedDate() == null)
+                        .map(techProduct -> TechInfoDTO.builder()
+                                .id(techProduct.getId())
+                                .techId(techProduct.getTechId())
+                                .createdDate(techProduct.getCreatedDate())
+                                .lastModifiedDate(techProduct.getLastModifiedDate())
+                                .deletedDate(techProduct.getDeletedDate())
+                                .source(techProduct.getSource())
+                                .build())
+                        .collect(Collectors.toList()))
                 .build();
     }
 
@@ -106,10 +107,15 @@ public class ProductTechMapper {
                 .collect(Collectors.toList());
     }
 
-    public static SystemInfoDTO enrichSystemWithProduct(String system, Map<String, Product> productMap) {
+    public static SystemInfoDTO enrichSystemWithProduct(String system, Map<String, Product> productMap,
+                                                        Map<Integer, UserProfileShortDTO> userProfilesMap) {
         Product product = productMap.get(system.toLowerCase());
         if (product == null) {
             return null;
+        }
+        UserProfileShortDTO userProfileShortDTO = null;
+        if (product.getOwnerID() != null) {
+            userProfileShortDTO = userProfilesMap.get(product.getOwnerID());
         }
         return SystemInfoDTO.builder()
                 .alias(product.getAlias())
@@ -121,6 +127,9 @@ public class ProductTechMapper {
                 .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
                 .uploadSource(product.getSource())
                 .uploadDate(product.getUploadDate())
+                .critical(product.getCritical())
+                .ownerName(userProfileShortDTO != null ? userProfileShortDTO.getFullName() : null)
+                .ownerEmail(userProfileShortDTO != null ? userProfileShortDTO.getEmail() : null)
                 .build();
     }
 }

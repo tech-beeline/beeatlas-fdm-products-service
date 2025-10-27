@@ -221,6 +221,7 @@ public class ProductService {
             Product product = productRepository.findByAliasCaseInsensitive(alias);
             if (product != null) {
                 if (!userProductRepository.existsByUserIdAndProductId(userId, product.getId())) {
+                    log.info("Создание связи для пользователя %s и продукта %s", userId, product.getId());
                     UserProduct userProduct = UserProduct.builder().userId(userId).product(product).build();
                     userProductRepository.save(userProduct);
                 }

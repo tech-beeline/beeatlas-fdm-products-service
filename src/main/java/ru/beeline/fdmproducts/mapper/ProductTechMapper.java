@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.mapper;
 
+import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
 import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
@@ -130,6 +131,28 @@ public class ProductTechMapper {
                 .critical(product.getCritical())
                 .ownerName(userProfileShortDTO != null ? userProfileShortDTO.getFullName() : null)
                 .ownerEmail(userProfileShortDTO != null ? userProfileShortDTO.getEmail() : null)
+                .build();
+    }
+
+    public static ProductFullDTO mapToProductFullDTO(Product product, UserProfileDTO user) {
+        return ProductFullDTO.builder()
+                .alias(product.getAlias())
+                .description(product.getDescription())
+                .gitUrl(product.getGitUrl())
+                .id(product.getId())
+                .name(product.getName())
+                .structurizrApiUrl(product.getStructurizrApiUrl())
+                .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                .critical(product.getCritical())
+                .ownerID(product.getOwnerID())
+                .ownerEmail(user.getEmail())
+                .ownerName(user.getFullName())
+                .structurizrApiKey(product.getStructurizrApiKey())
+                .structurizrApiSecret(product.getStructurizrApiSecret())
+                .source(product.getSource())
+                .uploadDate(product.getUploadDate())
+                .techProducts(product.getTechProducts())
+                .discoveredInterfaces(product.getDiscoveredInterfaces())
                 .build();
     }
 }

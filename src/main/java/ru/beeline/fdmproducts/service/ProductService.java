@@ -987,7 +987,8 @@ public class ProductService {
             }
             assessment = assessments.get(0);
         }
-        return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
+        return assessmentMapper.mapToAssessmentResponseDTO(assessment, product,
+                                                           enumSourceTypeRepository.findById(assessment.getSourceTypeId()).get().getName());
     }
 
     private void validateRequest(List<FitnessFunctionDTO> requests) {

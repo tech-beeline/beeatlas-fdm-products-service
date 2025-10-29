@@ -3,7 +3,6 @@ package ru.beeline.fdmproducts.dto;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.Date;
 import java.util.List;
 
 @Data
@@ -22,4 +21,5 @@ public class OperationFullDTO {
     private SlaV2DTO sla;
     private LocalDateTime createdDate;
     private LocalDateTime updateDate;
+    private LocalDateTime deletedDate;
 }

@@ -156,7 +156,10 @@ public class ProductService {
 
     public ProductFullDTO getProductDTOByCode(String code) {
         Product product = getProductByCode(code);
-        UserProfileDTO user = userClient.findUserProfilesById(product.getOwnerID());
+        UserProfileDTO user = new UserProfileDTO();
+        if (product.getOwnerID() != null) {
+            user = userClient.findUserProfilesById(product.getOwnerID());
+        }
         return ProductTechMapper.mapToProductFullDTO(product, user);
     }
 
@@ -995,7 +998,7 @@ public class ProductService {
             assessment = assessments.get(0);
         }
         return assessmentMapper.mapToAssessmentResponseDTO(assessment, product,
-                                                           enumSourceTypeRepository.findById(assessment.getSourceTypeId()).get().getName());
+                enumSourceTypeRepository.findById(assessment.getSourceTypeId()).get().getName());
     }
 
     private void validateRequest(List<FitnessFunctionDTO> requests) {

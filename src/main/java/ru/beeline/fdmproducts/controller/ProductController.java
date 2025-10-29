@@ -136,8 +136,10 @@ public class ProductController {
 
     @GetMapping("/product/{cmdb}/interface/mapic")
     @ApiOperation(value = "Интерфейсы продукта полученные из мапик")
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb) {
-        return productService.getProductsFromMapic(cmdb);
+    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb,
+                                                               @RequestParam(value = "show-hidden", required = false,
+                                                                       defaultValue = "false") Boolean showHidden) {
+        return productService.getProductsFromMapic(cmdb, showHidden);
     }
 
     @GetMapping("/product/{id}/structurizr-key")
@@ -148,8 +150,10 @@ public class ProductController {
 
     @GetMapping("/product/{cmdb}/container")
     @ApiOperation(value = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
-    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb) {
-        return productService.getContainersFromStructurizr(cmdb);
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb,
+                                                                     @RequestParam(value = "show-hidden", required = false,
+                                                                             defaultValue = "false") Boolean showHidden) {
+        return productService.getContainersFromStructurizr(cmdb, showHidden);
     }
 
     @PostMapping("/user/{id}/products")

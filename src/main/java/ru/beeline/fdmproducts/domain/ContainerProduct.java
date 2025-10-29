@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.util.Date;
+import java.util.List;
 
 @Builder
 @Data
@@ -27,6 +28,10 @@ public class ContainerProduct {
     @Column(name = "product_id")
     private Integer productId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", insertable = false, updatable = false)
+    private Product product;
+
     @Column(name = "code")
     private String code;
 
@@ -41,4 +46,7 @@ public class ContainerProduct {
 
     @Column(name = "deleted_date")
     private Date deletedDate;
+
+    @OneToMany(mappedBy = "containerProduct", fetch = FetchType.LAZY)
+    private List<Interface> interfaces;
 }

@@ -19,7 +19,7 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByConnectionOperationIdIn(List<Integer> interfaceId);
 
-  List< DiscoveredOperation> findAllByConnectionOperationId(Integer operationId);
+    List<DiscoveredOperation> findAllByConnectionOperationId(Integer operationId);
 
     List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
 
@@ -54,4 +54,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             + "     AND o.id NOT IN (:operationIds))")
     List<DiscoveredOperation> getRows(@Param("interfaceId") Integer interfaceId,
                                       @Param("operationIds") List<Integer> operationIds);
+
+    List<DiscoveredOperation> findAllByInterfaceIdIn(List<Integer> discoveredInterfaceIds);
+
+    List<DiscoveredOperation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> discoveredInterfaceIds);
 }

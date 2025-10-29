@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -7,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.Date;
 
 @Builder
 @Data
@@ -24,6 +24,11 @@ public class Operation {
 
     @Column(name = "interface_id")
     private Integer interfaceId;
+
+    @JsonIgnore
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "interface_id", insertable = false, updatable = false)
+    private Interface interfaceObj;
 
     @Column(name = "name")
     private String name;

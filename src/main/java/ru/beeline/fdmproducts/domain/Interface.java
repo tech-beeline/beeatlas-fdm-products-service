@@ -7,7 +7,7 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
-import java.util.Date;
+import java.util.List;
 
 @Builder
 @Data
@@ -60,4 +60,14 @@ public class Interface {
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
+
+    @OneToMany(mappedBy = "connectedInterface", fetch = FetchType.LAZY)
+    private List<DiscoveredInterface> discoveredInterfaces;
+
+    @OneToMany(mappedBy = "interfaceObj", fetch = FetchType.LAZY)
+    private List<Operation> operations;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "container_id", insertable = false, updatable = false)
+    private ContainerProduct containerProduct;
 }

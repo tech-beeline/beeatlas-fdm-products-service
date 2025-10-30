@@ -11,6 +11,7 @@ import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -154,6 +155,12 @@ public class ProductController {
                                                                      @RequestParam(value = "show-hidden", required = false,
                                                                              defaultValue = "false") Boolean showHidden) {
         return productService.getContainersFromStructurizr(cmdb, showHidden);
+    }
+
+    @GetMapping("/product/{cmdb}/e2e")
+    @ApiOperation(value = "Просмотр списка e2e процессов")
+    public List<ResultDTO> getE2eProcessByCmdb(@PathVariable String cmdb) {
+        return productService.getE2eProcessByCmdb(cmdb);
     }
 
     @PostMapping("/user/{id}/products")

@@ -13,12 +13,16 @@ import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.client.DashboardClient;
 import ru.beeline.fdmproducts.client.GraphClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.dto.dashboard.E2eProcessInfoDTO;
+import ru.beeline.fdmproducts.dto.dashboard.GetInfoProcessDTO;
+import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
@@ -64,6 +68,7 @@ public class ProductService {
     private final PatternsCheckRepository patternsCheckRepository;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
+    private final DashboardClient dashboardClient;
 
     public ProductService(ContainerMapper containerMapper,
                           OperationMapper operationMapper,
@@ -91,7 +96,7 @@ public class ProductService {
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
-                          DiscoveredOperationRepository discoveredOperationRepository) {
+                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -119,6 +124,7 @@ public class ProductService {
         this.patternsCheckRepository = patternsCheckRepository;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
         this.discoveredOperationRepository = discoveredOperationRepository;
+        this.dashboardClient = dashboardClient;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -1473,6 +1479,31 @@ public class ProductService {
                                 "not" + " found")));
             }
             default -> throw new IllegalArgumentException("Не валидный аттрибут type");
+        }
+        return result;
+    }
+
+    public List<ResultDTO> getE2eProcessByCmdb(String cmdb) {
+        List<ResultDTO> result = new ArrayList<>();
+        Product product = getProductByCode(cmdb);
+        if (product != null) {
+            Set<E2eProcessInfoDTO> e2eProcessInfoDTOS = new HashSet<>(dashboardClient.getE2eSystemInfo(product.getAlias()));
+            if (e2eProcessInfoDTOS.isEmpty()) {
+                return new ArrayList<>();
+            }
+            log.info("e2eProcessInfoDTOSet size: " + e2eProcessInfoDTOS.size());
+            for (E2eProcessInfoDTO e2eProcessInfoDTO : e2eProcessInfoDTOS) {
+                List<GetInfoProcessDTO> infoProcessDTOS = dashboardClient.getInfoMessage(e2eProcessInfoDTO.getBi().getUid());
+                List<String> filterInfoProcessDTOS = infoProcessDTOS.stream().
+                        filter(infoProcessDTO -> e2eProcessInfoDTO.getMessage().getOperation().getUid()
+                                .equals(infoProcessDTO.getOperation_guid())).map(GetInfoProcessDTO::getClient_code).toList();
+                result.add(ResultDTO.builder()
+                        .e2e(e2eProcessInfoDTO.getProcess().getName())
+                        .operation(e2eProcessInfoDTO.getMessage().getOperation().getName())
+                        .client(filterInfoProcessDTOS)
+                        .build());
+            }
+            return result;
         }
         return result;
     }

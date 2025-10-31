@@ -1487,7 +1487,7 @@ public class ProductService {
         List<ResultDTO> result = new ArrayList<>();
         Product product = getProductByCode(cmdb);
         if (product != null) {
-            Set<E2eProcessInfoDTO> e2eProcessInfoDTOS = new HashSet<>(dashboardClient.getE2eSystemInfo(product.getAlias()));
+            List<E2eProcessInfoDTO> e2eProcessInfoDTOS = dashboardClient.getE2eSystemInfo(product.getAlias());
             if (e2eProcessInfoDTOS.isEmpty()) {
                 return new ArrayList<>();
             }
@@ -1496,7 +1496,9 @@ public class ProductService {
                 List<GetInfoProcessDTO> infoProcessDTOS = dashboardClient.getInfoMessage(e2eProcessInfoDTO.getBi().getUid());
                 List<String> filterInfoProcessDTOS = infoProcessDTOS.stream().
                         filter(infoProcessDTO -> e2eProcessInfoDTO.getMessage().getOperation().getUid()
-                                .equals(infoProcessDTO.getOperation_guid())).map(GetInfoProcessDTO::getClient_code).toList();
+                                .equals(infoProcessDTO.getOperation_guid())).map(GetInfoProcessDTO::getClient_code)
+                        .filter(Objects::nonNull)
+                        .toList();
                 result.add(ResultDTO.builder()
                         .e2e(e2eProcessInfoDTO.getProcess().getName())
                         .operation(e2eProcessInfoDTO.getMessage().getOperation().getName())

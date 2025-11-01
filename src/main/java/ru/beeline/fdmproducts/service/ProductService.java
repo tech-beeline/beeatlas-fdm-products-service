@@ -1487,7 +1487,7 @@ public class ProductService {
         List<ResultDTO> result = new ArrayList<>();
         Product product = getProductByCode(cmdb);
         if (product != null) {
-            List<E2eProcessInfoDTO> e2eProcessInfoDTOS = dashboardClient.getE2eSystemInfo(product.getAlias());
+            Set<E2eProcessInfoDTO> e2eProcessInfoDTOS = new HashSet<>(dashboardClient.getE2eSystemInfo(product.getAlias()));
             if (e2eProcessInfoDTOS.isEmpty()) {
                 return new ArrayList<>();
             }

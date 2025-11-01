@@ -11,6 +11,7 @@ import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -45,9 +46,9 @@ public class ProductController {
     }
 
     @GetMapping("/product/{code}")
-    @ApiOperation(value = "Получить продукт по alias", response = Product.class)
-    public Product getProductsByCode(@PathVariable String code) {
-        return productService.getProductByCode(code);
+    @ApiOperation(value = "Получить продукт по alias", response = ProductFullDTO.class)
+    public ProductFullDTO getProductsByCode(@PathVariable String code) {
+        return productService.getProductDTOByCode(code);
     }
 
     @GetMapping("/product/{cmdb}/influence")
@@ -116,6 +117,12 @@ public class ProductController {
         return productService.getProductPatterns(alias, sourceId, sourceType);
     }
 
+    @GetMapping("/product/parent")
+    @ApiOperation(value = "Получение мнемоники продукта для дочерних сущностей")
+    public ProductInfoShortV2DTO getParent(@RequestParam Integer id, @RequestParam String type) {
+        return productService.getParent(id, type);
+    }
+
     @GetMapping("/products/mnemonic")
     @ApiOperation(value = "Получение всех продуктов и связей с технологиями")
     public List<String> getAllMnemonics() {
@@ -130,8 +137,10 @@ public class ProductController {
 
     @GetMapping("/product/{cmdb}/interface/mapic")
     @ApiOperation(value = "Интерфейсы продукта полученные из мапик")
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb) {
-        return productService.getProductsFromMapic(cmdb);
+    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb,
+                                                               @RequestParam(value = "show-hidden", required = false,
+                                                                       defaultValue = "false") Boolean showHidden) {
+        return productService.getProductsFromMapic(cmdb, showHidden);
     }
 
     @GetMapping("/product/{id}/structurizr-key")
@@ -142,8 +151,16 @@ public class ProductController {
 
     @GetMapping("/product/{cmdb}/container")
     @ApiOperation(value = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
-    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb) {
-        return productService.getContainersFromStructurizr(cmdb);
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb,
+                                                                     @RequestParam(value = "show-hidden", required = false,
+                                                                             defaultValue = "false") Boolean showHidden) {
+        return productService.getContainersFromStructurizr(cmdb, showHidden);
+    }
+
+    @GetMapping("/product/{cmdb}/e2e")
+    @ApiOperation(value = "Просмотр списка e2e процессов")
+    public List<ResultDTO> getE2eProcessByCmdb(@PathVariable String cmdb) {
+        return productService.getE2eProcessByCmdb(cmdb);
     }
 
     @PostMapping("/user/{id}/products")
@@ -204,7 +221,7 @@ public class ProductController {
     @PatchMapping("product/{cmdb}/source")
     @ApiOperation(value = "Проставление источника обновления продукта и время подгрузки данных.")
     public ResponseEntity patchProductsSource(@PathVariable String cmdb,
-                                        @RequestParam(name = "source-name", required = false) String sourceName) {
+                                              @RequestParam(name = "source-name", required = false) String sourceName) {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }

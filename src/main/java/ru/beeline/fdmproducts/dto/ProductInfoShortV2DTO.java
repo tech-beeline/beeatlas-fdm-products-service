@@ -2,14 +2,15 @@ package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
 @Builder
-public class SystemInfoDTO {
+public class ProductInfoShortV2DTO {
+
     private String alias;
     private String description;
     private String gitUrl;
@@ -17,9 +18,5 @@ public class SystemInfoDTO {
     private String name;
     private String structurizrApiUrl;
     private String structurizrWorkspaceName;
-    private String uploadSource;
-    private LocalDateTime uploadDate;
-    private String critical;
-    private String ownerName;
-    private String ownerEmail;
+
 }

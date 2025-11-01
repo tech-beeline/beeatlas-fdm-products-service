@@ -7,6 +7,10 @@ import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.dto.*;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class InterfaceMapper {
 
@@ -24,9 +28,9 @@ public class InterfaceMapper {
     }
 
     public static void updateInterface(Interface interfaceEntity,
-                                InterfaceDTO interfaceDTO,
-                                Integer containerId,
-                                Integer tcId) {
+                                       InterfaceDTO interfaceDTO,
+                                       Integer containerId,
+                                       Integer tcId) {
         interfaceEntity.setContainerId(containerId);
         interfaceEntity.setTcId(tcId);
         interfaceEntity.setName(interfaceDTO.getName());
@@ -43,6 +47,15 @@ public class InterfaceMapper {
                 .name(dInterface.getName())
                 .description(dInterface.getDescription())
                 .build();
+    }
+
+    public static List<MapicInterfaceDTO> createMapicInterfaceList(List<DiscoveredInterface> discoveredInterfaces) {
+        if (discoveredInterfaces == null || discoveredInterfaces.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return discoveredInterfaces.parallelStream()
+                .map(InterfaceMapper::createMapicInterfaceDTO)
+                .collect(Collectors.toList());
     }
 
     public static MapicInterfaceDTO createMapicInterfaceDTO(DiscoveredInterface dInterface, Interface anInterface) {
@@ -74,19 +87,21 @@ public class InterfaceMapper {
                 .externalId(interfaceObj.getExternalId())
                 .createDate(interfaceObj.getCreatedDate())
                 .updateDate(interfaceObj.getUpdatedDate())
+                .deletedDate(interfaceObj.getDeletedDate())
                 .apiId(interfaceObj.getApiId())
                 .context(interfaceObj.getContext())
                 .build();
     }
 
     public static ConnectOperationDTO createConnectOperationDTO(Operation operation,
-                                                          DiscoveredOperation discoveredOperation) {
+                                                                DiscoveredOperation discoveredOperation) {
         ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .description(discoveredOperation.getDescription())
                 .createDate(discoveredOperation.getCreatedDate())
                 .updateDate(discoveredOperation.getUpdatedDate())
+                .deletedDate(discoveredOperation.getDeletedDate())
                 .type(discoveredOperation.getType())
                 .build();
         if (operation != null) {
@@ -101,5 +116,37 @@ public class InterfaceMapper {
         return connectOperationDTO;
     }
 
+    public static InterfaceMethodDTO createInterfaceMethodDTO(Interface interfaceObj, List<OperationFullDTO> operations,
+                                                              List<MapicInterfaceDTO> mapicInterfaces, TcDTO techCapability) {
+        return InterfaceMethodDTO.builder()
+                .id(interfaceObj.getId())
+                .name(interfaceObj.getName())
+                .specLink(interfaceObj.getSpecLink())
+                .protocol(interfaceObj.getProtocol())
+                .description(interfaceObj.getDescription())
+                .version(interfaceObj.getVersion())
+                .code(interfaceObj.getCode())
+                .createDate(interfaceObj.getCreatedDate())
+                .updateDate(interfaceObj.getUpdatedDate())
+                .deletedDate(interfaceObj.getDeletedDate())
+                .mapicInterfaces(mapicInterfaces)
+                .operations(operations)
+                .techCapability(techCapability)
+                .build();
+    }
+
+    public static List<InterfaceMethodDTO> createInterfaceMethodDTOList(List<Interface> interfaces,
+                                                                        Map<Integer, List<OperationFullDTO>> operationsDTOByInterfaceId,
+                                                                        Map<Integer, List<DiscoveredInterface>> discoveredInterfaceMap,
+                                                                        Map<Integer, TcDTO> tcDTOMap) {
+        return interfaces.parallelStream()
+                .map(interfaceObj -> createInterfaceMethodDTO(
+                        interfaceObj,
+                        operationsDTOByInterfaceId.getOrDefault(interfaceObj.getId(), Collections.emptyList()),
+                        createMapicInterfaceList(discoveredInterfaceMap.get(interfaceObj.getId())),
+                        tcDTOMap.get(interfaceObj.getTcId())
+                ))
+                .collect(Collectors.toList());
+    }
 }
 

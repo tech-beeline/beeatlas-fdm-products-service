@@ -18,5 +18,6 @@ public class ContainerInterfacesDTO {
     private String code;
     private Date createDate;
     private Date updateDate;
+    private Date deletedDate;
     private List<InterfaceMethodDTO> interfaces;
 }

@@ -22,6 +22,7 @@ public class ProductMapicInterfaceDTO {
     private LocalDateTime updateDate;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS")
     private LocalDateTime createDate;
+    private LocalDateTime deletedDate;
     private String description;
     private String context;
     private String contextProvider;

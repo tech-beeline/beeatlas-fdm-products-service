@@ -1,8 +1,9 @@
-ARG IMAGE_REGISTRY
-ARG SLIM=''
-#FROM ${IMAGE_REGISTRY}/dockerhub/library/openjdk:17${SLIM}-buster
-# FROM harbor.vimpelcom.ru/common/library/eclipse-temurin:17-jdk
 FROM harbor.vimpelcom.ru/common/library/eclipse-temurin:17-jre
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt update && apt install -y --no-install-recommends \
+        ca-certificates \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 RUN useradd -m -d /app -s /bin/bash -g root -u 1000 app && chown app:root .
 USER app
@@ -13,7 +14,7 @@ COPY *.crt .
 USER root
 COPY *.crt /usr/local/share/ca-certificates
 RUN update-ca-certificates
-RUN keytool -import -alias apps.yd-m6-kt22.vimpelcom -keystore $JAVA_HOME/lib/security/cacerts -file apps.yd-m6-kt22.vimpelcom.ru.crt -storepass changeit
+RUN update-ca-certificates && keytool -import -alias apps.yd-m6-kt22.vimpelcom -keystore $JAVA_HOME/lib/security/cacerts -file apps.yd-m6-kt22.vimpelcom.ru.crt -storepass changeit
 USER app
 RUN keytool -importcert -file VC_RootCA.crt -alias VC_RootCA -storepass changeit -noprompt -trustcacerts
 RUN keytool -importcert -file VC_BEERootCA.crt -alias VC_BEERootCA -storepass changeit -noprompt -trustcacerts

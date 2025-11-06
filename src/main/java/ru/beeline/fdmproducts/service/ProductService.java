@@ -1496,7 +1496,8 @@ public class ProductService {
                 List<GetInfoProcessDTO> infoProcessDTOS = dashboardClient.getInfoMessage(e2eProcessInfoDTO.getBi().getUid());
                 List<String> filterInfoProcessDTOS = infoProcessDTOS.stream().
                         filter(infoProcessDTO -> e2eProcessInfoDTO.getMessage().getOperation().getUid()
-                                .equals(infoProcessDTO.getOperation_guid())).map(GetInfoProcessDTO::getClient_code)
+                                .equals(infoProcessDTO.getOperation_guid()))
+                        .map(GetInfoProcessDTO::getClient_code)
                         .filter(Objects::nonNull)
                         .toList();
                 result.add(ResultDTO.builder()
@@ -1505,7 +1506,19 @@ public class ProductService {
                         .client(filterInfoProcessDTOS)
                         .build());
             }
-            return result;
+            return result.stream()
+                    .collect(Collectors.toMap(
+                            resultDTO -> Arrays.asList(resultDTO.getE2e(), resultDTO.getOperation()),
+                            resultDTO -> new ArrayList<>(resultDTO.getClient()),
+                            (list1, list2) -> {
+                                list1.addAll(list2);
+                                return list1;
+                            },
+                            LinkedHashMap::new
+                    ))
+                    .entrySet().stream()
+                    .map(entry -> new ResultDTO(entry.getKey().get(0), entry.getKey().get(1), entry.getValue()))
+                    .toList();
         }
         return result;
     }

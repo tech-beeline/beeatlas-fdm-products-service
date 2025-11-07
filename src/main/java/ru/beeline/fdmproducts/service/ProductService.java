@@ -1509,15 +1509,19 @@ public class ProductService {
             return result.stream()
                     .collect(Collectors.toMap(
                             resultDTO -> Arrays.asList(resultDTO.getE2e(), resultDTO.getOperation()),
-                            resultDTO -> new ArrayList<>(resultDTO.getClient()),
-                            (list1, list2) -> {
-                                list1.addAll(list2);
-                                return list1;
+                            resultDTO -> new HashSet<>(resultDTO.getClient()),
+                            (set1, set2) -> {
+                                set1.addAll(set2);
+                                return set1;
                             },
                             LinkedHashMap::new
                     ))
                     .entrySet().stream()
-                    .map(entry -> new ResultDTO(entry.getKey().get(0), entry.getKey().get(1), entry.getValue()))
+                    .map(entry -> new ResultDTO(
+                            entry.getKey().get(0),
+                            entry.getKey().get(1),
+                            new ArrayList<>(entry.getValue())
+                    ))
                     .toList();
         }
         return result;

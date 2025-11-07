@@ -14,6 +14,7 @@ import javax.persistence.*;
 @Entity
 @Table(name = "local_assessment_check")
 public class LocalAssessmentCheck {
+
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "assessment_check_id_generator")
     @SequenceGenerator(name = "assessment_check_id_generator", sequenceName = "seq_assessment_check_id", allocationSize = 1)
@@ -33,4 +34,7 @@ public class LocalAssessmentCheck {
 
     @Column(name = "result_details")
     private String resultDetails;
+
+    @Column(name = "assessment_description")
+    private String assessmentDescription;
 }

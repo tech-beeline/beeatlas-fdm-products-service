@@ -1,0 +1,16 @@
+package ru.beeline.fdmproducts.dto;
+
+import lombok.*;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
+@Builder
+public class AssessmentObjectDTO {
+
+    private Boolean check;
+    private List<DetailsDTO> details;
+}

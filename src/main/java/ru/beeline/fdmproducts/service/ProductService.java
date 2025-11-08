@@ -1400,7 +1400,7 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        return ProductTechMapper.mapToProductInfoShortDTO(productRepository.findAll());
+        return new ProductTechMapper().mapToProductInfoShortDTO(productRepository.findAll());
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {

@@ -20,4 +20,6 @@ public class ProductInfoShortDTO {
     private String structurizrWorkspaceName;
     private String uploadSource;
     private LocalDateTime uploadDate;
+    private String ownerName;
+    private String critical;
 }

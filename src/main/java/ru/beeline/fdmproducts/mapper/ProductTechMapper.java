@@ -89,7 +89,7 @@ public class ProductTechMapper {
                         .uploadSource(product.getSource())
                         .uploadDate(product.getUploadDate())
                         .critical(product.getCritical())
-                        .ownerName(userClient.findUserProfilesById(product.getOwnerID()).getName())
+                        .ownerName(userClient.findUserProfilesById(product.getOwnerID()).getFullName())
                         .build())
                 .collect(Collectors.toList());
     }

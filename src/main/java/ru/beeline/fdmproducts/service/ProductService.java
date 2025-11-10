@@ -12,11 +12,7 @@ import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.client.CapabilityClient;
-import ru.beeline.fdmproducts.client.DashboardClient;
-import ru.beeline.fdmproducts.client.GraphClient;
-import ru.beeline.fdmproducts.client.TechradarClient;
-import ru.beeline.fdmproducts.client.UserClient;
+import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
@@ -1400,7 +1396,12 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        return new ProductTechMapper().mapToProductInfoShortDTO(productRepository.findAll());
+        return productRepository.findAll()
+                .stream()
+                .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
+                                                                           userClient.findUserProfilesById(product.getOwnerID())
+                                                                                   .getFullName()))
+                .collect(Collectors.toList());
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {

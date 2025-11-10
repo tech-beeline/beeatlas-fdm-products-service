@@ -1,12 +1,10 @@
 package ru.beeline.fdmproducts.mapper;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
 import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
-import ru.beeline.fdmproducts.client.UserClient;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 
@@ -17,8 +15,6 @@ import java.util.stream.Collectors;
 
 @Component
 public class ProductTechMapper {
-    @Autowired
-    private UserClient userClient;
 
     public static List<ProductDTO> mapToDto(List<Product> products) {
         if (products != null && !products.isEmpty()) {
@@ -76,9 +72,8 @@ public class ProductTechMapper {
                 .build();
     }
 
-    public List<ProductInfoShortDTO> mapToProductInfoShortDTO(List<Product> products) {
-        return products.stream()
-                .map(product -> ProductInfoShortDTO.builder()
+    public static ProductInfoShortDTO mapToProductInfoShortDTO(Product product, String ownerName) {
+        return  ProductInfoShortDTO.builder()
                         .alias(product.getAlias())
                         .description(product.getDescription())
                         .gitUrl(product.getGitUrl())
@@ -89,9 +84,8 @@ public class ProductTechMapper {
                         .uploadSource(product.getSource())
                         .uploadDate(product.getUploadDate())
                         .critical(product.getCritical())
-                        .ownerName(userClient.findUserProfilesById(product.getOwnerID()).getFullName())
-                        .build())
-                .collect(Collectors.toList());
+                        .ownerName(ownerName)
+                        .build();
     }
 
     public static ProductInfoShortV2DTO mapToProductInfoShortV2DTO(Product product) {

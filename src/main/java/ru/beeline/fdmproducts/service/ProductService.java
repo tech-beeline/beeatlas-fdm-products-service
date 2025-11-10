@@ -957,7 +957,7 @@ public class ProductService {
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
         }
-        if (assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
+        if (sourceId!=null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
             throw new IllegalArgumentException(
                     String.format("Запись с sourceId: %s и product: %s уже существует в бд", sourceId, product.getId()));
         }

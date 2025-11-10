@@ -1033,7 +1033,7 @@ public class ProductService {
                     return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
                 }
             } else {
-                assessment = assessmentRepository.findLatestBySourceTypeIdAndProductId(enumSourceType.getId(),
+                assessment = assessmentRepository.findFirstBySourceTypeIdAndProductIdOrderByCreatedTimeDesc(enumSourceType.getId(),
                                 product.getId())
                         .orElseThrow(() -> new EntityNotFoundException(String.format(
                                 "Запись в таблице local_assessment с SourceTypeId: %s," + " productId: %s не найдена",

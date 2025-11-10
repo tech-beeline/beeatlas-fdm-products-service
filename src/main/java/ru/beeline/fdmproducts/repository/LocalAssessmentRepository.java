@@ -19,6 +19,5 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
 
     Optional<LocalAssessment> findBySourceIdAndProductIdAndSourceTypeId(Integer sourceId, Integer productId, Integer SourceTypeId);
 
-    @Query("SELECT la FROM LocalAssessment la WHERE la.sourceTypeId= :sourceId and la.product.id = :productId ORDER BY la.createdTime DESC")
-    Optional<LocalAssessment> findLatestBySourceTypeIdAndProductId(Integer sourceId, Integer productId);
+    Optional<LocalAssessment> findFirstBySourceTypeIdAndProductIdOrderByCreatedTimeDesc(Integer sourceId, Integer productId);
 }

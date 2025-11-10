@@ -28,4 +28,7 @@ public class LocalFitnessFunction {
 
     @Column(nullable = false)
     private String status;
+
+    @Column(name = "doc_link")
+    private String docLink;
 }

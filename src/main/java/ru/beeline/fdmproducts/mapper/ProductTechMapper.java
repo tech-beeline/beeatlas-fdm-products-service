@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.mapper;
 
+import org.springframework.stereotype.Component;
 import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
 import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
@@ -12,7 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Component
 public class ProductTechMapper {
+
     public static List<ProductDTO> mapToDto(List<Product> products) {
         if (products != null && !products.isEmpty()) {
             return products.stream()
@@ -69,9 +72,8 @@ public class ProductTechMapper {
                 .build();
     }
 
-    public static List<ProductInfoShortDTO> mapToProductInfoShortDTO(List<Product> products) {
-        return products.stream()
-                .map(product -> ProductInfoShortDTO.builder()
+    public static ProductInfoShortDTO mapToProductInfoShortDTO(Product product, String ownerName) {
+        return  ProductInfoShortDTO.builder()
                         .alias(product.getAlias())
                         .description(product.getDescription())
                         .gitUrl(product.getGitUrl())
@@ -81,8 +83,9 @@ public class ProductTechMapper {
                         .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
                         .uploadSource(product.getSource())
                         .uploadDate(product.getUploadDate())
-                        .build())
-                .collect(Collectors.toList());
+                        .critical(product.getCritical())
+                        .ownerName(ownerName)
+                        .build();
     }
 
     public static ProductInfoShortV2DTO mapToProductInfoShortV2DTO(Product product) {

@@ -11,6 +11,7 @@ import java.util.List;
 @ToString
 @Builder
 public class AssessmentResponseDTO {
+
     private Integer assessmentId;
     private SourceDTO source;
     private LocalDateTime createdDate;

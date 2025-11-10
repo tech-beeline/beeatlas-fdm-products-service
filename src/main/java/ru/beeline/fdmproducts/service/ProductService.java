@@ -995,7 +995,7 @@ public class ProductService {
         Map<Integer, List<DetailsDTO>> localAcObjectMap = new HashMap<>();
         List<LocalAcObject> entities = assessmentObjectDTOS.stream()
                 .map(dto -> LocalAcObject.builder()
-                        .isCheck(dto.getCheck())
+                        .isCheck(dto.getIsCheck())
                         .lacId(assessmentCheck.getId())
                         .build())
                 .collect(Collectors.toList());

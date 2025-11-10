@@ -48,7 +48,7 @@ public class FitnessFunctionMapper {
         List<AssessmentObjectDTO> result = new ArrayList<>();
         for (LocalAcObject localAcObject : localAcObjectList) {
             result.add(AssessmentObjectDTO.builder()
-                    .check(localAcObject.getIsCheck())
+                    .isCheck(localAcObject.getIsCheck())
                     .details(mapDetailsDTO(localAcObject.getDetails(), tableStruct))
                     .build());
         }

@@ -11,6 +11,6 @@ import java.util.List;
 @Builder
 public class AssessmentObjectDTO {
 
-    private Boolean check;
+    private Boolean isCheck;
     private List<DetailsDTO> details;
 }

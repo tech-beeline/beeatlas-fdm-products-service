@@ -1399,7 +1399,8 @@ public class ProductService {
         return productRepository.findAll()
                 .stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                                                                           userClient.findUserProfilesById(product.getOwnerID())
+                                                                           product.getOwnerID() == null ? "" :
+                                                                                   userClient.findUserProfilesById(product.getOwnerID())
                                                                                    .getFullName()))
                 .collect(Collectors.toList());
     }

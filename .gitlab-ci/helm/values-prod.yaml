@@ -31,4 +31,12 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
 
+resources:
+  limits:
+    cpu: 1000m
+    memory: 3500Mi
+  requests:
+    cpu: 100m
+    memory: 1256Mi
+
 replicaCount: 1

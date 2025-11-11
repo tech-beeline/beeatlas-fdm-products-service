@@ -12,11 +12,7 @@ import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.GetProductsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
-import ru.beeline.fdmproducts.client.CapabilityClient;
-import ru.beeline.fdmproducts.client.DashboardClient;
-import ru.beeline.fdmproducts.client.GraphClient;
-import ru.beeline.fdmproducts.client.TechradarClient;
-import ru.beeline.fdmproducts.client.UserClient;
+import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
@@ -69,6 +65,9 @@ public class ProductService {
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
     private final DashboardClient dashboardClient;
+    private final LocalAcObjectRepository localAcObjectRepository;
+    private final LocalAcObjectDetailRepository localAcObjectDetailRepository;
+
 
     public ProductService(ContainerMapper containerMapper,
                           OperationMapper operationMapper,
@@ -96,7 +95,7 @@ public class ProductService {
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
-                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient) {
+                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient, LocalAcObjectRepository localAcObjectRepository, LocalAcObjectDetailRepository localAcObjectDetailRepository) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -125,6 +124,8 @@ public class ProductService {
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
         this.discoveredOperationRepository = discoveredOperationRepository;
         this.dashboardClient = dashboardClient;
+        this.localAcObjectRepository = localAcObjectRepository;
+        this.localAcObjectDetailRepository = localAcObjectDetailRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -939,20 +940,22 @@ public class ProductService {
         }
     }
 
-    public void postFitnessFunctions(String alias,
-                                     String sourceType,
-                                     List<FitnessFunctionDTO> requests,
-                                     Integer sourceId) {
+    public void postFitnessFunctions(String alias, String sourceType,
+                                     List<FitnessFunctionDTO> requests, Integer sourceId) {
         log.info("Старт метода: postFitnessFunctions");
         validateRequest(requests);
         Product product = productRepository.findByAliasCaseInsensitive(alias);
         if (product == null) {
-            throw new EntityNotFoundException("Missing product");
+            throw new EntityNotFoundException("Product не найден.");
         }
         EnumSourceType enumSourceType = enumSourceTypeRepository.findByName(sourceType)
                 .orElseThrow(() -> new IllegalArgumentException("Невозможный источник."));
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
+        }
+        if (sourceId!=null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
+            throw new IllegalArgumentException(
+                    String.format("Запись с sourceId: %s и product: %s уже существует в бд", sourceId, product.getId()));
         }
         LocalAssessment assessment = assessmentRepository.save(LocalAssessment.builder()
                 .sourceId(sourceId)
@@ -960,8 +963,50 @@ public class ProductService {
                 .sourceTypeId(enumSourceType.getId())
                 .createdTime(LocalDateTime.now())
                 .build());
-        requests.forEach(request -> processAssessmentCheck(request, assessment));
+        for (FitnessFunctionDTO request : requests) {
+            LocalAssessmentCheck assessmentCheck = processAssessmentCheck(request, assessment);
+            if (assessmentCheck == null) {
+                continue;
+            }
+            if (request.getAssessmentObjects() != null && !request.getAssessmentObjects().isEmpty()) {
+                Map<Integer, List<DetailsDTO>> savedLA = saveLocalAcObject(request.getAssessmentObjects(), assessmentCheck);
+                saveDetails(savedLA);
+            }
+        }
         log.info("метод: postFitnessFunctions успешно завершен");
+    }
+
+    private void saveDetails(Map<Integer, List<DetailsDTO>> detailsMap) {
+        List<LocalAcObjectDetail> saveList = new ArrayList<>();
+        detailsMap.forEach((acObjectId, detailsDto) -> {
+            for (DetailsDTO dto : detailsDto) {
+                saveList.add(LocalAcObjectDetail.builder()
+                        .lacoId(acObjectId)
+                        .key(dto.getKey())
+                        .value(dto.getValue())
+                        .build());
+            }
+        });
+        localAcObjectDetailRepository.saveAll(saveList);
+    }
+
+    private Map<Integer, List<DetailsDTO>> saveLocalAcObject(List<AssessmentObjectDTO> assessmentObjectDTOS,
+                                                             LocalAssessmentCheck assessmentCheck) {
+        Map<Integer, List<DetailsDTO>> localAcObjectMap = new HashMap<>();
+        List<LocalAcObject> entities = assessmentObjectDTOS.stream()
+                .map(dto -> LocalAcObject.builder()
+                        .isCheck(dto.getIsCheck())
+                        .lacId(assessmentCheck.getId())
+                        .build())
+                .collect(Collectors.toList());
+        List<LocalAcObject> savedEntities = localAcObjectRepository.saveAll(entities);
+        for (int i = 0; i < savedEntities.size(); i++) {
+            localAcObjectMap.put(
+                    savedEntities.get(i).getId(),
+                    assessmentObjectDTOS.get(i).getDetails()
+            );
+        }
+        return localAcObjectMap;
     }
 
     public AssessmentResponseDTO getFitnessFunctions(String alias, Integer sourceId, String sourceType) {
@@ -988,7 +1033,7 @@ public class ProductService {
                     return assessmentMapper.mapToAssessmentResponseDTO(assessment, product, sourceType);
                 }
             } else {
-                assessment = assessmentRepository.findLatestBySourceTypeIdAndProductId(enumSourceType.getId(),
+                assessment = assessmentRepository.findFirstBySourceTypeIdAndProductIdOrderByCreatedTimeDesc(enumSourceType.getId(),
                                 product.getId())
                         .orElseThrow(() -> new EntityNotFoundException(String.format(
                                 "Запись в таблице local_assessment с SourceTypeId: %s," + " productId: %s не найдена",
@@ -1015,15 +1060,19 @@ public class ProductService {
         }
     }
 
-    private void processAssessmentCheck(FitnessFunctionDTO request, LocalAssessment assessment) {
-        fitnessFunctionRepository.findByCode(request.getCode()).ifPresent(fitnessFunction -> {
-            LocalAssessmentCheck check = new LocalAssessmentCheck();
-            check.setFitnessFunction(fitnessFunction);
-            check.setAssessment(assessment);
-            check.setIsCheck(request.getIsCheck());
-            check.setResultDetails(request.getResultDetails());
-            assessmentCheckRepository.save(check);
-        });
+    private LocalAssessmentCheck processAssessmentCheck(FitnessFunctionDTO request, LocalAssessment assessment) {
+        return fitnessFunctionRepository.findByCode(request.getCode())
+                .map(fitnessFunction -> {
+                    LocalAssessmentCheck check = LocalAssessmentCheck.builder()
+                            .fitnessFunction(fitnessFunction)
+                            .assessmentDescription(request.getAssessmentDescription())
+                            .assessment(assessment)
+                            .isCheck(request.getIsCheck())
+                            .resultDetails(request.getResultDetails())
+                            .build();
+                    return assessmentCheckRepository.save(check);
+                })
+                .orElse(null);
     }
 
     public List<String> getMnemonics() {
@@ -1347,7 +1396,13 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        return ProductTechMapper.mapToProductInfoShortDTO(productRepository.findAll());
+        return productRepository.findAll()
+                .stream()
+                .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
+                                                                           product.getOwnerID() == null ? "" :
+                                                                                   userClient.findUserProfilesById(product.getOwnerID())
+                                                                                   .getFullName()))
+                .collect(Collectors.toList());
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {

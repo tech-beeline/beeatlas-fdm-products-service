@@ -171,11 +171,12 @@ public class ProductController {
     }
 
     @PostMapping("/product/{alias}/fitness-function/{source_type}")
+    @ResponseStatus(HttpStatus.CREATED)
     @ApiOperation(value = "Публикация результатов фитнесс-функций")
-    public ResponseEntity postFitnessFunctions(@PathVariable String alias,
-                                               @PathVariable("source_type") String sourceType,
-                                               @RequestBody List<FitnessFunctionDTO> requests,
-                                               @RequestParam(value = "source_id", required = false) Integer sourceId) {
+    public ResponseEntity<Void> postFitnessFunctions(@PathVariable String alias,
+                                                     @PathVariable("source_type") String sourceType,
+                                                     @RequestBody List<FitnessFunctionDTO> requests,
+                                                     @RequestParam(value = "source_id", required = false) Integer sourceId) {
 
         productService.postFitnessFunctions(alias, sourceType, requests, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
@@ -183,6 +184,7 @@ public class ProductController {
     }
 
     @PostMapping("/product/{alias}/patterns/{source-type}")
+    @ResponseStatus(HttpStatus.CREATED)
     @ApiOperation(value = "Создание связи паттерна из технорадра с продуктами в которых они реализованны")
     public ResponseEntity postPatternProduct(@PathVariable String alias,
                                              @PathVariable(value = "source-type", required = false) String sourceType,

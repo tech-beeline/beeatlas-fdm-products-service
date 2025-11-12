@@ -953,7 +953,7 @@ public class ProductService {
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
         }
-        if (sourceId!=null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
+        if (sourceId != null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
             throw new IllegalArgumentException(
                     String.format("Запись с sourceId: %s и product: %s уже существует в бд", sourceId, product.getId()));
         }
@@ -1396,12 +1396,26 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        return productRepository.findAll()
-                .stream()
+        List<UserProfileDTO> userProfileDTOS = new ArrayList<>();
+        List<Product> products = productRepository.findAll();
+        List<Integer> ownerIds = products.stream()
+                .map(Product::getOwnerID)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (!ownerIds.isEmpty()) {
+            userProfileDTOS = userClient.findUserProfilesByIdIn(ownerIds);
+        }
+        Map<Integer, UserProfileDTO> userProfileDTOMap = userProfileDTOS.stream()
+                .collect(Collectors.toMap(
+                        UserProfileDTO::getId,
+                        obj -> obj
+                ));
+        return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                                                                           product.getOwnerID() == null ? "" :
-                                                                                   userClient.findUserProfilesById(product.getOwnerID())
-                                                                                   .getFullName()))
+                        product.getOwnerID() == null ? "" :
+                                userProfileDTOMap.get(product.getOwnerID())
+                                        .getFullName()))
                 .collect(Collectors.toList());
     }
 

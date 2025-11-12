@@ -16,6 +16,7 @@ import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -74,6 +75,27 @@ public class UserClient {
             HttpEntity<List<Integer>> entity = new HttpEntity<>(headers);
             ResponseEntity<UserProfileDTO> response = restTemplate.exchange(
                     userServerUrl + "/api/v1/user/" + id,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<>() {
+                    });
+            return response.getBody();
+        } catch (Exception e) {
+            log.error("Error fetching user profiles: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    public List<UserProfileDTO> findUserProfilesByIdIn(List<Integer> ids) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<List<Integer>> entity = new HttpEntity<>(headers);
+            String url = userServerUrl + "/api/v1/user?ids=" + ids.stream()
+                    .map(String::valueOf)
+                    .collect(Collectors.joining(","));
+            ResponseEntity<List<UserProfileDTO>> response = restTemplate.exchange(
+                    url,
                     HttpMethod.GET,
                     entity,
                     new ParameterizedTypeReference<>() {

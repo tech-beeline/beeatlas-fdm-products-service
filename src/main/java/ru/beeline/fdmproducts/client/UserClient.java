@@ -86,7 +86,7 @@ public class UserClient {
         }
     }
 
-    public List<UserProfileDTO> findUserProfilesByIdIn(List<Integer> ids) {
+    public List<UserProfileShortDTO> findUserProfilesByIdIn(List<Integer> ids) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -94,7 +94,7 @@ public class UserClient {
             String url = userServerUrl + "/api/v1/user?ids=" + ids.stream()
                     .map(String::valueOf)
                     .collect(Collectors.joining(","));
-            ResponseEntity<List<UserProfileDTO>> response = restTemplate.exchange(
+            ResponseEntity<List<UserProfileShortDTO>> response = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
                     entity,

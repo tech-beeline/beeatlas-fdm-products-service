@@ -1396,7 +1396,7 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        List<UserProfileDTO> userProfileDTOS = new ArrayList<>();
+        List<UserProfileShortDTO> userProfileShortDTOS = new ArrayList<>();
         List<Product> products = productRepository.findAll();
         List<Integer> ownerIds = products.stream()
                 .map(Product::getOwnerID)
@@ -1404,17 +1404,17 @@ public class ProductService {
                 .distinct()
                 .collect(Collectors.toList());
         if (!ownerIds.isEmpty()) {
-            userProfileDTOS = userClient.findUserProfilesByIdIn(ownerIds);
+            userProfileShortDTOS = userClient.findUserProfilesByIdIn(ownerIds);
         }
-        Map<Integer, UserProfileDTO> userProfileDTOMap = userProfileDTOS.stream()
+        Map<Integer, UserProfileShortDTO> userProfileShortDTOMap = userProfileShortDTOS.stream()
                 .collect(Collectors.toMap(
-                        UserProfileDTO::getId,
+                        UserProfileShortDTO::getId,
                         obj -> obj
                 ));
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
                         product.getOwnerID() == null ? "" :
-                                userProfileDTOMap.get(product.getOwnerID())
+                                userProfileShortDTOMap.get(product.getOwnerID())
                                         .getFullName()))
                 .collect(Collectors.toList());
     }

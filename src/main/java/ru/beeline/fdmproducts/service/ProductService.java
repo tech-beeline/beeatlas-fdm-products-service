@@ -178,7 +178,11 @@ public class ProductService {
         if (product == null) {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
-        return ProductTechMapper.mapToProductInfoDTO(product);
+        UserProfileDTO user = new UserProfileDTO();
+        if (product.getOwnerID() != null) {
+            user = userClient.findUserProfilesById(product.getOwnerID());
+        }
+        return ProductTechMapper.mapToProductInfoDTO(product, user);
     }
 
     public List<Product> findAllWithTechProductNotDeleted() {

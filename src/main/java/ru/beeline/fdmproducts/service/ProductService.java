@@ -1413,7 +1413,7 @@ public class ProductService {
                 ));
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                        product.getOwnerID() == null ? "" :
+                        product.getOwnerID() == null ? null :
                                 userProfileShortDTOMap.get(product.getOwnerID())
                                         .getFullName()))
                 .collect(Collectors.toList());
@@ -1596,3 +1596,4 @@ public class ProductService {
         return result;
     }
 }
+

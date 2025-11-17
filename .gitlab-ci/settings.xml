@@ -43,6 +43,10 @@
           <url>https://nexus.vimpelcom.ru/repository/maven-snapshots/</url>
         </repository>
         <repository>
+          <id>nexuscentral</id>
+          <url>https://nexus.vimpelcom.ru/repository/maven-central/</url>
+        </repository>
+        <repository>
           <id>maven-releases</id>
           <url>https://nexus.vimpelcom.ru/repository/maven-releases/</url>
         </repository>
@@ -97,6 +101,11 @@
     </server>
     <server>
       <id>maven</id>
+      <username>${repo.login}</username>
+      <password>${repo.pwd}</password>
+    </server>
+    <server>
+      <id>nexuscentral</id>
       <username>${repo.login}</username>
       <password>${repo.pwd}</password>
     </server>

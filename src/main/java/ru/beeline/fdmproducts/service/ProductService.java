@@ -178,7 +178,11 @@ public class ProductService {
         if (product == null) {
             throw new EntityNotFoundException((String.format("Продукт c alias '%s' не найден", code)));
         }
-        return ProductTechMapper.mapToProductInfoDTO(product);
+        UserProfileDTO user = new UserProfileDTO();
+        if (product.getOwnerID() != null) {
+            user = userClient.findUserProfilesById(product.getOwnerID());
+        }
+        return ProductTechMapper.mapToProductInfoDTO(product, user);
     }
 
     public List<Product> findAllWithTechProductNotDeleted() {
@@ -953,7 +957,7 @@ public class ProductService {
         if (enumSourceType.getIdentifySource() && sourceId == null) {
             throw new IllegalArgumentException("Для указанного источника обязательна передача идентификатора.");
         }
-        if (sourceId!=null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
+        if (sourceId != null && assessmentRepository.findBySourceIdAndProduct(sourceId, product).isPresent()) {
             throw new IllegalArgumentException(
                     String.format("Запись с sourceId: %s и product: %s уже существует в бд", sourceId, product.getId()));
         }
@@ -1396,12 +1400,26 @@ public class ProductService {
     }
 
     public List<ProductInfoShortDTO> getProductInfo() {
-        return productRepository.findAll()
-                .stream()
+        List<UserProfileShortDTO> userProfileShortDTOS = new ArrayList<>();
+        List<Product> products = productRepository.findAll();
+        List<Integer> ownerIds = products.stream()
+                .map(Product::getOwnerID)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        if (!ownerIds.isEmpty()) {
+            userProfileShortDTOS = userClient.findUserProfilesByIdIn(ownerIds);
+        }
+        Map<Integer, UserProfileShortDTO> userProfileShortDTOMap = userProfileShortDTOS.stream()
+                .collect(Collectors.toMap(
+                        UserProfileShortDTO::getId,
+                        obj -> obj
+                ));
+        return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                                                                           product.getOwnerID() == null ? "" :
-                                                                                   userClient.findUserProfilesById(product.getOwnerID())
-                                                                                   .getFullName()))
+                        product.getOwnerID() == null ? null :
+                                userProfileShortDTOMap.get(product.getOwnerID())
+                                        .getFullName()))
                 .collect(Collectors.toList());
     }
 
@@ -1582,3 +1600,4 @@ public class ProductService {
         return result;
     }
 }
+

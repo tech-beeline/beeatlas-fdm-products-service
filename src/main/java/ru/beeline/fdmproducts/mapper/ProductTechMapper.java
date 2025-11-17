@@ -48,7 +48,7 @@ public class ProductTechMapper {
                 .build();
     }
 
-    public static ProductInfoDTO mapToProductInfoDTO(Product product) {
+    public static ProductInfoDTO mapToProductInfoDTO(Product product, UserProfileDTO user) {
         return ProductInfoDTO.builder()
                 .alias(product.getAlias())
                 .description(product.getDescription())
@@ -57,6 +57,9 @@ public class ProductTechMapper {
                 .name(product.getName())
                 .structurizrApiUrl(product.getStructurizrApiUrl())
                 .structurizrWorkspaceName(product.getStructurizrWorkspaceName())
+                .critical(product.getCritical())
+                .ownerName(user.getFullName())
+                .ownerEmail(user.getEmail())
                 .techProducts(product.getTechProducts()
                         .stream()
                         .filter(techProduct -> techProduct.getDeletedDate() == null)

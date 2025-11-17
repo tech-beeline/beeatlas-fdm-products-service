@@ -40,12 +40,12 @@ public class InfraService {
     private static final int BATCH_SIZE = 1000;
 
     public void syncInfrastructure(String alias, InfraRequestDTO request) {
-        log.info("start of the Product Infrastructure Synchronization method");
+        log.info("ℹ️ start of the Product Infrastructure Synchronization method");
         String productAlias = URLDecoder.decode(alias, StandardCharsets.UTF_8);
         Product product = productRepository.findByAliasCaseInsensitive(productAlias);
 
         if (product == null) {
-            throw new EntityNotFoundException("Продукт не найден");
+            throw new EntityNotFoundException("⚠️ Продукт не найден");
         }
         List<String> processedCmdbIds = request.getInfra().stream().map(InfraDTO::getCmdbId).toList();
         if (!processedCmdbIds.isEmpty()) {
@@ -64,7 +64,7 @@ public class InfraService {
         request.getRelations().clear();
         request.setRelations(null);
         System.gc();
-        log.info("The syncInfrastructure method is completed");
+        log.info("✅ The syncInfrastructure method is completed");
     }
 
     private void processInfras(List<InfraDTO> requestInfras, Product product, Map<String, Infra> existingInfraMap) {
@@ -173,7 +173,7 @@ public class InfraService {
             entityManager.clear();
         }
         newInfras.clear();
-        newInfras= null;
+        newInfras = null;
     }
 
     private void saveUpdatedInfras(List<Infra> updatedInfras) {
@@ -262,9 +262,15 @@ public class InfraService {
         Map<String, List<Relation>> children = relationRepository.findByParentIdIn(
                         relations.stream().map(RelationDTO::getCmdbId).collect(Collectors.toList()))
                 .stream().collect(Collectors.groupingBy(Relation::getParentId));
-
-        List<String> chldIds = relations.stream().flatMap(r -> r.getChildren().stream()).toList();
-        List<String> cacheInfra = chldIds.isEmpty() ? Collections.emptyList() : infraRepository.findCmdbIdByCmdbIdIn(chldIds);
+        List<String> allChildIds = relations.stream()
+                .flatMap(r -> r.getChildren().stream())
+                .collect(Collectors.toList());
+        List<String> cacheInfra = new ArrayList<>();
+        int batchSize = 1000;
+        for (int i = 0; i < allChildIds.size(); i += batchSize) {
+            List<String> batch = allChildIds.subList(i, Math.min(i + batchSize, allChildIds.size()));
+            cacheInfra.addAll(infraRepository.findCmdbIdByCmdbIdIn(batch));
+        }
         for (RelationDTO relationDTO : relations) {
             if (existingInfraMap.containsKey(relationDTO.getCmdbId())) {
                 processRelation(relationDTO.getCmdbId(), relationDTO, relationsForSave, children, cacheInfra);
@@ -272,7 +278,7 @@ public class InfraService {
             if (relationsForSave.size() >= BATCH_SIZE) {
                 relationRepository.saveAll(relationsForSave);
                 relationRepository.flush();
-
+                relationsForSave.clear();
             }
         }
         if (!relationsForSave.isEmpty()) {

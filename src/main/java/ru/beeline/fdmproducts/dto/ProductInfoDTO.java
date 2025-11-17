@@ -19,4 +19,7 @@ public class ProductInfoDTO {
     private String structurizrApiUrl;
     private String structurizrWorkspaceName;
     private List<TechInfoDTO> techProducts;
+    private String critical;
+    private String ownerName;
+    private String ownerEmail;
 }

@@ -1417,10 +1417,17 @@ public class ProductService {
                 ));
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                        product.getOwnerID() == null ? null :
-                                userProfileShortDTOMap.get(product.getOwnerID())
-                                        .getFullName()))
+                                                                           getOwner(product, userProfileShortDTOMap)))
                 .collect(Collectors.toList());
+    }
+
+    private String getOwner(Product product, Map<Integer, UserProfileShortDTO> userProfileShortDTOMap) {
+        if (product.getOwnerID() != null) {
+            UserProfileShortDTO profile = userProfileShortDTOMap.get(product.getOwnerID());
+            if (profile != null) {
+                return profile.getFullName();
+            }
+        } return null;
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {

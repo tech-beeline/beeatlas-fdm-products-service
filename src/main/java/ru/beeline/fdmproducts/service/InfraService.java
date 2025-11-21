@@ -5,10 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.*;
-import ru.beeline.fdmproducts.dto.InfraDTO;
-import ru.beeline.fdmproducts.dto.InfraRequestDTO;
-import ru.beeline.fdmproducts.dto.PropertyDTO;
-import ru.beeline.fdmproducts.dto.RelationDTO;
+import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.*;
 
@@ -317,5 +314,22 @@ public class InfraService {
 
     private Optional<Infra> getInfra(String childId, List<String> cacheInfra) {
         return cacheInfra.contains(childId) ? Optional.of(new Infra()) : Optional.empty();
+    }
+
+    public ProductInfraDto getProductInfraByName(String name) {
+        Optional<Infra> infraOpt = infraRepository.findByName(name);
+        if (infraOpt.isEmpty()) {
+            throw new EntityNotFoundException("Infra with name " + name + " not found");
+        }
+        Infra infra = infraOpt.get();
+
+        List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
+        if (productIds.isEmpty()) {
+            return ProductInfraDto.builder().name(name).parentSystems(Collections.emptyList()).build();
+        }
+
+        List<String> aliases = productRepository.findAliasesByIds(productIds);
+
+        return ProductInfraDto.builder().name(name).parentSystems(aliases).build();
     }
 }

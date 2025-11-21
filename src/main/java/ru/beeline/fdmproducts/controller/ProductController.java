@@ -2,6 +2,8 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +14,7 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
+import ru.beeline.fdmproducts.service.InfraService;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,11 +33,25 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private InfraService infraService;
+
     @GetMapping("/user/product")
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    }
+
+    @GetMapping("/api/v1/product/infra")
+    @ApiOperation(value = "Получить элементы инфраструктуры cmdb по имени", response = List.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),
+            @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
+            @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
+    })
+    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam(required = false) String name){
+        return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 
     @GetMapping("/user/product/admin")

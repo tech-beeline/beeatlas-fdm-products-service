@@ -8,12 +8,15 @@ import ru.beeline.fdmproducts.domain.Infra;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface InfraRepository extends JpaRepository<Infra, Integer> {
 
     @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
     List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);
+
+    Optional<Infra> findByName(String name);
 
     List<Infra> findByCmdbIdIn(Collection<String> cmdbIds);
 

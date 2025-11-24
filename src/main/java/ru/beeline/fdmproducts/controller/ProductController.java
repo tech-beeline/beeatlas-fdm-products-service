@@ -50,7 +50,7 @@ public class ProductController {
             @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
             @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
     })
-    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam(required = false) String name){
+    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name){
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 

@@ -4,6 +4,7 @@ import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,6 +53,23 @@ public class ProductController {
     })
     public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name){
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
+    }
+
+    @GetMapping("/search")
+    @ApiOperation(value = "Поиск по параметру и значению в properties")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Успешный ответ с данными"),
+            @ApiResponse(code = 400, message = "Параметры отсутствуют или пусты")
+    })
+    public ResponseEntity<List<ProductInfraSearchDto>> searchInfra(
+            @Parameter(description = "Имя параметра", required = true)
+            @RequestParam String parameter,
+
+            @Parameter(description = "Значение параметра", required = true)
+            @RequestParam String value
+    ) {
+        List<ProductInfraSearchDto> result = infraService.searchByParameterValue(parameter, value);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/user/product/admin")

@@ -12,6 +12,10 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
+
+    @Query("SELECT p FROM Product p WHERE p.id IN :ids")
+    List<Product> findProductsByIds(@Param("ids") List<Integer> ids);
+
     @Query("SELECT p.alias FROM Product p WHERE p.id IN :ids")
     List<String> findAliasesByIds(@Param("ids") List<Integer> ids);
 

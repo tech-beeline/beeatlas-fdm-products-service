@@ -9,6 +9,7 @@ import java.util.Optional;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Integer> {
+    List<Property> findByNameAndValue(String name, String value);
 
     List<Property> findByInfraIdIn(List<Integer> infraIds);
 }

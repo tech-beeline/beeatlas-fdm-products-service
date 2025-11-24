@@ -332,4 +332,34 @@ public class InfraService {
 
         return ProductInfraDto.builder().name(name).parentSystems(aliases).build();
     }
+
+    public List<ProductInfraSearchDto> searchByParameterValue(String parameter, String value) {
+        List<Property> properties = propertyRepository.findByNameAndValue(parameter, value);
+        if (properties.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Infra> infras = properties.stream()
+                .map(Property::getInfra)
+                .collect(Collectors.toSet());
+
+        List<ProductInfraSearchDto> result = new ArrayList<>();
+
+        for (Infra infra : infras) {
+            List<String> parentSystems = infra.getInfraProducts().stream()
+                    .map(InfraProduct::getProduct)
+                    .filter(Objects::nonNull)
+                    .map(Product::getAlias)
+                    .collect(Collectors.toList());
+
+            result.add(ProductInfraSearchDto.builder()
+                               .name(infra.getName())
+                               .parameter(parameter)
+                               .value(value)
+                               .parentSystems(parentSystems)
+                               .build());
+        }
+
+        return result;
+    }
 }

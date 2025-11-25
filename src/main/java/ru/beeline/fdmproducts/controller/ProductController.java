@@ -44,7 +44,7 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
     }
 
-    @GetMapping("/api/v1/product/infra")
+    @GetMapping("/product/infra")
     @ApiOperation(value = "Получить элементы инфраструктуры cmdb по имени", response = List.class)
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),

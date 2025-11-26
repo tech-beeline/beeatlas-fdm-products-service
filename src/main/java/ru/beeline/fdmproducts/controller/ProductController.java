@@ -55,7 +55,7 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 
-    @GetMapping("/search")
+    @GetMapping("/product/infra/search")
     @ApiOperation(value = "Поиск по параметру и значению в properties")
     @ApiResponses(value = {
             @ApiResponse(code = 200, message = "Успешный ответ с данными"),

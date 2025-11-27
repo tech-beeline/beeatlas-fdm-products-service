@@ -317,7 +317,7 @@ public class InfraService {
     }
 
     public ProductInfraDto getProductInfraByName(String name) {
-        if (name.isEmpty()) {
+        if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("name is empty");
         }
         Optional<Infra> infraOpt = infraRepository.findByNameCaseInsensitiveAndNotDeleted(name);
@@ -363,6 +363,34 @@ public class InfraService {
                                .build());
         }
 
+        return result;
+    }
+
+    public List<ProductInfraDto> getProductInfraContainsName(String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("name is empty");
+        }
+        List<Infra> infraList = infraRepository.findByNameContainingIgnoreCaseAndNotDeleted(name);
+        if (infraList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ProductInfraDto> result = new ArrayList<>();
+        for (Infra infra : infraList) {
+            List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
+            if (productIds.isEmpty()) {
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(Collections.emptyList())
+                                   .build());
+            } else {
+                List<String> aliases = productRepository.findAliasesByIds(productIds);
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(aliases)
+                                   .build());
+            }
+        }
         return result;
     }
 }

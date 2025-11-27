@@ -45,7 +45,7 @@ public class ProductController {
     }
 
     @GetMapping("/product/infra")
-    @ApiOperation(value = "Получить элементы инфраструктуры cmdb по имени", response = List.class)
+    @ApiOperation(value = "Получить элементы инфраструктуры cmdb по имени", response = ProductInfraDto.class)
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),
             @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
@@ -53,6 +53,17 @@ public class ProductController {
     })
     public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name){
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
+    }
+
+    @GetMapping("//api/v1/product/infra/contains")
+    @ApiOperation(value = "Получить элементы инфраструктуры содержащие имя", response = List.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),
+            @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
+            @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
+    })
+    public ResponseEntity<List<ProductInfraDto>> getProductInfraContainsName(@RequestParam String name){
+        return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraContainsName(name));
     }
 
     @GetMapping("/product/infra/search")

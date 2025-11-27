@@ -317,7 +317,10 @@ public class InfraService {
     }
 
     public ProductInfraDto getProductInfraByName(String name) {
-        Optional<Infra> infraOpt = infraRepository.findByName(name);
+        if (name.isEmpty()) {
+            throw new IllegalArgumentException("name is empty");
+        }
+        Optional<Infra> infraOpt = infraRepository.findByNameCaseInsensitiveAndNotDeleted(name);
         if (infraOpt.isEmpty()) {
             throw new EntityNotFoundException("Infra with name " + name + " not found");
         }

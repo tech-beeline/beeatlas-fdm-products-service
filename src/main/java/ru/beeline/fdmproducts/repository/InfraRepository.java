@@ -16,8 +16,8 @@ public interface InfraRepository extends JpaRepository<Infra, Integer> {
     @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
     List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);
 
-    Optional<Infra> findByName(String name);
-
+    @Query("SELECT i FROM Infra i WHERE LOWER(i.name) = LOWER(:name) AND i.deletedDate IS NULL")
+    Optional<Infra> findByNameCaseInsensitiveAndNotDeleted(@Param("name") String name);
     List<Infra> findByCmdbIdIn(Collection<String> cmdbIds);
 
     @Query("select i from Infra i join fetch i.infraProducts ip where ip.product.id = :productId and ip.deletedDate is null")

@@ -55,7 +55,7 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 
-    @GetMapping("//api/v1/product/infra/contains")
+    @GetMapping("product/infra/contains")
     @ApiOperation(value = "Получить элементы инфраструктуры содержащие имя", response = List.class)
     @ApiResponses(value = {
             @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),

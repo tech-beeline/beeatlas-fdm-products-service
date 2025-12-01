@@ -333,7 +333,8 @@ public class InfraService {
 
         List<String> aliases = productRepository.findAliasesByIds(productIds);
 
-        return ProductInfraDto.builder().name(name).parentSystems(aliases).build();
+        ProductInfraDto result =  ProductInfraDto.builder().name(name).parentSystems(aliases).build();
+        return result;
     }
 
     public List<ProductInfraSearchDto> searchByParameterValue(String parameter, String value) {

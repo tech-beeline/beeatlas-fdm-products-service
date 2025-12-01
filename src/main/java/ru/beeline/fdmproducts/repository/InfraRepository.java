@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface InfraRepository extends JpaRepository<Infra, Integer> {
-    @Query("SELECT i FROM Infra i WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', :namePart, '%')) AND i.deletedDate IS NULL")
+    @Query("SELECT i FROM Infra i WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', REPLACE(REPLACE(REPLACE(:namePart, '\\', '\\\\'), '%', '\\%'), '_', '\\_'), '%')) ESCAPE '\\' AND i.deletedDate IS NULL")
     List<Infra> findByNameContainingIgnoreCaseAndNotDeleted(@Param("namePart") String namePart);
     @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
     List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);

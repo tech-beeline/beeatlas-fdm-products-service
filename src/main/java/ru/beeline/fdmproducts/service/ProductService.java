@@ -67,6 +67,7 @@ public class ProductService {
     private final DashboardClient dashboardClient;
     private final LocalAcObjectRepository localAcObjectRepository;
     private final LocalAcObjectDetailRepository localAcObjectDetailRepository;
+    private final ProductAvailabilityRepository productAvailabilityRepository;
 
 
     public ProductService(ContainerMapper containerMapper,
@@ -95,7 +96,8 @@ public class ProductService {
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
-                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient, LocalAcObjectRepository localAcObjectRepository, LocalAcObjectDetailRepository localAcObjectDetailRepository) {
+                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient, LocalAcObjectRepository localAcObjectRepository, LocalAcObjectDetailRepository localAcObjectDetailRepository,
+                          ProductAvailabilityRepository productAvailabilityRepository) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -126,6 +128,7 @@ public class ProductService {
         this.dashboardClient = dashboardClient;
         this.localAcObjectRepository = localAcObjectRepository;
         this.localAcObjectDetailRepository = localAcObjectDetailRepository;
+        this.productAvailabilityRepository = productAvailabilityRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -1605,6 +1608,14 @@ public class ProductService {
                     .toList();
         }
         return result;
+    }
+
+    public ProductAvailableDTO getAvailableProductsByCode(String id) {
+        Optional<ProductAvailability> productAvailability =
+                productAvailabilityRepository.findLatestAvailabilityByProductId(Integer.parseInt(id));
+        return ProductAvailableDTO.builder()
+                .availability(productAvailability.isPresent() ? productAvailability.get().getAvailability() : true)
+                .build();
     }
 }
 

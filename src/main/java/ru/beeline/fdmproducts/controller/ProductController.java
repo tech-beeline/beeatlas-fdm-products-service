@@ -97,6 +97,12 @@ public class ProductController {
         return productService.getProductDTOByCode(code);
     }
 
+    @GetMapping("/product/{id}/availability")
+    @ApiOperation(value = "Получить доступность продукта", response = ProductAvailableDTO.class)
+    public ProductAvailableDTO getAvailableProductsByCode(@PathVariable String id) {
+        return productService.getAvailableProductsByCode(id);
+    }
+
     @GetMapping("/product/{cmdb}/influence")
     @ApiOperation(value = "Получить массив связанных систем для продукта по cmdb мнемонике", response = SystemRelationDto.class)
     public SystemRelationDto getInfluencesByCmdb(@PathVariable String cmdb) {

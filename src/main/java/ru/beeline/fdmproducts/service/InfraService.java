@@ -344,6 +344,7 @@ public class InfraService {
 
         Set<Infra> infras = properties.stream()
                 .map(Property::getInfra)
+                .filter(infra -> infra.getDeletedDate() == null)
                 .collect(Collectors.toSet());
 
         List<ProductInfraSearchDto> result = new ArrayList<>();

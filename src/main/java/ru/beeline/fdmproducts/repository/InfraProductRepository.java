@@ -12,7 +12,7 @@ import java.util.List;
 
 @Repository
 public interface InfraProductRepository extends JpaRepository<InfraProduct, Integer> {
-    @Query(value = "SELECT product_id FROM product.infra_product WHERE infra_id = :infraId", nativeQuery = true)
+    @Query(value = "SELECT product_id FROM product.infra_product WHERE infra_id = :infraId  AND deleted_date IS NULL", nativeQuery = true)
     List<Integer> findProductIdsByInfraId(@Param("infraId") Integer infraId);
 
     @Modifying

@@ -12,7 +12,7 @@ import java.util.Optional;
 
 @Repository
 public interface PropertyRepository extends JpaRepository<Property, Integer> {
-    @Query("SELECT i FROM Property i WHERE LOWER(i.name) LIKE LOWER(:name) AND LOWER(i.value) LIKE LOWER(:value)")
+    @Query("SELECT i FROM Property i WHERE LOWER(i.name) LIKE LOWER(:name) AND LOWER(i.value) LIKE LOWER(:value) and i.deletedDate is null")
     List<Property> findByNameAndValue(@Param("name") String name, @Param("value") String value);
 
     List<Property> findByInfraIdIn(List<Integer> infraIds);

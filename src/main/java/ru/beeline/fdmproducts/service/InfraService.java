@@ -352,6 +352,7 @@ public class InfraService {
 
         for (Infra infra : infras) {
             List<String> parentSystems = infra.getInfraProducts().stream()
+                    .filter(infraProduct -> infraProduct.getDeletedDate() == null)
                     .map(InfraProduct::getProduct)
                     .filter(Objects::nonNull)
                     .map(Product::getAlias)

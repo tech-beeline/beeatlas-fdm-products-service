@@ -12,6 +12,5 @@ import java.util.Optional;
 @Repository
 public interface ProductAvailabilityRepository extends JpaRepository<ProductAvailability, Integer> {
 
-    @Query("SELECT pa FROM ProductAvailability pa WHERE pa.productId = :productId ORDER BY pa.createdDate DESC")
-    Optional<ProductAvailability> findLatestAvailabilityByProductId(@Param("productId") Integer productId);
+    Optional<ProductAvailability> findFirstByProductIdOrderByCreatedDateDesc(Integer productId);
 }

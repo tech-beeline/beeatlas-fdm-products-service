@@ -1612,7 +1612,7 @@ public class ProductService {
 
     public ProductAvailableDTO getAvailableProductsByCode(String id) {
         Optional<ProductAvailability> productAvailability =
-                productAvailabilityRepository.findLatestAvailabilityByProductId(Integer.parseInt(id));
+                productAvailabilityRepository.findFirstByProductIdOrderByCreatedDateDesc(Integer.parseInt(id));
         return ProductAvailableDTO.builder()
                 .availability(productAvailability.isPresent() ? productAvailability.get().getAvailability() : true)
                 .build();

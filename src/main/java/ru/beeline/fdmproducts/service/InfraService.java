@@ -5,10 +5,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.*;
-import ru.beeline.fdmproducts.dto.InfraDTO;
-import ru.beeline.fdmproducts.dto.InfraRequestDTO;
-import ru.beeline.fdmproducts.dto.PropertyDTO;
-import ru.beeline.fdmproducts.dto.RelationDTO;
+import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.*;
 
@@ -317,5 +314,86 @@ public class InfraService {
 
     private Optional<Infra> getInfra(String childId, List<String> cacheInfra) {
         return cacheInfra.contains(childId) ? Optional.of(new Infra()) : Optional.empty();
+    }
+
+    public ProductInfraDto getProductInfraByName(String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("name is empty");
+        }
+        Optional<Infra> infraOpt = infraRepository.findByNameCaseInsensitiveAndNotDeleted(name);
+        if (infraOpt.isEmpty()) {
+            throw new EntityNotFoundException("Infra with name " + name + " not found");
+        }
+        Infra infra = infraOpt.get();
+
+        List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
+        if (productIds.isEmpty()) {
+            return ProductInfraDto.builder().name(name).parentSystems(Collections.emptyList()).build();
+        }
+
+        List<String> aliases = productRepository.findAliasesByIds(productIds);
+
+        ProductInfraDto result =  ProductInfraDto.builder().name(name).parentSystems(aliases).build();
+        return result;
+    }
+
+    public List<ProductInfraSearchDto> searchByParameterValue(String parameter, String value) {
+        List<Property> properties = propertyRepository.findByNameAndValue(parameter, value);
+        if (properties.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Set<Infra> infras = properties.stream()
+                .map(Property::getInfra)
+                .filter(infra -> infra.getDeletedDate() == null)
+                .collect(Collectors.toSet());
+
+        List<ProductInfraSearchDto> result = new ArrayList<>();
+
+        for (Infra infra : infras) {
+            List<String> parentSystems = infra.getInfraProducts().stream()
+                    .filter(infraProduct -> infraProduct.getDeletedDate() == null)
+                    .map(InfraProduct::getProduct)
+                    .filter(Objects::nonNull)
+                    .map(Product::getAlias)
+                    .collect(Collectors.toList());
+
+            result.add(ProductInfraSearchDto.builder()
+                               .name(infra.getName())
+                               .parameter(parameter)
+                               .value(value)
+                               .parentSystems(parentSystems)
+                               .build());
+        }
+
+        return result;
+    }
+
+    public List<ProductInfraDto> getProductInfraContainsName(String name) {
+        if (name == null || name.isEmpty()) {
+            throw new IllegalArgumentException("name is empty");
+        }
+        List<Infra> infraList = infraRepository.findByNameContainingIgnoreCaseAndNotDeleted(name);
+        if (infraList.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<ProductInfraDto> result = new ArrayList<>();
+        for (Infra infra : infraList) {
+            List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
+            if (productIds.isEmpty()) {
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(Collections.emptyList())
+                                   .build());
+            } else {
+                List<String> aliases = productRepository.findAliasesByIds(productIds);
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(aliases)
+                                   .build());
+            }
+        }
+        return result;
     }
 }

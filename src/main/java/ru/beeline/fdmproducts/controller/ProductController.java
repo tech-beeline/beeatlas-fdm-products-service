@@ -2,6 +2,9 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiResponse;
+import io.swagger.annotations.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -12,6 +15,7 @@ import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
+import ru.beeline.fdmproducts.service.InfraService;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import javax.servlet.http.HttpServletRequest;
@@ -30,11 +34,53 @@ public class ProductController {
     @Autowired
     private ProductService productService;
 
+    @Autowired
+    private InfraService infraService;
+
     @GetMapping("/user/product")
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    }
+
+    @GetMapping("/product/infra")
+    @ApiOperation(value = "Получить элементы инфраструктуры cmdb по имени", response = ProductInfraDto.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),
+            @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
+            @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
+    })
+    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name){
+        return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
+    }
+
+    @GetMapping("product/infra/contains")
+    @ApiOperation(value = "Получить элементы инфраструктуры содержащие имя", response = List.class)
+    @ApiResponses(value = {
+            @ApiResponse(code = 400, message = "Параметр 'name' отсутствует или пустой"),
+            @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
+            @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
+    })
+    public ResponseEntity<List<ProductInfraDto>> getProductInfraContainsName(@RequestParam String name){
+        return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraContainsName(name));
+    }
+
+    @GetMapping("/product/infra/search")
+    @ApiOperation(value = "Поиск по параметру и значению в properties")
+    @ApiResponses(value = {
+            @ApiResponse(code = 200, message = "Успешный ответ с данными"),
+            @ApiResponse(code = 400, message = "Параметры отсутствуют или пусты")
+    })
+    public ResponseEntity<List<ProductInfraSearchDto>> searchInfra(
+            @Parameter(description = "Имя параметра", required = true)
+            @RequestParam String parameter,
+
+            @Parameter(description = "Значение параметра", required = true)
+            @RequestParam String value
+    ) {
+        List<ProductInfraSearchDto> result = infraService.searchByParameterValue(parameter, value);
+        return ResponseEntity.ok(result);
     }
 
     @GetMapping("/user/product/admin")
@@ -49,6 +95,12 @@ public class ProductController {
     @ApiOperation(value = "Получить продукт по alias", response = ProductFullDTO.class)
     public ProductFullDTO getProductsByCode(@PathVariable String code) {
         return productService.getProductDTOByCode(code);
+    }
+
+    @GetMapping("/product/{id}/availability")
+    @ApiOperation(value = "Получить доступность продукта", response = ProductAvailableDTO.class)
+    public ProductAvailableDTO getAvailableProductsByCode(@PathVariable String id) {
+        return productService.getAvailableProductsByCode(id);
     }
 
     @GetMapping("/product/{cmdb}/influence")

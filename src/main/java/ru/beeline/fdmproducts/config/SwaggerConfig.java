@@ -39,8 +39,8 @@ public class SwaggerConfig {
     private List<Response> getGlobalErrorResponses() {
         return Arrays.asList(
                 new ResponseBuilder().code("400").description("Неверные входные данные").build(),
-                new ResponseBuilder().code("401").description("Требуется аутентификация").build(),
-                new ResponseBuilder().code("403").description("Доступ запрещен").build(),
+//                new ResponseBuilder().code("401").description("Требуется аутентификация").build(),
+//                new ResponseBuilder().code("403").description("Доступ запрещен").build(),
                 new ResponseBuilder().code("404").description("Ресурс не найден").build(),
                 new ResponseBuilder().code("500").description("Внутренняя ошибка сервера").build()
         );

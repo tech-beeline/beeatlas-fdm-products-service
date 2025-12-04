@@ -90,7 +90,7 @@ public class ArchContainerRelationsService {
                 });
                 log.info("[ШАГ ] discoveredOperationCounter.get() ", discoveredOperationCounter.get());
                 if (discoveredOperationCounter.get() == 0) {
-                    List<Operation> operationList = operationRepository.findAllByIdIn(discoveredInterface.getOperations()
+                    List<Operation> operationList = operationRepository.findAllByIdInAndDeletedDateIsNull(discoveredInterface.getOperations()
                             .stream()
                             .map(DiscoveredOperation::getConnectionOperationId)
                             .filter(Objects::nonNull)

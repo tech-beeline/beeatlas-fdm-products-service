@@ -31,5 +31,5 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     List<Operation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> interfaceIds);
 
-    List<Operation> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
+    List<Operation> findAllByIdIn(List<Integer> ids);
 }

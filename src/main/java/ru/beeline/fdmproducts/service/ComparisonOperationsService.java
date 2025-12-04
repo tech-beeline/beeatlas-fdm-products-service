@@ -101,7 +101,7 @@ public class ComparisonOperationsService {
                 discoveredOperation.setConnectionOperationId(operation.get().getId());
                 discoveredOperationRepository.save(discoveredOperation);
 
-                List<Operation> operationList = operationRepository.findAllByInterfaceId(operation.get()
+                List<Operation> operationList = operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(operation.get()
                         .getInterfaceId());
                 log.info("[СПИСОК_OPERATION] Найдено операций для interfaceId={}: {}. ID: {}",
                         discoveredOperation.getInterfaceId(),

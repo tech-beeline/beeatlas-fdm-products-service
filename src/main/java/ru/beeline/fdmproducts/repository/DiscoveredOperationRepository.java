@@ -21,7 +21,7 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByConnectionOperationId(Integer operationId);
 
-    List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
+    List<DiscoveredOperation> findAllByInterfaceIdAndDeletedDateIsNull(Integer interfaceId);
 
     @Modifying
     @Transactional

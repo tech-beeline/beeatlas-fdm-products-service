@@ -17,6 +17,9 @@ import ru.beeline.fdmproducts.client.AuthSSOClient;
 @Configuration
 public class RabbitConfig {
 
+    @Value("${app.ambassador-auth}")
+    private Boolean ambassadorAuth;
+
     @Value("${spring.rabbitmq.username}")
     private String userName;
 
@@ -28,7 +31,6 @@ public class RabbitConfig {
 
     @Value("${queue.comparison-operations.name}")
     private String queueName;
-
 
     @Value("${spring.rabbitmq.template.routing-key}")
     private String routingName;
@@ -46,8 +48,17 @@ public class RabbitConfig {
 
     @Bean
     public CachingConnectionFactory connectionFactory() {
-        return createConnectionFactoryWithToken();
+        return ambassadorAuth ? createConnectionFactoryWithToken() : createConnectionFactoryWithPass();
     }
+
+    public CachingConnectionFactory createConnectionFactoryWithPass() {
+        CachingConnectionFactory cachingConnectionFactory = new CachingConnectionFactory(connectFactoryName);
+        cachingConnectionFactory.setUsername(userName);
+        cachingConnectionFactory.setPassword(password);
+        cachingConnectionFactory.setVirtualHost(virtualHost);
+        return cachingConnectionFactory;
+    }
+
 
     private CachingConnectionFactory createConnectionFactoryWithToken() {
         CachingConnectionFactory factory = new CachingConnectionFactory(connectFactoryName);

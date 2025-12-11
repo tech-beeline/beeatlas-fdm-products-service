@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.Infra;
-import ru.beeline.fdmproducts.domain.ProductInfraProjection;
 
 import java.util.Collection;
 import java.util.List;
@@ -13,20 +12,6 @@ import java.util.Optional;
 
 @Repository
 public interface InfraRepository extends JpaRepository<Infra, Integer> {
-    @Query("""
-    SELECT NEW com.example.dto.ProductInfraProjection(
-        i.name, 
-        COALESCE(COLLECT(DISTINCT p.alias), :emptyList)
-    )
-    FROM Infra i 
-    LEFT JOIN InfraProduct ip ON i.id = ip.infraId AND ip.deletedDate IS NULL
-    LEFT JOIN Product p ON ip.productId = p.id AND p.deletedDate IS NULL
-    WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', REPLACE(REPLACE(REPLACE(:name, '\\', '\\\\'), '%', '\\%'), '_', '\\_'), '%')) ESCAPE '\\'
-      AND i.deletedDate IS NULL
-    GROUP BY i.id, i.name
-""")
-    List<ProductInfraProjection> findProductInfraByNameContainingIgnoreCase(@Param("name") String name, @Param("emptyList") List<String> emptyList);
-
     @Query("SELECT i FROM Infra i WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', REPLACE(REPLACE(REPLACE(:namePart, '\\', '\\\\'), '%', '\\%'), '_', '\\_'), '%')) ESCAPE '\\' AND i.deletedDate IS NULL")
     List<Infra> findByNameContainingIgnoreCaseAndNotDeleted(@Param("namePart") String namePart);
     @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")

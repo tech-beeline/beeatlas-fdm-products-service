@@ -338,7 +338,6 @@ public class InfraService {
     }
 
     public List<ProductInfraSearchDto> searchByParameterValue(String parameter, String value) {
-        log.info("start searchByParameterValue value=" + value);
         List<Property> properties = propertyRepository.findByNameAndValue(parameter, value);
         if (properties.isEmpty()) {
             return Collections.emptyList();
@@ -366,7 +365,7 @@ public class InfraService {
                                .parentSystems(parentSystems)
                                .build());
         }
-        log.info("finish searchByParameterValue value=" + value);
+
         return result;
     }
 
@@ -374,22 +373,27 @@ public class InfraService {
         if (name == null || name.isEmpty()) {
             throw new IllegalArgumentException("name is empty");
         }
-        log.info("search {} by name", name);
-
-        List<ProductInfraProjection> projections = infraRepository
-                .findProductInfraByNameContainingIgnoreCase(name, Collections.emptyList());
-
-        if (projections.isEmpty()) {
+        List<Infra> infraList = infraRepository.findByNameContainingIgnoreCaseAndNotDeleted(name);
+        if (infraList.isEmpty()) {
             return Collections.emptyList();
         }
 
-        log.info("found {} infra records", projections.size());
-
-        return projections.stream()
-                .map(p -> ProductInfraDto.builder()
-                        .name(p.name())
-                        .parentSystems(p.parentSystems())
-                        .build())
-                .toList();
+        List<ProductInfraDto> result = new ArrayList<>();
+        for (Infra infra : infraList) {
+            List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
+            if (productIds.isEmpty()) {
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(Collections.emptyList())
+                                   .build());
+            } else {
+                List<String> aliases = productRepository.findAliasesByIds(productIds);
+                result.add(ProductInfraDto.builder()
+                                   .name(infra.getName())
+                                   .parentSystems(aliases)
+                                   .build());
+            }
+        }
+        return result;
     }
 }

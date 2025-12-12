@@ -1421,6 +1421,7 @@ public class ProductService {
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
                                                                            getOwner(product, userProfileShortDTOMap)))
+                .sorted(Comparator.comparing(ProductInfoShortDTO::getAlias))
                 .collect(Collectors.toList());
     }
 

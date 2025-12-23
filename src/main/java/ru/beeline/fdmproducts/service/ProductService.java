@@ -322,14 +322,34 @@ public class ProductService {
         validateContainers(containerDTOS, errorEntity);
         validateInterfaces(containerDTOS, errorEntity);
         validateMethods(containerDTOS, errorEntity);
-        if (!containerDTOS.isEmpty()) {
-            saveRelations(containerDTOS, code);
-        }
         Product product = getProductByCode(code);
+        if (!containerDTOS.isEmpty()) {
+            log.info("Обработка контейнеров продукта с code: " + code);
+            saveRelations(containerDTOS, product);
+        } else {
+            deleteAllContainers(product.getId());
+        }
         product.setSource(source);
         product.setUploadDate(LocalDateTime.now());
         productRepository.save(product);
         return errorEntity;
+    }
+
+    private void deleteAllContainers(Integer productId) {
+        LocalDateTime deleteDateNow = LocalDateTime.now();
+        List<Integer> containerIds = containerRepository.findContainerIdsByProductIdAndDeletedDateIsNull(productId);
+        if (!containerIds.isEmpty()) {
+            List<Integer> interfaceIds = interfaceRepository.findInterfaceIdsByContainerIdInAndDeletedDateIsNull(containerIds);
+            if (!interfaceIds.isEmpty()) {
+                List<Integer> operationIds = operationRepository.findOperationIdsByInterfaceIdInAndDeletedDateIsNull(interfaceIds);
+                if (!operationIds.isEmpty()) {
+                    parameterRepository.markAllParametersAsDeleted(operationIds, deleteDateNow);
+                }
+                operationRepository.markAllOperationsAsDeleted(interfaceIds, deleteDateNow);
+            }
+            interfaceRepository.markAllInterfacesAsDeleted(containerIds, deleteDateNow);
+        }
+        containerRepository.markAllContainersAsDeleted(productId, new Date());
     }
 
     private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
@@ -482,9 +502,7 @@ public class ProductService {
         }
     }
 
-    public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
-        log.info("Обработка контейнеров продукта с code: " + code);
-        Product product = getProductByCode(code);
+    public void saveRelations(List<ContainerDTO> containerDTOS, Product product) {
         Map<String, ContainerProduct> existingContainers = containerRepository.findAllByCodeInAndProductId(containerDTOS.stream()
                                 .map(ContainerDTO::getCode)
                                 .toList(),
@@ -1420,7 +1438,7 @@ public class ProductService {
                 ));
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                                                                           getOwner(product, userProfileShortDTOMap)))
+                        getOwner(product, userProfileShortDTOMap)))
                 .sorted(Comparator.comparing(ProductInfoShortDTO::getAlias))
                 .collect(Collectors.toList());
     }
@@ -1431,7 +1449,8 @@ public class ProductService {
             if (profile != null) {
                 return profile.getFullName();
             }
-        } return null;
+        }
+        return null;
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {

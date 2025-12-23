@@ -1,11 +1,13 @@
 package ru.beeline.fdmproducts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.Operation;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,4 +34,13 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     List<Operation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> interfaceIds);
 
     List<Operation> findAllByIdIn(List<Integer> ids);
+
+    @Query("SELECT o.id FROM Operation o WHERE o.interfaceId IN (:interfaceIds) AND o.deletedDate IS NULL")
+    List<Integer> findOperationIdsByInterfaceIdInAndDeletedDateIsNull(List<Integer> interfaceIds);
+
+    @Modifying
+    @Query("UPDATE Operation o SET o.deletedDate = :deletedDate " +
+            "WHERE o.interfaceId IN :interfaceIds")
+    void markAllOperationsAsDeleted(@Param("interfaceIds") List<Integer> interfaceIds,
+                                    @Param("deletedDate") LocalDateTime deletedDate);
 }

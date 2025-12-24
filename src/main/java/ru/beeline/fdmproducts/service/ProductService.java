@@ -1735,5 +1735,15 @@ public class ProductService {
         result.setIsUniqAlias(product == null ? true : false);
         return result;
     }
+
+    public List<UserProfileShortDTO> getEmployeeByAlias(String alias) {
+        List<UserProfileShortDTO> result = new ArrayList<>();
+        Product product = getProductByCode(alias);
+        List<UserProduct> userProducts = userProductRepository.findAllByProductId(product.getId());
+        if (!userProducts.isEmpty()) {
+            result = userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId).toList());
+        }
+        return result;
+    }
 }
 

@@ -300,7 +300,9 @@ public class ProductService {
 
     private List<Integer> prepareEmployeesIds(PutUpdateProductDTO putUpdateProductDTO) {
         Set<Integer> uniqueIds = new LinkedHashSet<>(putUpdateProductDTO.getEmployeesIds());
-        uniqueIds.add(putUpdateProductDTO.getOwnerId());
+        if (putUpdateProductDTO.getOwnerId() != null) {
+            uniqueIds.add(putUpdateProductDTO.getOwnerId());
+        }
         return new ArrayList<>(uniqueIds);
     }
 
@@ -1748,7 +1750,8 @@ public class ProductService {
         List<UserProduct> userProducts = userProductRepository.findAllByProductId(product.getId());
         if (!userProducts.isEmpty()) {
             List<UserProfileShortDTO> userProfileShortDTO =
-                    userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId).toList());
+                    userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId)
+                            .filter(Objects::nonNull).toList());
             for (UserProfileShortDTO user : userProfileShortDTO) {
                 result.add(GetUserProfileDTO.builder()
                         .login(user.getLogin())

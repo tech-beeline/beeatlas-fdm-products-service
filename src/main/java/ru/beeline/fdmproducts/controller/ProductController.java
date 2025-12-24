@@ -216,13 +216,13 @@ public class ProductController {
         return productService.getE2eProcessByCmdb(cmdb);
     }
 
-    @GetMapping("/{alias}/free")
+    @GetMapping("/product/{alias}/free")
     @ApiOperation(value = "Проверка доступности alias приложения")
     public IsUniqAliasDTO getFreeAlias(@PathVariable String alias) {
         return productService.getFreeAlias(alias);
     }
 
-    @GetMapping("/{alias}/employee")
+    @GetMapping("/product/{alias}/employee")
     @ApiOperation(value = "Информацию о сотрудниках из команды продукта")
     public List<UserProfileShortDTO> getEmployeeByAlias(@PathVariable String alias) {
         return productService.getEmployeeByAlias(alias);

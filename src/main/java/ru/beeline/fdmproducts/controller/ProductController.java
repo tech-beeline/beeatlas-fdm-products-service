@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
@@ -224,7 +223,7 @@ public class ProductController {
 
     @GetMapping("/product/{alias}/employee")
     @ApiOperation(value = "Информацию о сотрудниках из команды продукта")
-    public List<UserProfileShortDTO> getEmployeeByAlias(@PathVariable String alias) {
+    public List<GetUserProfileDTO> getEmployeeByAlias(@PathVariable String alias) {
         return productService.getEmployeeByAlias(alias);
     }
 
@@ -280,8 +279,9 @@ public class ProductController {
 
     @PutMapping("/product")
     @ApiOperation(value = "Создавать/обновлять приложения")
-    public ResponseEntity updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO) {
-        productService.updateProduct(putUpdateProductDTO);
+    public ResponseEntity updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO,
+                                        HttpServletRequest request) {
+        productService.updateProduct(putUpdateProductDTO, request.getHeader(USER_ROLES_HEADER));
         return new ResponseEntity<>(HttpStatus.OK);
     }
 

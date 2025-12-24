@@ -237,7 +237,13 @@ public class ProductService {
         }
     }
 
-    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO) {
+    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO, String userRoles) {
+        List<String> roles = Arrays.stream(userRoles.split(","))
+                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
+                .toList();
+        if (!roles.contains("ADMINISTRATOR")) {
+            throw new ForbiddenException("403 Forbidden.");
+        }
         Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
         if (product == null) {
             product = Product.builder()
@@ -1736,12 +1742,21 @@ public class ProductService {
         return result;
     }
 
-    public List<UserProfileShortDTO> getEmployeeByAlias(String alias) {
-        List<UserProfileShortDTO> result = new ArrayList<>();
+    public List<GetUserProfileDTO> getEmployeeByAlias(String alias) {
+        List<GetUserProfileDTO> result = new ArrayList<>();
         Product product = getProductByCode(alias);
         List<UserProduct> userProducts = userProductRepository.findAllByProductId(product.getId());
         if (!userProducts.isEmpty()) {
-            result = userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId).toList());
+            List<UserProfileShortDTO> userProfileShortDTO =
+                    userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId).toList());
+            for (UserProfileShortDTO user : userProfileShortDTO) {
+                result.add(GetUserProfileDTO.builder()
+                        .login(user.getLogin())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .id(user.getId())
+                        .build());
+            }
         }
         return result;
     }

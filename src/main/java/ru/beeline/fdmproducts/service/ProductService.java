@@ -1637,5 +1637,15 @@ public class ProductService {
                 .availability(productAvailability.isPresent() ? productAvailability.get().getAvailability() : true)
                 .build();
     }
+
+    public IsUniqAliasDTO getFreeAlias(String alias) {
+        IsUniqAliasDTO result = new IsUniqAliasDTO();
+        if (!alias.matches("^[a-zA-Z0-9]+$")) {
+            throw new IllegalArgumentException("Параметр может содержать только латинские буквы и цифры");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        result.setIsUniqAlias(product == null ? true : false);
+        return result;
+    }
 }
 

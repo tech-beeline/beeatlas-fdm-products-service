@@ -271,6 +271,13 @@ public class ProductController {
         return ResponseEntity.ok(Map.of("message", "Сущности успешно сохранены"));
     }
 
+    @PutMapping("/product")
+    @ApiOperation(value = "Создавать/обновлять приложения")
+    public ResponseEntity updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO) {
+        productService.updateProduct(putUpdateProductDTO);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
     @PatchMapping("product/{code}/workspace")
     @ApiOperation(value = "Добавление атрибутов к продукту")
     public ResponseEntity patchProducts(@PathVariable String code, @RequestBody ProductPutDto productPutDto) {

@@ -237,6 +237,94 @@ public class ProductService {
         }
     }
 
+    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO) {
+        Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
+        if (product == null) {
+            product = Product.builder()
+                    .alias(putUpdateProductDTO.getAlias())
+                    .name(putUpdateProductDTO.getName())
+                    .description(putUpdateProductDTO.getDescription())
+                    .gitUrl(putUpdateProductDTO.getGitUrl())
+                    .critical(putUpdateProductDTO.getCritical())
+                    .ownerID(putUpdateProductDTO.getOwnerId())
+                    .build();
+            productRepository.save(product);
+            List<Integer> employeesIds = prepareEmployeesIds(putUpdateProductDTO);
+            synchronizeUserProducts(product, employeesIds);
+        } else {
+            updateProductIfChanged(product, putUpdateProductDTO);
+            updateUserProductRelations(product, putUpdateProductDTO);
+        }
+    }
+
+    @Transactional
+    public void updateUserProductRelations(Product product, PutUpdateProductDTO request) {
+        List<Integer> employeesIds = prepareEmployeesIds(request);
+        List<UserProduct> existing = userProductRepository.findAllByProductId(product.getId());
+        Set<Integer> targetUserIds = new HashSet<>(employeesIds);
+        Set<Integer> existingUserIds = existing.stream()
+                .map(UserProduct::getUserId)
+                .collect(Collectors.toSet());
+        List<UserProduct> toRemove = existing.stream()
+                .filter(up -> !targetUserIds.contains(up.getUserId()))
+                .toList();
+        List<UserProduct> toCreate = targetUserIds.stream()
+                .filter(userId -> !existingUserIds.contains(userId))
+                .map(userId -> UserProduct.builder()
+                        .userId(userId)
+                        .product(product)
+                        .build())
+                .toList();
+        if (!toCreate.isEmpty()) {
+            userProductRepository.saveAll(toCreate);
+        }
+        if (!toRemove.isEmpty()) {
+            userProductRepository.deleteAll(toRemove);
+        }
+    }
+
+    private void synchronizeUserProducts(Product product, List<Integer> employeesIds) {
+        List<UserProduct> userProducts = new ArrayList<>();
+        for (Integer employeesId : employeesIds) {
+            userProducts.add(UserProduct.builder().userId(employeesId)
+                    .product(product).build());
+        }
+        userProductRepository.saveAll(userProducts);
+    }
+
+    private List<Integer> prepareEmployeesIds(PutUpdateProductDTO putUpdateProductDTO) {
+        Set<Integer> uniqueIds = new LinkedHashSet<>(putUpdateProductDTO.getEmployeesIds());
+        uniqueIds.add(putUpdateProductDTO.getOwnerId());
+        return new ArrayList<>(uniqueIds);
+    }
+
+    private void updateProductIfChanged(Product product, PutUpdateProductDTO putUpdateProductDTO) {
+        boolean changed = false;
+        if (!Objects.equals(product.getName(), putUpdateProductDTO.getName())) {
+            product.setName(putUpdateProductDTO.getName());
+            changed = true;
+        }
+        if (!Objects.equals(product.getDescription(), putUpdateProductDTO.getDescription())) {
+            product.setDescription(putUpdateProductDTO.getDescription());
+            changed = true;
+        }
+        if (!Objects.equals(product.getGitUrl(), putUpdateProductDTO.getGitUrl())) {
+            product.setGitUrl(putUpdateProductDTO.getGitUrl());
+            changed = true;
+        }
+        if (!Objects.equals(product.getCritical(), putUpdateProductDTO.getCritical())) {
+            product.setCritical(putUpdateProductDTO.getCritical());
+            changed = true;
+        }
+        if (!Objects.equals(product.getOwnerID(), putUpdateProductDTO.getOwnerId())) {
+            product.setOwnerID(putUpdateProductDTO.getOwnerId());
+            changed = true;
+        }
+        if (changed) {
+            productRepository.save(product);
+        }
+    }
+
     public void postUserProduct(List<String> aliasList, Integer userId) {
         if (aliasList.isEmpty()) {
             throw new IllegalArgumentException("400: Массив пустой. ");

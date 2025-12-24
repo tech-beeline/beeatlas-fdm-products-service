@@ -215,6 +215,12 @@ public class ProductController {
         return productService.getE2eProcessByCmdb(cmdb);
     }
 
+    @GetMapping("/{alias}/free")
+    @ApiOperation(value = "Проверка доступности alias приложения")
+    public IsUniqAliasDTO getFreeAlias(@PathVariable String alias) {
+        return productService.getFreeAlias(alias);
+    }
+
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
     public ResponseEntity postUserProducts(@PathVariable Integer id, @RequestBody List<String> aliasLIst) {

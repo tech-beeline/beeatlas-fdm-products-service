@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
 import ru.beeline.fdmlib.dto.product.GetProductTechDto;
 import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
 import ru.beeline.fdmlib.dto.product.ProductPutDto;
@@ -219,6 +220,12 @@ public class ProductController {
     @ApiOperation(value = "Проверка доступности alias приложения")
     public IsUniqAliasDTO getFreeAlias(@PathVariable String alias) {
         return productService.getFreeAlias(alias);
+    }
+
+    @GetMapping("/{alias}/employee")
+    @ApiOperation(value = "Информацию о сотрудниках из команды продукта")
+    public List<UserProfileShortDTO> getEmployeeByAlias(@PathVariable String alias) {
+        return productService.getEmployeeByAlias(alias);
     }
 
     @PostMapping("/user/{id}/products")

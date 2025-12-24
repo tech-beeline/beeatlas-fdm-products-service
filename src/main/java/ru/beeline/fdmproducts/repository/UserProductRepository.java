@@ -5,9 +5,12 @@ import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.UserProduct;
 
 import java.util.List;
+
 @Repository
 public interface UserProductRepository extends JpaRepository<UserProduct, Long> {
     List<UserProduct> findAllByUserId(Integer userId);
 
     Boolean existsByUserIdAndProductId(Integer userId, Integer Id);
+
+    List<UserProduct> findAllByProductId(Integer productId);
 }

@@ -91,6 +91,8 @@ public class UserClient {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<List<Integer>> entity = new HttpEntity<>(headers);
+            log.info("User client request: " + userServerUrl + "/api/v1/user?ids= ids size= {}"
+                    , ids != null ? ids.size() : "null");
             String url = userServerUrl + "/api/v1/user?ids=" + ids.stream()
                     .map(String::valueOf)
                     .collect(Collectors.joining(","));

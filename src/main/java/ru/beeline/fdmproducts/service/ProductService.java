@@ -299,11 +299,14 @@ public class ProductService {
     }
 
     private List<Integer> prepareEmployeesIds(PutUpdateProductDTO putUpdateProductDTO) {
-        Set<Integer> uniqueIds = new LinkedHashSet<>(putUpdateProductDTO.getEmployeesIds());
-        if (putUpdateProductDTO.getOwnerId() != null) {
-            uniqueIds.add(putUpdateProductDTO.getOwnerId());
+        List<Integer> employeesIds = putUpdateProductDTO.getEmployeesIds();
+        if (employeesIds != null) {
+            if (putUpdateProductDTO.getOwnerId() != null) {
+                employeesIds.add(putUpdateProductDTO.getOwnerId());
+            }
+            return employeesIds.stream().distinct().filter(Objects::nonNull).toList();
         }
-        return new ArrayList<>(uniqueIds);
+        return new ArrayList<>();
     }
 
     private void updateProductIfChanged(Product product, PutUpdateProductDTO putUpdateProductDTO) {

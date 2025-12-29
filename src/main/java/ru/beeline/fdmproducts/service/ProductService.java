@@ -426,6 +426,7 @@ public class ProductService {
             log.info("Обработка контейнеров продукта с code: " + code);
             saveRelations(containerDTOS, product);
         } else {
+            log.info("Пустой список, каскадное удаление данных о продукте: {}", code);
             deleteAllContainers(product.getId());
         }
         product.setSource(source);
@@ -443,12 +444,16 @@ public class ProductService {
                 List<Integer> operationIds = operationRepository.findOperationIdsByInterfaceIdInAndDeletedDateIsNull(interfaceIds);
                 if (!operationIds.isEmpty()) {
                     parameterRepository.markAllParametersAsDeleted(operationIds, deleteDateNow);
+                    log.info("Удаление Parameters, operationIds size: {} шт.", operationIds.size());
                 }
                 operationRepository.markAllOperationsAsDeleted(interfaceIds, deleteDateNow);
+                log.info("Удаление Operations с interfaceIds size: {} шт.", interfaceIds.size());
             }
             interfaceRepository.markAllInterfacesAsDeleted(containerIds, deleteDateNow);
+            log.info("Удаление Interfaces с containerIds size: {} шт.", containerIds.size());
         }
         containerRepository.markAllContainersAsDeleted(productId, new Date());
+        log.info("Удаление Containers с productId: {}",productId);
     }
 
     private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {

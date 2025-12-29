@@ -62,7 +62,7 @@ public class ProductController {
             @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
             @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
     })
-    public ResponseEntity<List<ProductInfraDto>> getProductInfraContainsName(@RequestParam String name){
+    public ResponseEntity<List<ProductInfraDtoDb>> getProductInfraContainsName(@RequestParam String name){
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraContainsName(name));
     }
 
@@ -215,6 +215,18 @@ public class ProductController {
         return productService.getE2eProcessByCmdb(cmdb);
     }
 
+    @GetMapping("/product/{alias}/free")
+    @ApiOperation(value = "Проверка доступности alias приложения")
+    public IsUniqAliasDTO getFreeAlias(@PathVariable String alias) {
+        return productService.getFreeAlias(alias);
+    }
+
+    @GetMapping("/product/{alias}/employee")
+    @ApiOperation(value = "Информацию о сотрудниках из команды продукта")
+    public List<GetUserProfileDTO> getEmployeeByAlias(@PathVariable String alias) {
+        return productService.getEmployeeByAlias(alias);
+    }
+
     @PostMapping("/user/{id}/products")
     @ApiOperation(value = "Создание связи пользователя и продукта")
     public ResponseEntity postUserProducts(@PathVariable Integer id, @RequestBody List<String> aliasLIst) {
@@ -263,6 +275,14 @@ public class ProductController {
             return ResponseEntity.status(207).body(Map.of("errorEntity", errorEntity));
         }
         return ResponseEntity.ok(Map.of("message", "Сущности успешно сохранены"));
+    }
+
+    @PutMapping("/product")
+    @ApiOperation(value = "Создавать/обновлять приложения")
+    public ResponseEntity updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO,
+                                        HttpServletRequest request) {
+        productService.updateProduct(putUpdateProductDTO, request.getHeader(USER_ROLES_HEADER));
+        return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("product/{code}/workspace")

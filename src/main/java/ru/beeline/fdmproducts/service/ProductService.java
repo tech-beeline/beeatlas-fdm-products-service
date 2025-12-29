@@ -237,6 +237,105 @@ public class ProductService {
         }
     }
 
+    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO, String userRoles) {
+        List<String> roles = Arrays.stream(userRoles.split(","))
+                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
+                .toList();
+        if (!roles.contains("ADMINISTRATOR")) {
+            throw new ForbiddenException("403 Forbidden.");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
+        if (product == null) {
+            product = Product.builder()
+                    .alias(putUpdateProductDTO.getAlias())
+                    .name(putUpdateProductDTO.getName())
+                    .description(putUpdateProductDTO.getDescription())
+                    .gitUrl(putUpdateProductDTO.getGitUrl())
+                    .critical(putUpdateProductDTO.getCritical())
+                    .ownerID(putUpdateProductDTO.getOwnerId())
+                    .build();
+            productRepository.save(product);
+            List<Integer> employeesIds = prepareEmployeesIds(putUpdateProductDTO);
+            synchronizeUserProducts(product, employeesIds);
+        } else {
+            updateProductIfChanged(product, putUpdateProductDTO);
+            updateUserProductRelations(product, putUpdateProductDTO);
+        }
+    }
+
+    @Transactional
+    public void updateUserProductRelations(Product product, PutUpdateProductDTO request) {
+        List<Integer> employeesIds = prepareEmployeesIds(request);
+        List<UserProduct> existing = userProductRepository.findAllByProductId(product.getId());
+        Set<Integer> targetUserIds = new HashSet<>(employeesIds);
+        Set<Integer> existingUserIds = existing.stream()
+                .map(UserProduct::getUserId)
+                .collect(Collectors.toSet());
+        List<UserProduct> toRemove = existing.stream()
+                .filter(up -> !targetUserIds.contains(up.getUserId()))
+                .toList();
+        List<UserProduct> toCreate = targetUserIds.stream()
+                .filter(userId -> !existingUserIds.contains(userId))
+                .map(userId -> UserProduct.builder()
+                        .userId(userId)
+                        .product(product)
+                        .build())
+                .toList();
+        if (!toCreate.isEmpty()) {
+            userProductRepository.saveAll(toCreate);
+        }
+        if (!toRemove.isEmpty()) {
+            userProductRepository.deleteAll(toRemove);
+        }
+    }
+
+    private void synchronizeUserProducts(Product product, List<Integer> employeesIds) {
+        List<UserProduct> userProducts = new ArrayList<>();
+        for (Integer employeesId : employeesIds) {
+            userProducts.add(UserProduct.builder().userId(employeesId)
+                    .product(product).build());
+        }
+        userProductRepository.saveAll(userProducts);
+    }
+
+    private List<Integer> prepareEmployeesIds(PutUpdateProductDTO putUpdateProductDTO) {
+        List<Integer> employeesIds = putUpdateProductDTO.getEmployeesIds();
+        if (employeesIds != null) {
+            if (putUpdateProductDTO.getOwnerId() != null) {
+                employeesIds.add(putUpdateProductDTO.getOwnerId());
+            }
+            return employeesIds.stream().distinct().filter(Objects::nonNull).toList();
+        }
+        return new ArrayList<>();
+    }
+
+    private void updateProductIfChanged(Product product, PutUpdateProductDTO putUpdateProductDTO) {
+        boolean changed = false;
+        if (!Objects.equals(product.getName(), putUpdateProductDTO.getName())) {
+            product.setName(putUpdateProductDTO.getName());
+            changed = true;
+        }
+        if (!Objects.equals(product.getDescription(), putUpdateProductDTO.getDescription())) {
+            product.setDescription(putUpdateProductDTO.getDescription());
+            changed = true;
+        }
+        if (!Objects.equals(product.getGitUrl(), putUpdateProductDTO.getGitUrl())) {
+            product.setGitUrl(putUpdateProductDTO.getGitUrl());
+            changed = true;
+        }
+        if (!Objects.equals(product.getCritical(), putUpdateProductDTO.getCritical())) {
+            product.setCritical(putUpdateProductDTO.getCritical());
+            changed = true;
+        }
+        if (!Objects.equals(product.getOwnerID(), putUpdateProductDTO.getOwnerId())) {
+            product.setOwnerID(putUpdateProductDTO.getOwnerId());
+            changed = true;
+        }
+        if (changed) {
+            productRepository.save(product);
+        }
+    }
+
     public void postUserProduct(List<String> aliasList, Integer userId) {
         if (aliasList.isEmpty()) {
             throw new IllegalArgumentException("400: Массив пустой. ");
@@ -322,14 +421,39 @@ public class ProductService {
         validateContainers(containerDTOS, errorEntity);
         validateInterfaces(containerDTOS, errorEntity);
         validateMethods(containerDTOS, errorEntity);
-        if (!containerDTOS.isEmpty()) {
-            saveRelations(containerDTOS, code);
-        }
         Product product = getProductByCode(code);
+        if (!containerDTOS.isEmpty()) {
+            log.info("Обработка контейнеров продукта с code: " + code);
+            saveRelations(containerDTOS, product);
+        } else {
+            log.info("Пустой список, каскадное удаление данных о продукте: {}", code);
+            deleteAllContainers(product.getId());
+        }
         product.setSource(source);
         product.setUploadDate(LocalDateTime.now());
         productRepository.save(product);
         return errorEntity;
+    }
+
+    private void deleteAllContainers(Integer productId) {
+        LocalDateTime deleteDateNow = LocalDateTime.now();
+        List<Integer> containerIds = containerRepository.findContainerIdsByProductIdAndDeletedDateIsNull(productId);
+        if (!containerIds.isEmpty()) {
+            List<Integer> interfaceIds = interfaceRepository.findInterfaceIdsByContainerIdInAndDeletedDateIsNull(containerIds);
+            if (!interfaceIds.isEmpty()) {
+                List<Integer> operationIds = operationRepository.findOperationIdsByInterfaceIdInAndDeletedDateIsNull(interfaceIds);
+                if (!operationIds.isEmpty()) {
+                    parameterRepository.markAllParametersAsDeleted(operationIds, deleteDateNow);
+                    log.info("Удаление Parameters, operationIds size: {} шт.", operationIds.size());
+                }
+                operationRepository.markAllOperationsAsDeleted(interfaceIds, deleteDateNow);
+                log.info("Удаление Operations с interfaceIds size: {} шт.", interfaceIds.size());
+            }
+            interfaceRepository.markAllInterfacesAsDeleted(containerIds, deleteDateNow);
+            log.info("Удаление Interfaces с containerIds size: {} шт.", containerIds.size());
+        }
+        containerRepository.markAllContainersAsDeleted(productId, new Date());
+        log.info("Удаление Containers с productId: {}",productId);
     }
 
     private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
@@ -482,9 +606,7 @@ public class ProductService {
         }
     }
 
-    public void saveRelations(List<ContainerDTO> containerDTOS, String code) {
-        log.info("Обработка контейнеров продукта с code: " + code);
-        Product product = getProductByCode(code);
+    public void saveRelations(List<ContainerDTO> containerDTOS, Product product) {
         Map<String, ContainerProduct> existingContainers = containerRepository.findAllByCodeInAndProductId(containerDTOS.stream()
                                 .map(ContainerDTO::getCode)
                                 .toList(),
@@ -1420,7 +1542,8 @@ public class ProductService {
                 ));
         return products.stream()
                 .map(product -> ProductTechMapper.mapToProductInfoShortDTO(product,
-                                                                           getOwner(product, userProfileShortDTOMap)))
+                        getOwner(product, userProfileShortDTOMap)))
+                .sorted(Comparator.comparing(ProductInfoShortDTO::getAlias))
                 .collect(Collectors.toList());
     }
 
@@ -1430,7 +1553,8 @@ public class ProductService {
             if (profile != null) {
                 return profile.getFullName();
             }
-        } return null;
+        }
+        return null;
     }
 
     public List<GetProductsByIdsDTO> getProductByIds(List<Integer> ids) {
@@ -1616,6 +1740,36 @@ public class ProductService {
         return ProductAvailableDTO.builder()
                 .availability(productAvailability.isPresent() ? productAvailability.get().getAvailability() : true)
                 .build();
+    }
+
+    public IsUniqAliasDTO getFreeAlias(String alias) {
+        IsUniqAliasDTO result = new IsUniqAliasDTO();
+        if (!alias.matches("^[a-zA-Z0-9]+$")) {
+            throw new IllegalArgumentException("Параметр может содержать только латинские буквы и цифры");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        result.setIsUniqAlias(product == null ? true : false);
+        return result;
+    }
+
+    public List<GetUserProfileDTO> getEmployeeByAlias(String alias) {
+        List<GetUserProfileDTO> result = new ArrayList<>();
+        Product product = getProductByCode(alias);
+        List<UserProduct> userProducts = userProductRepository.findAllByProductId(product.getId());
+        if (!userProducts.isEmpty()) {
+            List<UserProfileShortDTO> userProfileShortDTO =
+                    userClient.findUserProfilesByIdIn(userProducts.stream().map(UserProduct::getUserId)
+                            .filter(Objects::nonNull).toList());
+            for (UserProfileShortDTO user : userProfileShortDTO) {
+                result.add(GetUserProfileDTO.builder()
+                        .login(user.getLogin())
+                        .email(user.getEmail())
+                        .fullName(user.getFullName())
+                        .id(user.getId())
+                        .build());
+            }
+        }
+        return result;
     }
 }
 

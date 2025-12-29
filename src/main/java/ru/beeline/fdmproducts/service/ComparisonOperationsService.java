@@ -37,7 +37,6 @@ public class ComparisonOperationsService {
 
     public void process(Integer id) {
         log.info("[СТАРТ] Начало обработки id={}", id);
-
         DiscoveredOperation discoveredOperation = discoveredOperationRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Отсутствует DiscoveredOperation с id=" + id));
         log.info("[DISCOVERED_OPERATION] id={}, name='{}', type='{}', interfaceId={}, context='{}'",
@@ -101,13 +100,13 @@ public class ComparisonOperationsService {
                 discoveredOperation.setConnectionOperationId(operation.get().getId());
                 discoveredOperationRepository.save(discoveredOperation);
 
-                List<Operation> operationList = operationRepository.findAllByInterfaceId(operation.get()
+                List<Operation> operationList = operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(operation.get()
                         .getInterfaceId());
                 log.info("[СПИСОК_OPERATION] Найдено операций для interfaceId={}: {}. ID: {}",
                         discoveredOperation.getInterfaceId(),
                         operationList.size(),
                         operationList.stream().map(Operation::getId).collect(Collectors.toList()));
-                List<DiscoveredOperation> discoveredOperationList = discoveredOperationRepository.findAllByInterfaceId(
+                List<DiscoveredOperation> discoveredOperationList = discoveredOperationRepository.findAllByInterfaceIdAndDeletedDateIsNull(
                         discoveredOperation.getInterfaceId());
                 log.info("[СПИСОК_DISCOVERED_OPERATION] Найдено записей: {}. ID: {}",
                         discoveredOperationList.size(),

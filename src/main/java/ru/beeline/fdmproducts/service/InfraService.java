@@ -369,31 +369,16 @@ public class InfraService {
         return result;
     }
 
-    public List<ProductInfraDto> getProductInfraContainsName(String name) {
-        if (name == null || name.isEmpty()) {
+    public List<ProductInfraDtoDb> getProductInfraContainsName(String namePart) {
+        if (namePart == null || namePart.isEmpty()) {
             throw new IllegalArgumentException("name is empty");
         }
-        List<Infra> infraList = infraRepository.findByNameContainingIgnoreCaseAndNotDeleted(name);
-        if (infraList.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        List<ProductInfraDto> result = new ArrayList<>();
-        for (Infra infra : infraList) {
-            List<Integer> productIds = infraProductRepository.findProductIdsByInfraId(infra.getId());
-            if (productIds.isEmpty()) {
-                result.add(ProductInfraDto.builder()
-                                   .name(infra.getName())
-                                   .parentSystems(Collections.emptyList())
-                                   .build());
-            } else {
-                List<String> aliases = productRepository.findAliasesByIds(productIds);
-                result.add(ProductInfraDto.builder()
-                                   .name(infra.getName())
-                                   .parentSystems(aliases)
-                                   .build());
-            }
-        }
-        return result;
+        return infraRepository.findInfraWithProductAliases(namePart)
+                .stream()
+                .map(row -> new ProductInfraDtoDb(
+                        row[0] != null ? row[0].toString() : "",
+                        row[1] != null ? row[1].toString() : ""
+                ))
+                .collect(Collectors.toList());
     }
 }

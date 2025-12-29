@@ -12,9 +12,21 @@ import java.util.Optional;
 
 @Repository
 public interface InfraRepository extends JpaRepository<Infra, Integer> {
-    @Query("SELECT i FROM Infra i WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', REPLACE(REPLACE(REPLACE(:namePart, '\\', '\\\\'), '%', '\\%'), '_', '\\_'), '%')) ESCAPE '\\' AND i.deletedDate IS NULL")
-    List<Infra> findByNameContainingIgnoreCaseAndNotDeleted(@Param("namePart") String namePart);
-    @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
+    @Query(value = """
+SELECT DISTINCT
+i.name AS infra_name,
+COALESCE(STRING_AGG(DISTINCT p.alias, ','), '') AS parent_systems_str
+FROM product.infra i
+LEFT JOIN product.infra_product ip ON i.id = ip.infra_id AND ip.deleted_date IS NULL
+LEFT JOIN product.product p ON ip.product_id = p.id
+WHERE LOWER(i.name) LIKE LOWER(CONCAT('%', :namePart, '%'))
+AND i.deleted_date IS NULL
+GROUP BY i.id, i.name
+ORDER BY i.name
+""", nativeQuery = true)
+    List<Object[]> findInfraWithProductAliases(@Param("namePart") String namePart);
+
+     @Query("select i.cmdbId from Infra i where i.cmdbId in (:cmdbIds)")
     List<String> findCmdbIdByCmdbIdIn(@Param("cmdbIds") Collection<String> cmdbIds);
 
     @Query("SELECT i FROM Infra i WHERE LOWER(i.name) = LOWER(:name) AND i.deletedDate IS NULL")

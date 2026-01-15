@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -43,4 +44,57 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             "WHERE o.interfaceId IN :interfaceIds")
     void markAllOperationsAsDeleted(@Param("interfaceIds") List<Integer> interfaceIds,
                                     @Param("deletedDate") LocalDateTime deletedDate);
+
+    @Query("""
+            SELECT
+                o.id AS opId,
+                o.name AS opName,
+                o.type AS opType,
+                i.id AS interfaceId,
+                i.name AS interfaceName,
+                i.code AS interfaceCode,
+                cp.id AS containerId,
+                cp.name AS containerName,
+                cp.code AS containerCode,
+                p.id AS productId,
+                p.name AS productName,
+                p.alias AS productAlias
+            FROM Operation o
+            JOIN o.interfaceObj i
+            JOIN i.containerProduct cp
+            JOIN cp.product p
+            WHERE o.name = :path
+              AND (:type IS NULL OR o.type = :type)
+              AND o.deletedDate IS NULL
+              AND i.deletedDate IS NULL
+              AND cp.deletedDate IS NULL
+            """)
+    List<ArchOperationProjection> findArchOperationsProjection(@Param("path") String path, @Param("type") String type);
+
+    @Query("""
+            SELECT
+                o.id AS opId,
+                o.name AS opName,
+                o.type AS opType,
+                i.id AS interfaceId,
+                i.name AS interfaceName,
+                i.code AS interfaceCode,
+                cp.id AS containerId,
+                cp.name AS containerName,
+                cp.code AS containerCode,
+                p.id AS productId,
+                p.name AS productName,
+                p.alias AS productAlias
+            FROM Operation o
+            JOIN o.interfaceObj i
+            JOIN i.containerProduct cp
+            JOIN cp.product p
+            WHERE o.id IN :connectionOperationIds
+              AND o.deletedDate IS NULL
+              AND i.deletedDate IS NULL
+              AND cp.deletedDate IS NULL
+            """)
+    List<ArchOperationProjection> findOperationsProjection(
+            @Param("connectionOperationIds") List<Integer> connectionOperationIds
+    );
 }

@@ -61,5 +61,5 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(String name);
 
-    List<DiscoveredOperation> findAllByNameAndTypeAndDeletedDateIsNull(String name, String type);
+    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(String name, String type);
 }

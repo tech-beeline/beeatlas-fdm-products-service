@@ -64,7 +64,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             JOIN i.containerProduct cp
             JOIN cp.product p
             WHERE o.name = :path
-              AND (:type IS NULL OR o.type = :type)
+              AND (:type IS NULL OR UPPER(o.type) = UPPER(:type))
               AND o.deletedDate IS NULL
               AND i.deletedDate IS NULL
               AND cp.deletedDate IS NULL

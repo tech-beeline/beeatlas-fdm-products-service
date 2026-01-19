@@ -51,7 +51,7 @@ public class SearchService {
         }
         List<ArchOperationProjection> archOperationProjections = operationRepository.findArchOperationsProjection(path, type);
         List<DiscoveredOperation> discoveredOperationList = type != null
-                ? discoveredOperationRepository.findAllByNameAndTypeAndDeletedDateIsNull(path, type)
+                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type)
                 : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path);
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
             return result;

@@ -58,4 +58,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     List<DiscoveredOperation> findAllByInterfaceIdIn(List<Integer> discoveredInterfaceIds);
 
     List<DiscoveredOperation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> discoveredInterfaceIds);
+
+    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(String name);
+
+    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(String name, String type);
 }

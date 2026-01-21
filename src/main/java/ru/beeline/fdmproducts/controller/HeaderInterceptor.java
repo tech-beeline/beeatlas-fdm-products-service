@@ -24,13 +24,18 @@ public class HeaderInterceptor implements HandlerInterceptor {
 
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
         try {
-            if (request.getRequestURI().contains("/tech")
+            if ("PUT".equals(request.getMethod()) && request.getRequestURI().equals("/api/v1/product")) {
+
+            } else if (request.getRequestURI().contains("/tech")
+                    || request.getRequestURI().contains("/api/v1/operation")
                     || request.getRequestURI().contains("/actuator")
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")
+                    || request.getRequestURI().matches("/api/v1/product/[^/]+/free")
+                    || request.getRequestURI().matches("/api/v1/product/[^/]+/employee")
                     || (request.getRequestURI().contains("/api/v1/product") && !request.getRequestURI().contains(
-                            "/structurizr-key") && !(request.getRequestURI().contains("/interface/arch") || request.getRequestURI().contains("/interface/mapic")))
+                    "/structurizr-key") && !(request.getRequestURI().contains("/interface/arch") || request.getRequestURI().contains("/interface/mapic")))
                     || request.getRequestURI().contains("/api/v1/infra")
                     || request.getRequestURI().contains("/api/v1/user/product")
                     || request.getRequestURI().matches("/api/v1/user/\\w+/products")

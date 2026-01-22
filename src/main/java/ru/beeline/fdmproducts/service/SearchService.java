@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.search.*;
 import ru.beeline.fdmlib.dto.product.*;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.mapper.ArchOperationMapper;

@@ -59,7 +59,11 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> discoveredInterfaceIds);
 
-    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(String name);
+    @Query("SELECT d FROM DiscoveredOperation d WHERE d.name LIKE CONCAT('%', :name, '%') AND d.deletedDate IS NULL")
+    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(@Param("name") String name);
 
-    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(String name, String type);
+    @Query("SELECT d FROM DiscoveredOperation d WHERE d.name LIKE CONCAT('%', :name, '%') " +
+            "AND (:type IS NULL OR UPPER(d.type) = UPPER(:type)) AND d.deletedDate IS NULL")
+    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(
+            @Param("name") String name, @Param("type") String type);
 }

@@ -63,7 +63,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             JOIN o.interfaceObj i
             JOIN i.containerProduct cp
             JOIN cp.product p
-            WHERE o.name = :path
+            WHERE o.name LIKE CONCAT('%', :path, '%')
               AND (:type IS NULL OR UPPER(o.type) = UPPER(:type))
               AND o.deletedDate IS NULL
               AND i.deletedDate IS NULL

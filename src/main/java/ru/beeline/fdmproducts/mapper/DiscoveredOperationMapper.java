@@ -5,11 +5,11 @@ import org.springframework.stereotype.Component;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.dto.MapicOperationFullDTO;
-import ru.beeline.fdmproducts.dto.search.ConnectionOperationDTO;
-import ru.beeline.fdmproducts.dto.search.ContainerSearchDTO;
-import ru.beeline.fdmproducts.dto.search.DiscoveredOperationDTO;
-import ru.beeline.fdmproducts.dto.search.InterfaceSearchDTO;
-import ru.beeline.fdmproducts.dto.search.ProductSearchDTO;
+import ru.beeline.fdmlib.dto.product.ConnectionOperationDTO;
+import ru.beeline.fdmlib.dto.product.ContainerSearchDTO;
+import ru.beeline.fdmlib.dto.product.DiscoveredOperationDTO;
+import ru.beeline.fdmlib.dto.product.InterfaceSearchDTO;
+import ru.beeline.fdmlib.dto.product.ProductSearchDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 

@@ -145,7 +145,7 @@
         <dependency>
             <groupId>ru.beeline</groupId>
             <artifactId>fdm-lib</artifactId>
-            <version>0.0.38</version>
+            <version>0.0.43</version>
         </dependency>
     </dependencies>
     <distributionManagement>
@@ -209,6 +209,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.5.0.6356</version>
             </plugin>
         </plugins>
         <finalName>fdm-products-${project.version}</finalName>

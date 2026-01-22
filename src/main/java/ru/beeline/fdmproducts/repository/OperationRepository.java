@@ -1,5 +1,6 @@
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -97,4 +98,19 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     List<ArchOperationProjection> findOperationsProjection(
             @Param("connectionOperationIds") List<Integer> connectionOperationIds
     );
+
+    @EntityGraph(attributePaths = {
+            "interfaceObj",
+            "interfaceObj.containerProduct",
+            "interfaceObj.containerProduct.product"
+    })
+    @Query("SELECT o FROM Operation o " +
+            "LEFT JOIN o.interfaceObj i " +
+            "LEFT JOIN i.containerProduct c " +
+            "LEFT JOIN c.product p " +
+            "WHERE o.tcId = :tcId " +
+            "AND o.deletedDate IS NULL " +
+            "AND (i IS NULL OR i.deletedDate IS NULL) " +
+            "AND (c IS NULL OR c.deletedDate IS NULL) ")
+    List<Operation> findOperationsWithFullChainGraph(@Param("tcId") Integer tcId);
 }

@@ -4,15 +4,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.beeline.fdmlib.dto.product.ArchOperationDTO;
+import ru.beeline.fdmlib.dto.product.DiscoveredOperationDTO;
+import ru.beeline.fdmlib.dto.product.InterfaceSearchDTO;
+import ru.beeline.fdmlib.dto.product.OperationSearchDTO;
+import ru.beeline.fdmlib.dto.product.ProductSearchDTO;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmlib.dto.product.*;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.mapper.ArchOperationMapper;
 import ru.beeline.fdmproducts.mapper.DiscoveredOperationMapper;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 
 import java.util.ArrayList;
@@ -32,6 +38,9 @@ public class SearchService {
 
     @Autowired
     private ArchOperationMapper archOperationMapper;
+
+    @Autowired
+    private InterfaceRepository interfaceRepository;
 
     @Autowired
     private DiscoveredOperationMapper discoveredOperationMapper;
@@ -134,5 +143,15 @@ public class SearchService {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    public List<ArchOperationDTO> getOperationByTc(Integer tcId) {
+        List<ArchOperationDTO> result = new ArrayList<>();
+        List<Operation> operations = operationRepository.findOperationsWithFullChainGraph(tcId);
+        if (!operations.isEmpty()) {
+            result = operations.stream().map(operation -> archOperationMapper.mapToArchOperationDTO(operation))
+                    .toList();
+        }
+        return result;
     }
 }

@@ -46,34 +46,34 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     void markAllOperationsAsDeleted(@Param("interfaceIds") List<Integer> interfaceIds,
                                     @Param("deletedDate") LocalDateTime deletedDate);
 
-    @Query("""
-            SELECT
-                o.id AS opId,
-                o.name AS opName,
-                o.type AS opType,
-                i.id AS interfaceId,
-                i.name AS interfaceName,
-                i.code AS interfaceCode,
-                cp.id AS containerId,
-                cp.name AS containerName,
-                cp.code AS containerCode,
-                p.id AS productId,
-                p.name AS productName,
-                p.alias AS productAlias
-            FROM Operation o
-            JOIN o.interfaceObj i
-            JOIN i.containerProduct cp
-            JOIN cp.product p
-            WHERE o.name LIKE CONCAT('%', :path, '%')
-              AND (:type IS NULL OR UPPER(o.type) = UPPER(:type))
-              AND o.deletedDate IS NULL
-              AND i.deletedDate IS NULL
-              AND cp.deletedDate IS NULL
-            ORDER BY o.id
-            LIMIT 50
-            """)
-    List<ArchOperationProjection> findArchOperationsProjection(@Param("path") String path,
-                                                               @Param("type") String type);
+    @Query(value = """
+    SELECT
+        o.id as opId,
+        o.name as opName,
+        o.type as opType,
+        i.id as interfaceId,
+        i.name as interfaceName,
+        i.code as interfaceCode,
+        cp.id as containerId,
+        cp.name as containerName,
+        cp.code as containerCode,
+        p.id as productId,
+        p.name as productName,
+        p.alias as productAlias
+    FROM operation o
+    JOIN interface_obj i ON o.interface_obj_id = i.id
+    JOIN container_product cp ON i.container_product_id = cp.id
+    JOIN product p ON cp.product_id = p.id
+    WHERE o.name LIKE CONCAT('%', ?1, '%')
+      AND (?2 IS NULL OR UPPER(o.type) = UPPER(?2))
+      AND o.deleted_date IS NULL
+      AND i.deleted_date IS NULL
+      AND cp.deleted_date IS NULL
+    ORDER BY o.id
+    LIMIT 50
+    """, nativeQuery = true)
+    List<ArchOperationProjection> findArchOperationsProjection(
+            String path, String type);
 
     @Query("""
             SELECT

@@ -59,12 +59,14 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> discoveredInterfaceIds);
 
-    @Query("SELECT d FROM DiscoveredOperation d WHERE d.name LIKE CONCAT('%', :name, '%') AND d.deletedDate IS NULL " +
-            "ORDER BY d.name  LIMIT 50")
-    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(@Param("name") String name);
+    @Query(value = "SELECT d.* FROM discovered_operation d WHERE d.name LIKE CONCAT('%', ?1, '%') " +
+            "AND (?2 IS NULL OR UPPER(d.type) = UPPER(?2)) AND d.deleted_date IS NULL " +
+            "ORDER BY d.name LIMIT 50", nativeQuery = true)
+    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(String name);
 
-    @Query("SELECT d FROM DiscoveredOperation d WHERE d.name LIKE CONCAT('%', :name, '%') " +
-            "AND (:type IS NULL OR UPPER(d.type) = UPPER(:type)) AND d.deletedDate IS NULL ORDER BY d.name  LIMIT 50")
-    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(@Param("name") String name,
-                                                                                 @Param("type") String type);
+    @Query(value = "SELECT d.* FROM discovered_operation d WHERE d.name LIKE CONCAT('%', ?1, '%') " +
+            "AND (?2 IS NULL OR UPPER(d.type) = UPPER(?2)) AND d.deleted_date IS NULL " +
+            "ORDER BY d.name LIMIT 50", nativeQuery = true)
+    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(
+            String name, String type);
 }

@@ -69,8 +69,12 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
               AND o.deletedDate IS NULL
               AND i.deletedDate IS NULL
               AND cp.deletedDate IS NULL
+            ORDER BY o.id
+            LIMIT :limit
             """)
-    List<ArchOperationProjection> findArchOperationsProjection(@Param("path") String path, @Param("type") String type);
+    List<ArchOperationProjection> findArchOperationsProjection(@Param("path") String path,
+                                                               @Param("type") String type,
+                                                               @Param("limit") int limit);
 
     @Query("""
             SELECT

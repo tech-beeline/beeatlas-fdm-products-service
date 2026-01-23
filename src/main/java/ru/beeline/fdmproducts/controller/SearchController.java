@@ -24,8 +24,10 @@ public class SearchController {
     @GetMapping("/operation")
     @ApiOperation(value = "Поиск методов, интерфейсов, контейнеров, систем в которых они реализованны")
     public OperationSearchDTO searchOperations(@RequestParam(required = false) String path,
+                                               @RequestParam int offset,
+                                               @RequestParam int limit,
                                                @RequestParam(required = false) String type) {
-        return ResponseEntity.status(HttpStatus.OK).body(searchService.searchOperations(path, type)).getBody();
+        return ResponseEntity.status(HttpStatus.OK).body(searchService.searchOperations(path, type, limit)).getBody();
     }
 
     @GetMapping("/operation/tech-capability/{id}")

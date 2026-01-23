@@ -4,11 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmlib.dto.product.ArchOperationDTO;
-import ru.beeline.fdmlib.dto.product.DiscoveredOperationDTO;
-import ru.beeline.fdmlib.dto.product.InterfaceSearchDTO;
-import ru.beeline.fdmlib.dto.product.OperationSearchDTO;
-import ru.beeline.fdmlib.dto.product.ProductSearchDTO;
+import ru.beeline.fdmlib.dto.product.*;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Operation;
@@ -51,17 +47,18 @@ public class SearchService {
     @Autowired
     private DiscoveredInterfaceRepository discoveredInterfaceRepository;
 
-    public OperationSearchDTO searchOperations(String path, String type) {
+    public OperationSearchDTO searchOperations(String path, String type, int limit) {
         OperationSearchDTO result = new OperationSearchDTO();
         result.setArchOperations(new ArrayList<>());
         result.setDiscoveredOperations(new ArrayList<>());
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("Параметр path не должен быть пустым.");
         }
-        List<ArchOperationProjection> archOperationProjections = operationRepository.findArchOperationsProjection(path, type);
+        List<ArchOperationProjection> archOperationProjections =
+                operationRepository.findArchOperationsProjection(path, type, limit);
         List<DiscoveredOperation> discoveredOperationList = type != null
-                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type)
-                : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path);
+                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type, limit)
+                : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, limit);
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
             return result;
         }

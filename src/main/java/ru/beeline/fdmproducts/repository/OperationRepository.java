@@ -60,10 +60,10 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
         p.id as productId,
         p.name as productName,
         p.alias as productAlias
-    FROM operation o
-    JOIN interface_obj i ON o.interface_obj_id = i.id
-    JOIN container_product cp ON i.container_product_id = cp.id
-    JOIN product p ON cp.product_id = p.id
+    FROM product.operation o
+    JOIN product.interface_obj i ON o.interface_obj_id = i.id
+    JOIN product.container_product cp ON i.container_product_id = cp.id
+    JOIN product.product p ON cp.product_id = p.id
     WHERE o.name LIKE CONCAT('%', ?1, '%')
       AND (?2 IS NULL OR UPPER(o.type) = UPPER(?2))
       AND o.deleted_date IS NULL

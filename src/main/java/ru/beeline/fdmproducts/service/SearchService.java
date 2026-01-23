@@ -47,7 +47,7 @@ public class SearchService {
     @Autowired
     private DiscoveredInterfaceRepository discoveredInterfaceRepository;
 
-    public OperationSearchDTO searchOperations(String path, String type, int limit) {
+    public OperationSearchDTO searchOperations(String path, String type) {
         OperationSearchDTO result = new OperationSearchDTO();
         result.setArchOperations(new ArrayList<>());
         result.setDiscoveredOperations(new ArrayList<>());
@@ -55,10 +55,10 @@ public class SearchService {
             throw new IllegalArgumentException("Параметр path не должен быть пустым.");
         }
         List<ArchOperationProjection> archOperationProjections =
-                operationRepository.findArchOperationsProjection(path, type, limit);
+                operationRepository.findArchOperationsProjection(path, type);
         List<DiscoveredOperation> discoveredOperationList = type != null
-                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type, limit)
-                : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, limit);
+                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type)
+                : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path);
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
             return result;
         }

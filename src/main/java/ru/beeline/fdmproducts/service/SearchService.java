@@ -56,9 +56,13 @@ public class SearchService {
         }
         List<ArchOperationProjection> archOperationProjections =
                 operationRepository.findArchOperationsProjection(path, type);
-        List<DiscoveredOperation> discoveredOperationList = type != null
-                ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type)
-                : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path);
+        List<DiscoveredOperation> discoveredOperationList = new ArrayList<>();
+        if(archOperationProjections.size()<50) {
+            discoveredOperationList = type != null
+                    ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type,
+                                                                                                       50 - archOperationProjections.size())
+                    : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, 50 - archOperationProjections.size());
+        }
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
             return result;
         }

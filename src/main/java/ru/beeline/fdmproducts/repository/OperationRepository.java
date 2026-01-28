@@ -72,8 +72,36 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     ORDER BY o.id
     LIMIT 50
     """, nativeQuery = true)
-    List<ArchOperationProjection> findArchOperationsProjection(
+    List<ArchOperationProjection> findArchOperationsProjectionByType(
             String path, String type);
+
+    @Query(value = """
+    SELECT
+        o.id as opId,
+        o.name as opName,
+        o.type as opType,
+        i.id as interfaceId,
+        i.name as interfaceName,
+        i.code as interfaceCode,
+        cp.id as containerId,
+        cp.name as containerName,
+        cp.code as containerCode,
+        p.id as productId,
+        p.name as productName,
+        p.alias as productAlias
+    FROM product.operation o
+    JOIN product.interface i ON o.interface_id = i.id
+    JOIN product.containers_product cp ON i.container_id = cp.id
+    JOIN product.product p ON cp.product_id = p.id
+    WHERE o.name LIKE CONCAT('%', ?1, '%')
+      AND o.deleted_date IS NULL
+      AND i.deleted_date IS NULL
+      AND cp.deleted_date IS NULL
+    ORDER BY o.id
+    LIMIT 50
+    """, nativeQuery = true)
+    List<ArchOperationProjection> findArchOperationsProjection(
+            String path);
 
     @Query("""
             SELECT

@@ -54,14 +54,18 @@ public class SearchService {
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("Параметр path не должен быть пустым.");
         }
-        List<ArchOperationProjection> archOperationProjections =
-                operationRepository.findArchOperationsProjection(path, type);
+
+        List<ArchOperationProjection> archOperationProjections = type != null
+                ? operationRepository.findArchOperationsProjectionByType(path, type)
+                : operationRepository.findArchOperationsProjection(path);
+
         List<DiscoveredOperation> discoveredOperationList = new ArrayList<>();
-        if(archOperationProjections.size()<50) {
-            discoveredOperationList = type != null
-                    ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type,
-                                                                                                       50 - archOperationProjections.size())
-                    : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, 50 - archOperationProjections.size());
+        if (archOperationProjections.size() < 50) {
+            int limitSearch = 50 - archOperationProjections.size();
+            discoveredOperationList = type != null ?
+                    discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type,
+                                                                                                     limitSearch)
+                    : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, limitSearch);
         }
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
             return result;

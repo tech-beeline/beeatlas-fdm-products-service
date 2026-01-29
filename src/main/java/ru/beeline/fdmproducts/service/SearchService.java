@@ -54,7 +54,7 @@ public class SearchService {
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("Параметр path не должен быть пустым.");
         }
-
+        path = path.replace("%7B", "{").replace("%7D", "}");
         List<ArchOperationProjection> archOperationProjections = type != null
                 ? operationRepository.findArchOperationsProjectionByType(path, type)
                 : operationRepository.findArchOperationsProjection(path);

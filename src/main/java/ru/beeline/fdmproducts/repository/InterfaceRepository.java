@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -40,4 +41,7 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
             "WHERE i.containerId IN :containerIds")
     void markAllInterfacesAsDeleted(@Param("containerIds") List<Integer> containerIds,
                                     @Param("deletedDate") LocalDateTime deletedDate);
+
+    @EntityGraph(attributePaths = {"operations"})
+    List<Interface> findByContainerIdIn(List<Integer> containerIds);
 }

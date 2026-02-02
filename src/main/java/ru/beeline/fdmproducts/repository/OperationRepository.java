@@ -76,8 +76,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     ORDER BY o.id
     LIMIT 50
     """, nativeQuery = true)
-    List<ArchOperationProjection> findArchOperationsProjectionByType(
-            String path, String type);
+    List<ArchOperationProjection> findArchOperationsProjectionByType(String path, String type);
 
     @Query(value = """
     SELECT
@@ -104,8 +103,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     ORDER BY o.id
     LIMIT 50
     """, nativeQuery = true)
-    List<ArchOperationProjection> findArchOperationsProjection(
-            String path);
+    List<ArchOperationProjection> findArchOperationsProjection(String path);
 
     @Query("""
             SELECT

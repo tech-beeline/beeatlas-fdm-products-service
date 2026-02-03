@@ -231,7 +231,7 @@ public class ProductController {
         return productService.getEmployeeByAlias(alias);
     }
 
-    @GetMapping("/implemented/container/tech-capability")
+    @GetMapping("/product/implemented/container/tech-capability")
     @ApiOperation(value = "Получение ТС реализованных в контейнерах продукта")
     public List<TcDTO> getTcByContainerProduct(@RequestParam(value = "alias") String alias,
                                                            @RequestParam(value = "containers") List<String> containers) {

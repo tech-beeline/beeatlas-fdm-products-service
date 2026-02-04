@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
+import ru.beeline.fdmlib.dto.product.TcDTO;
 
 import java.time.LocalDateTime;
 import java.util.List;

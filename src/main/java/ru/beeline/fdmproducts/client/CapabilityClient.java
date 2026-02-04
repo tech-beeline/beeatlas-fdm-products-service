@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import ru.beeline.fdmproducts.dto.IdCodeDTO;
 import ru.beeline.fdmproducts.dto.SearchCapabilityDTO;
-import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmlib.dto.product.TcDTO;
 
 import java.util.Collections;
 import java.util.List;

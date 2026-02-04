@@ -9,6 +9,7 @@ import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmlib.dto.product.TcDTO;
 
 import java.time.LocalDateTime;
 import java.util.Collections;

@@ -145,7 +145,7 @@
         <dependency>
             <groupId>ru.beeline</groupId>
             <artifactId>fdm-lib</artifactId>
-            <version>0.0.43</version>
+            <version>0.0.45</version>
         </dependency>
     </dependencies>
     <distributionManagement>

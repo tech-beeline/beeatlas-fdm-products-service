@@ -233,9 +233,9 @@ public class ProductController {
 
     @GetMapping("/product/implemented/container/tech-capability")
     @ApiOperation(value = "Получение ТС реализованных в контейнерах продукта")
-    public List<TcDTO> getTcByContainerProduct(@RequestParam(value = "alias") String alias,
-                                                           @RequestParam(value = "containers") List<String> containers) {
-        return productService.getTcByContainerProduct(alias,  containers);
+    public List<TcDTO> getTcByContainerProduct(@RequestParam(value = "alias", required = false) String alias,
+                                               @RequestParam(value = "containers", required = false) List<String> containers) {
+        return productService.getTcByContainerProduct(alias, containers);
     }
 
     @PostMapping("/user/{id}/products")

@@ -1788,7 +1788,7 @@ public class ProductService {
         List<Integer> containerIds = containerProducts.stream()
                 .map(ContainerProduct::getId)
                 .toList();
-        List<Interface> interfaces = interfaceRepository.findByContainerIdIn(containerIds);
+        List<Interface> interfaces = interfaceRepository.findByContainerIdInWithOperationsNotDeleted(containerIds);
         if (interfaces != null && !interfaces.isEmpty()) {
             List<Operation> allOperations = interfaces.stream()
                     .map(Interface::getOperations)

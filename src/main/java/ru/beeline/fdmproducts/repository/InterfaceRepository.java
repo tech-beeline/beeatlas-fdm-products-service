@@ -42,6 +42,10 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
     void markAllInterfacesAsDeleted(@Param("containerIds") List<Integer> containerIds,
                                     @Param("deletedDate") LocalDateTime deletedDate);
 
-    @EntityGraph(attributePaths = {"operations"})
-    List<Interface> findByContainerIdIn(List<Integer> containerIds);
+    @Query("SELECT DISTINCT i FROM Interface i " +
+            "LEFT JOIN FETCH i.operations o " +
+            "WHERE i.containerProduct.id IN :containerIds " +
+            "AND i.deletedDate IS NULL " +
+            "AND (o.deletedDate IS NULL)")
+    List<Interface> findByContainerIdInWithOperationsNotDeleted(@Param("containerIds") List<Integer> containerIds);
 }

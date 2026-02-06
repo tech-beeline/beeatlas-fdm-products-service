@@ -142,11 +142,6 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-amqp</artifactId>
         </dependency>
-        <dependency>
-            <groupId>ru.beeline</groupId>
-            <artifactId>fdm-lib</artifactId>
-            <version>0.0.38</version>
-        </dependency>
     </dependencies>
     <distributionManagement>
         <repository>

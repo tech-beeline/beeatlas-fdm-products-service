@@ -8,7 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
+import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 
 import java.time.LocalDateTime;

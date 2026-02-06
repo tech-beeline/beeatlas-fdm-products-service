@@ -8,7 +8,7 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import ru.beeline.fdmlib.dto.product.TcDTO;
+import ru.beeline.fdmproducts.dto.TcDTO;
 
 @Data
 @NoArgsConstructor

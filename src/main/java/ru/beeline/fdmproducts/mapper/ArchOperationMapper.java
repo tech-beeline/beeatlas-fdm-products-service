@@ -1,12 +1,12 @@
 package ru.beeline.fdmproducts.mapper;
 
 import org.springframework.stereotype.Component;
-import ru.beeline.fdmlib.dto.product.ArchOperationDTO;
-import ru.beeline.fdmlib.dto.product.ContainerSearchDTO;
-import ru.beeline.fdmlib.dto.product.InterfaceSearchDTO;
-import ru.beeline.fdmlib.dto.product.ProductSearchDTO;
 import ru.beeline.fdmproducts.domain.Operation;
 
+import ru.beeline.fdmproducts.dto.ArchOperationDTO;
+import ru.beeline.fdmproducts.dto.ContainerSearchDTO;
+import ru.beeline.fdmproducts.dto.InterfaceSearchDTO;
+import ru.beeline.fdmproducts.dto.ProductSearchDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 
 @Component

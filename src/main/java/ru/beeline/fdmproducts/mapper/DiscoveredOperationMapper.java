@@ -6,7 +6,7 @@ package ru.beeline.fdmproducts.mapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import ru.beeline.fdmlib.dto.product.*;
+import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.dto.MapicOperationFullDTO;

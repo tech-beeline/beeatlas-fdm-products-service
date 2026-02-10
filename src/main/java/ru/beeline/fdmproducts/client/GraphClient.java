@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.client;
 
 import lombok.extern.slf4j.Slf4j;
@@ -6,7 +10,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
-import ru.beeline.fdmlib.dto.graph.ProductInfluenceDTO;
+import ru.beeline.fdmproducts.dto.ProductInfluenceDTO;
 
 
 @Slf4j

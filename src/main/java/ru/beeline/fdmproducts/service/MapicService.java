@@ -1,13 +1,17 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import ru.beeline.fdmlib.dto.product.PublishedApiDTO;
 import ru.beeline.fdmproducts.domain.mapic.ApiMapic;
 import ru.beeline.fdmproducts.domain.mapic.CapabilityMapic;
 import ru.beeline.fdmproducts.domain.mapic.ProductMapic;
 import ru.beeline.fdmproducts.domain.mapic.PublishedApi;
+import ru.beeline.fdmproducts.dto.PublishedApiDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.mapic.ApiMapicRepository;
 import ru.beeline.fdmproducts.repository.mapic.CapabilityMapicRepository;

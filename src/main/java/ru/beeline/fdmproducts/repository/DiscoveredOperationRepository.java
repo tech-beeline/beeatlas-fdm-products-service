@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -58,4 +62,16 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     List<DiscoveredOperation> findAllByInterfaceIdIn(List<Integer> discoveredInterfaceIds);
 
     List<DiscoveredOperation> findAllByInterfaceIdInAndDeletedDateIsNull(List<Integer> discoveredInterfaceIds);
+
+    @Query(value = "SELECT d.* FROM product.discovered_operation d WHERE d.name LIKE CONCAT('%', ?1, '%') " +
+            "AND d.deleted_date IS NULL " +
+            "ORDER BY d.name LIMIT ?2", nativeQuery = true)
+    List<DiscoveredOperation> findAllByNameAndDeletedDateIsNull(String name, Integer size);
+
+    @Query(value = "SELECT d.* FROM product.discovered_operation d WHERE d.name LIKE CONCAT('%', ?1, '%') " +
+            "AND (?2 IS NULL OR UPPER(d.type) = UPPER(?2)) AND d.deleted_date IS NULL " +
+            "ORDER BY d.name LIMIT ?3", nativeQuery = true)
+    List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(
+            String name, String type, Integer size);
 }
+

@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.annotations.Api;
@@ -9,9 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.beeline.fdmlib.dto.product.GetProductTechDto;
-import ru.beeline.fdmlib.dto.product.GetProductsByIdsDTO;
-import ru.beeline.fdmlib.dto.product.ProductPutDto;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
@@ -51,7 +52,7 @@ public class ProductController {
             @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
             @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
     })
-    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name){
+    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name) {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 
@@ -62,7 +63,7 @@ public class ProductController {
             @ApiResponse(code = 404, message = "Элементы инфраструктуры с заданным именем не найдены"),
             @ApiResponse(code = 200, message = "Успешный ответ с элементами инфраструктуры")
     })
-    public ResponseEntity<List<ProductInfraDtoDb>> getProductInfraContainsName(@RequestParam String name){
+    public ResponseEntity<List<ProductInfraDtoDb>> getProductInfraContainsName(@RequestParam String name) {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraContainsName(name));
     }
 
@@ -225,6 +226,13 @@ public class ProductController {
     @ApiOperation(value = "Информацию о сотрудниках из команды продукта")
     public List<GetUserProfileDTO> getEmployeeByAlias(@PathVariable String alias) {
         return productService.getEmployeeByAlias(alias);
+    }
+
+    @GetMapping("/product/implemented/container/tech-capability")
+    @ApiOperation(value = "Получение ТС реализованных в контейнерах продукта")
+    public List<TcDTO> getTcByContainerProduct(@RequestParam(value = "alias", required = false) String alias,
+                                               @RequestParam(value = "containers", required = false) List<String> containers) {
+        return productService.getTcByContainerProduct(alias, containers);
     }
 
     @PostMapping("/user/{id}/products")

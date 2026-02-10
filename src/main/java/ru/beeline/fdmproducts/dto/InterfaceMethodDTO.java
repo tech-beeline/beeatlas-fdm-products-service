@@ -1,9 +1,14 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.dto;
 
 import lombok.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import ru.beeline.fdmproducts.dto.TcDTO;
 
 @Data
 @NoArgsConstructor

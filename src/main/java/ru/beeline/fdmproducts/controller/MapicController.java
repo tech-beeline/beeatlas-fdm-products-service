@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.controller;
 
 
@@ -7,7 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.beeline.fdmlib.dto.product.PublishedApiDTO;
+import ru.beeline.fdmproducts.dto.PublishedApiDTO;
 import ru.beeline.fdmproducts.service.MapicService;
 
 import java.util.List;

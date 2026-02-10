@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.client;
 
 import lombok.extern.slf4j.Slf4j;
@@ -10,9 +14,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import ru.beeline.fdmlib.dto.auth.UserInfoDTO;
-import ru.beeline.fdmlib.dto.auth.UserProfileDTO;
-import ru.beeline.fdmlib.dto.auth.UserProfileShortDTO;
+import ru.beeline.fdmproducts.dto.UserInfoDTO;
+import ru.beeline.fdmproducts.dto.UserProfileDTO;
+import ru.beeline.fdmproducts.dto.UserProfileShortDTO;
 
 import java.util.ArrayList;
 import java.util.List;

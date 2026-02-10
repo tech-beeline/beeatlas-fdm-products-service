@@ -1,3 +1,7 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -34,4 +38,7 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     @Query("UPDATE ContainerProduct c SET c.deletedDate = :deletedDate WHERE c.productId = :productId AND c.deletedDate IS NULL")
     void markAllContainersAsDeleted(@Param("productId") Integer productId,
                                     @Param("deletedDate") Date deletedDate);
+
+    List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
+                                                                           List<String> containerName);
 }

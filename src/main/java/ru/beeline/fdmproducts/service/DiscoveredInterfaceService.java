@@ -1,12 +1,16 @@
+/*
+ * Copyright (c) 2024 PJSC VimpelCom
+ */
+
 package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmlib.dto.product.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.DiscoveredParameter;
+import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationParameterDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;

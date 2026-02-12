@@ -149,11 +149,11 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
     @Modifying
     @Query("UPDATE Operation o SET o.isDeletedTc = true " +
-            "WHERE o.tcId = :tcId AND o.isDeletedTc = false")
+            "WHERE o.tcId = :tcId AND o.isDeletedTc IS NOT TRUE")
     void markAsDeleted(@Param("tcId") Integer tcId);
 
     @Modifying
     @Query("UPDATE Operation o SET o.isDeletedTc = false " +
-            "WHERE o.tcId = :tcId AND o.isDeletedTc = true")
+            "WHERE o.tcId = :tcId AND o.isDeletedTc IS NOT FALSE")
     void markAsUpdated(@Param("tcId") Integer tcId);
 }

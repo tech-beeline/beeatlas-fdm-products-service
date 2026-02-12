@@ -51,7 +51,7 @@ public class ProductConsumer {
 
     @RabbitListener(queues = "${queue.delete-tc-to-operation.name}")
     public void markOperationsWithDeleteFlag(String message) {
-        log.info("Received message from delete-arch-container-relations: " + message, new String(message.getBytes()));
+        log.info("Received message from delete-tc-to-operation: " + message, new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
             if (jsonNode.has("id") && jsonNode.has("changeType")) {

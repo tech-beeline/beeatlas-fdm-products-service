@@ -8,6 +8,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmproducts.dto.UserInfoDTO;
+import ru.beeline.fdmproducts.dto.UserProfileDTO;
+import ru.beeline.fdmproducts.dto.UserProfileShortDTO;
+import ru.beeline.fdmproducts.dto.ProductInfluenceDTO;
+import ru.beeline.fdmproducts.dto.GetProductTechDto;
+import ru.beeline.fdmproducts.dto.GetProductsByIdsDTO;
+import ru.beeline.fdmproducts.dto.GetProductsDTO;
+import ru.beeline.fdmproducts.dto.ProductPutDto;
 import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
@@ -449,7 +458,7 @@ public class ProductService {
             log.info("Удаление Interfaces с containerIds size: {} шт.", containerIds.size());
         }
         containerRepository.markAllContainersAsDeleted(productId, new Date());
-        log.info("Удаление Containers с productId: {}",productId);
+        log.info("Удаление Containers с productId: {}", productId);
     }
 
     private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
@@ -1766,6 +1775,56 @@ public class ProductService {
             }
         }
         return result;
+    }
+
+    public List<TcDTO> getTcByContainerProduct(String alias, List<String> containers) {
+        List<TcDTO> result = new ArrayList<>();
+        Product product = validateAliasContainers(alias, containers);
+        List<ContainerProduct> containerProducts =
+                containerRepository.findAllByProductIdAndNameInAndDeletedDateIsNull(
+                        product.getId(), containers);
+        if (containerProducts.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<Integer> containerIds = containerProducts.stream()
+                .map(ContainerProduct::getId)
+                .toList();
+        List<Interface> interfaces = interfaceRepository.findByContainerIdInWithOperationsNotDeleted(containerIds);
+        if (interfaces != null && !interfaces.isEmpty()) {
+            List<Operation> allOperations = interfaces.stream()
+                    .map(Interface::getOperations)
+                    .filter(Objects::nonNull)
+                    .flatMap(List::stream)
+                    .toList();
+            List<Integer> tcIds = allOperations.stream()
+                    .map(Operation::getTcId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+            result = capabilityClient.getTcs(tcIds);
+        }
+        return result;
+    }
+
+    private Product validateAliasContainers(String alias, List<String> containers) {
+        if (alias == null || alias.isEmpty()) {
+            throw new IllegalArgumentException("Праметр alias не может быть пустым.");
+        }
+        if (containers == null || containers.isEmpty()) {
+            throw new IllegalArgumentException("Список containers не может быть null и пустым.");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(alias);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт не найден.");
+        }
+        return product;
+    }
+
+    public void processOperation(Integer id, String changeType) {
+        switch (changeType) {
+            case "DELETE" -> operationRepository.markAsDeleted(id);
+            case "UPDATE" -> operationRepository.markAsUpdated(id);
+        }
     }
 }
 

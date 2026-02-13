@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -40,4 +41,13 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
             "WHERE i.containerId IN :containerIds")
     void markAllInterfacesAsDeleted(@Param("containerIds") List<Integer> containerIds,
                                     @Param("deletedDate") LocalDateTime deletedDate);
+
+    List<Interface> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
+    @Query("SELECT DISTINCT i FROM Interface i " +
+            "LEFT JOIN FETCH i.operations o " +
+            "WHERE i.containerProduct.id IN :containerIds " +
+            "AND i.deletedDate IS NULL " +
+            "AND (o.deletedDate IS NULL)")
+    List<Interface> findByContainerIdInWithOperationsNotDeleted(@Param("containerIds") List<Integer> containerIds);
 }

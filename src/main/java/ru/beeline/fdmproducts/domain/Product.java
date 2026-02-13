@@ -63,6 +63,9 @@ public class Product {
     @Column(name = "upload_date ")
     private LocalDateTime uploadDate ;
 
+    @Column(name = "source_metric")          // <-- новое поле
+    private String sourceMetric;             // (тип String, при необходимости поменяйте)
+
     @JsonManagedReference
     @OneToMany(mappedBy = "product")
     private List<TechProduct> techProducts;
@@ -72,3 +75,4 @@ public class Product {
     @JsonManagedReference
     private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
 }
+

@@ -26,7 +26,7 @@ public class ProductConsumer {
     @RabbitListener(queues = "${queue.update-product-owner-and-priority-by-cmdb.name}")
     public void updateOwnerAndPriority(String message) {
         log.info("Received message from update-product-owner-and-priority-by-cmdb: " + message,
-                 new String(message.getBytes()));
+                new String(message.getBytes()));
         try {
             JsonNode jsonNode = objectMapper.readTree(message);
             if (jsonNode.has("cmdb") && jsonNode.has("owner") && jsonNode.has("critical")) {
@@ -34,10 +34,10 @@ public class ProductConsumer {
                 if (ownerNode != null && ownerNode.has("fullName") && ownerNode.has("email") && ownerNode.has("extId") && ownerNode.has(
                         "login")) {
                     productService.updateOwnerAndPriority(jsonNode.get("cmdb").asText(),
-                                                          ownerNode.get("email").asText(),
-                                                          ownerNode.get("fullName").asText(),
-                                                          jsonNode.get("critical").asText(),
-                                                          ownerNode.get("extId").asText());
+                            ownerNode.get("email").asText(),
+                            ownerNode.get("fullName").asText(),
+                            jsonNode.get("critical").asText(),
+                            ownerNode.get("extId").asText());
                 } else {
                     log.error("Owner object does not contain required fields");
                 }
@@ -49,4 +49,20 @@ public class ProductConsumer {
         }
     }
 
+    @RabbitListener(queues = "${queue.delete-tc-to-operation.name}")
+    public void markOperationsWithDeleteFlag(String message) {
+        log.info("Received message from delete-tc-to-operation: " + message, new String(message.getBytes()));
+        try {
+            JsonNode jsonNode = objectMapper.readTree(message);
+            if (jsonNode.has("id") && jsonNode.has("changeType")) {
+                productService.processOperation(jsonNode.get("id").asInt()
+                        , jsonNode.get("changeType").asText());
+            } else {
+                log.error("Message does not match the required format");
+            }
+
+        } catch (Exception e) {
+            log.error("Internal server Error: " + e.getMessage());
+        }
+    }
 }

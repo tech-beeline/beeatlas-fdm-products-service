@@ -38,4 +38,9 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     @Query("UPDATE ContainerProduct c SET c.deletedDate = :deletedDate WHERE c.productId = :productId AND c.deletedDate IS NULL")
     void markAllContainersAsDeleted(@Param("productId") Integer productId,
                                     @Param("deletedDate") Date deletedDate);
+
+    List<ContainerProduct> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
+    List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
+                                                                           List<String> containerName);
 }

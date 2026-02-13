@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -61,4 +62,7 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     Optional<DiscoveredInterface> findByExternalId(Integer externalId);
 
     Optional<DiscoveredInterface> findByApiId(Integer apiId);
+
+    @EntityGraph(attributePaths = {"product"})
+    List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 }

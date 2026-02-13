@@ -52,4 +52,26 @@ public class SourceMetricService {
                                     .collect(Collectors.toUnmodifiableList()))
                 .build();
     }
+
+    public void updateSourceMetric(String entity, Long id, String sourceMetric) {
+        if (entity == null || entity.isBlank() || id == null) {
+            throw new IllegalArgumentException("Missing required parameters");
+        }
+
+        String normalizedEntity = entity.trim().toLowerCase();
+
+        switch (normalizedEntity) {
+            case "product":
+                productRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            case "container":
+                containerRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            case "interface":
+                interfaceRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid entity type: " + entity);
+        }
+    }
 }

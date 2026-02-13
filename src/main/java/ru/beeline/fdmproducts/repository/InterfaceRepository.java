@@ -19,17 +19,11 @@ import java.util.Optional;
 @Repository
 public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
 
-    Optional<Interface> findByCodeAndContainerId(String code, Integer containerId);
-
-    List<Interface> findAllByContainerIdAndDeletedDateIsNull(Integer containerId);
-
     List<Interface> findAllByContainerIdIn(List<Integer> containerId);
 
     List<Interface> findAllByContainerIdInAndDeletedDateIsNull(List<Integer> containerId);
 
     List<Interface> findAllByContainerId(Integer containerId);
-
-    List<Interface> findByCodeInAndContainerId(List<String> code, Integer containerId);
 
     List<Interface> findAllByContainerIdAndCodeIn(Integer containerId, List<String> interfaceCodes);
 
@@ -43,6 +37,11 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
                                     @Param("deletedDate") LocalDateTime deletedDate);
 
     List<Interface> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
+    @Modifying
+    @Query("UPDATE Interface i SET i.sourceMetric = :sourceMetric WHERE i.id = :id")
+    void updateSourceMetricById(@Param("id") Integer id,
+                                @Param("sourceMetric") String sourceMetric);
 
     @Query("SELECT DISTINCT i FROM Interface i " +
             "LEFT JOIN FETCH i.operations o " +

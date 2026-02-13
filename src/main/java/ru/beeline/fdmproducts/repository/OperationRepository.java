@@ -68,8 +68,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
             JOIN product.product p ON cp.product_id = p.id
-            WHERE o.name LIKE CONCAT('%', ?1, '%')
-              AND (?2 IS NULL OR UPPER(o.type) = UPPER(?2))
+            WHERE o.name ILIKE CONCAT('%', ?1, '%')
+              AND (?2 IS NULL OR o.type ILIKE ?2)
               AND o.deleted_date IS NULL
               AND i.deleted_date IS NULL
               AND cp.deleted_date IS NULL
@@ -96,7 +96,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
             JOIN product.product p ON cp.product_id = p.id
-            WHERE o.name LIKE CONCAT('%', ?1, '%')
+            WHERE o.name ILIKE CONCAT('%', ?1, '%')
               AND o.deleted_date IS NULL
               AND i.deleted_date IS NULL
               AND cp.deleted_date IS NULL

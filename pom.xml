@@ -10,7 +10,7 @@
     </parent>
     <groupId>ru.beeline</groupId>
     <artifactId>fdm-products</artifactId>
-    <version>1.3.11</version>
+    <version>1.5.1</version>
     <name>fdm-products</name>
     <description>fdm-products</description>
     <properties>
@@ -204,6 +204,11 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.5.0.6356</version>
             </plugin>
         </plugins>
         <finalName>fdm-products-${project.version}</finalName>

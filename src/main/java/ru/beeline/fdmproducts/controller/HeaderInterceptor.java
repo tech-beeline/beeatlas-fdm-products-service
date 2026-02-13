@@ -31,6 +31,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
             if ("PUT".equals(request.getMethod()) && request.getRequestURI().equals("/api/v1/product")) {
 
             } else if (request.getRequestURI().contains("/tech")
+                    || request.getRequestURI().contains("/api/v1/operation")
                     || request.getRequestURI().contains("/actuator")
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")

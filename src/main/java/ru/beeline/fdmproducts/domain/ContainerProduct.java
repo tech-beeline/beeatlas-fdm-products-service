@@ -51,6 +51,9 @@ public class ContainerProduct {
     @Column(name = "deleted_date")
     private Date deletedDate;
 
+    @Column(name = "source_metric")
+    private String sourceMetric;
+
     @OneToMany(mappedBy = "containerProduct", fetch = FetchType.LAZY)
     private List<Interface> interfaces;
 }

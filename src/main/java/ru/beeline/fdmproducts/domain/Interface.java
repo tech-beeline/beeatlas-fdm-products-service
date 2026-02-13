@@ -63,6 +63,9 @@ public class Interface {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
+    @Column(name = "source_metric")
+    private String sourceMetric;
+
     @OneToMany(mappedBy = "connectedInterface", fetch = FetchType.LAZY)
     private List<DiscoveredInterface> discoveredInterfaces;
 

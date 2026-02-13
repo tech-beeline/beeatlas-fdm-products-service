@@ -63,8 +63,8 @@ public class Product {
     @Column(name = "upload_date ")
     private LocalDateTime uploadDate ;
 
-    @Column(name = "source_metric")          // <-- новое поле
-    private String sourceMetric;             // (тип String, при необходимости поменяйте)
+    @Column(name = "source_metric")          
+    private String sourceMetric;             
 
     @JsonManagedReference
     @OneToMany(mappedBy = "product")

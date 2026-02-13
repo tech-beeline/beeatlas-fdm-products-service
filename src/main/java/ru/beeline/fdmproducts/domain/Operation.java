@@ -55,4 +55,7 @@ public class Operation {
 
     @Column(name = "tc_id")
     private Integer tcId;
+
+    @Column(name = "is_deleted_tc")
+    private Boolean isDeletedTc;
 }

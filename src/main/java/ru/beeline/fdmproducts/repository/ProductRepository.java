@@ -58,4 +58,5 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
             + "WHERE o.id = :id", nativeQuery = true)
     Optional<Product> findProductByOperationID(@Param("id") Integer id);
 
+    List<Product> findAllBySourceMetricIsNotNull();
 }

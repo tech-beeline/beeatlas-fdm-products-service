@@ -39,6 +39,8 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     void markAllContainersAsDeleted(@Param("productId") Integer productId,
                                     @Param("deletedDate") Date deletedDate);
 
+    List<ContainerProduct> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
     List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
                                                                            List<String> containerName);
 }

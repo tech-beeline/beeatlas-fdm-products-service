@@ -1819,5 +1819,12 @@ public class ProductService {
         }
         return product;
     }
+
+    public void processOperation(Integer id, String changeType) {
+        switch (changeType) {
+            case "DELETE" -> operationRepository.markAsDeleted(id);
+            case "UPDATE" -> operationRepository.markAsUpdated(id);
+        }
+    }
 }
 

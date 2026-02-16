@@ -54,7 +54,7 @@ public class SourceMetricService {
     }
 
     public void updateSourceMetric(String entity, Long id, String sourceMetric) {
-        if (entity == null || entity.isBlank() || id == null) {
+        if (entity == null || entity.isBlank() || id == null || sourceMetric == null || sourceMetric.isEmpty()) {
             throw new IllegalArgumentException("Missing required parameters");
         }
 

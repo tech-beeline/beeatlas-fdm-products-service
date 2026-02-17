@@ -33,6 +33,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
             } else if (request.getRequestURI().contains("/tech")
                     || request.getRequestURI().contains("/api/v1/operation")
                     || request.getRequestURI().contains("/actuator")
+                    || request.getRequestURI().contains("/favicon.ico")
                     || request.getRequestURI().contains("/swagger")
                     || request.getRequestURI().contains("/error")
                     || request.getRequestURI().contains("/api-docs")

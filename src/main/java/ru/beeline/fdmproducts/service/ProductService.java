@@ -8,15 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmproducts.dto.TcDTO;
-import ru.beeline.fdmproducts.dto.UserInfoDTO;
-import ru.beeline.fdmproducts.dto.UserProfileDTO;
-import ru.beeline.fdmproducts.dto.UserProfileShortDTO;
-import ru.beeline.fdmproducts.dto.ProductInfluenceDTO;
-import ru.beeline.fdmproducts.dto.GetProductTechDto;
-import ru.beeline.fdmproducts.dto.GetProductsByIdsDTO;
-import ru.beeline.fdmproducts.dto.GetProductsDTO;
-import ru.beeline.fdmproducts.dto.ProductPutDto;
 import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
@@ -1313,6 +1304,7 @@ public class ProductService {
     }
 
     public List<ProductMapicInterfaceDTO> getProductsFromMapic(String cmdb, Boolean showHidden) {
+        List<ProductMapicInterfaceDTO> result = new ArrayList<>();
         Product product = productRepository.findByAliasCaseInsensitive(cmdb);
         if (product == null) {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
@@ -1344,30 +1336,32 @@ public class ProductService {
                                                                           Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId,
                                                                           Map<Integer, Operation> operationsById) {
         return discoveredInterfaces.stream().map(discoveredInterface -> {
-            ProductMapicInterfaceDTO dto = InterfaceMapper.createProductMapicInterface(discoveredInterface);
-            List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
-                    discoveredInterface.getId(), Collections.emptyList());
-            if (interfaceDiscoveredOperations != null && !interfaceDiscoveredOperations.isEmpty()) {
-                dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
-            }
-            List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
-                    .map(discoveredOperation -> {
-                        log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
-                        Operation operation = null;
-                        if (discoveredOperation.getConnectionOperationId() != null) {
-                            operation = operationsById.get(discoveredOperation.getConnectionOperationId());
-                            if (operation != null) {
-                                log.info("operationId = {}", operation.getId());
-                            }
-                        }
-                        return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
-                    })
-                    .collect(Collectors.toList());
-            dto.setOperations(operationDTOs);
-            dto.setConnectInterface(InterfaceMapper.createMapicInterfaceDTO(discoveredInterface,
-                    discoveredInterface.getConnectedInterface()));
-            return dto;
-        }).collect(Collectors.toList());
+                    ProductMapicInterfaceDTO dto = InterfaceMapper.createProductMapicInterface(discoveredInterface);
+                    List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
+                            discoveredInterface.getId(), Collections.emptyList());
+                    if (interfaceDiscoveredOperations != null && !interfaceDiscoveredOperations.isEmpty()) {
+                        dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
+                    }
+                    List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
+                            .map(discoveredOperation -> {
+                                log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
+                                Operation operation = null;
+                                if (discoveredOperation.getConnectionOperationId() != null) {
+                                    operation = operationsById.get(discoveredOperation.getConnectionOperationId());
+                                    if (operation != null) {
+                                        log.info("operationId = {}", operation.getId());
+                                    }
+                                }
+                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                            })
+                            .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
+                            .collect(Collectors.toList());
+                    dto.setOperations(operationDTOs);
+                    dto.setConnectInterface(InterfaceMapper.createMapicInterfaceDTO(discoveredInterface,
+                            discoveredInterface.getConnectedInterface()));
+                    return dto;
+                }).sorted(Comparator.comparing(ProductMapicInterfaceDTO::getCreateDate).reversed())
+                .collect(Collectors.toList());
     }
 
     public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb) {

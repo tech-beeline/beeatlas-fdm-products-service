@@ -1,0 +1,85 @@
+
+services:
+  products-service-postgres:
+    image: postgres:15-alpine
+    container_name: products-service-postgres
+    environment:
+      POSTGRES_DB: ${PRODUCTS_POSTGRES_DB:-products_service}
+      POSTGRES_USER: ${PRODUCTS_POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${PRODUCTS_POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "${PRODUCTS_SERVICE_POSTGRES_NODEPORT:-5432}:5432"
+    volumes:
+      - products-service-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PRODUCTS_POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - beeatlas-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    user: "rabbitmq:rabbitmq"
+    restart: unless-stopped
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+      RABBITMQ_ERLANG_COOKIE: ${RABBITMQ_ERLANG_COOKIE:-secret-cookie-for-dev}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - beeatlas-network
+
+  products-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: fdm-products-app
+    depends_on:
+      products-service-postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy   # ← ждать готовности RabbitMQ
+    environment:
+      SPRING_RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      SPRING_RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER:-guest}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD:-guest}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${PRODUCTS_POSTGRES_HOST:-products-postgres}:5432/${PRODUCTS_POSTGRES_DB:-fdm_products}
+      SPRING_DATASOURCE_USERNAME: ${PRODUCTS_POSTGRES_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${PRODUCTS_POSTGRES_PASSWORD:-postgres}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: none
+      SPRING_JPA_PROPERTIES_HIBERNATE_DEFAULT_SCHEMA: users
+      SPRING_FLYWAY_DEFAULT_SCHEMA: users
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_CLEAN_DISABLED: "true"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    ports:
+      - "${PRODUCTS_SERVICE_PORT:-8081}:8080"
+    networks:
+      - beeatlas-network
+    restart: unless-stopped
+
+networks:
+  beeatlas-network:
+    driver: bridge
+
+volumes:
+  products-service-postgres:
+  rabbitmq_data:

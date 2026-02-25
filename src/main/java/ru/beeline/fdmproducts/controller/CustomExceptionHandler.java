@@ -49,7 +49,7 @@ public class CustomExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleException(IllegalArgumentException e) {
         log.error(e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("400 Bad Request : " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Неверные входные данные");
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -68,7 +68,7 @@ public class CustomExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<String> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        return ResponseEntity.badRequest().body("Request body is missing or malformed");
+        return ResponseEntity.badRequest().body("Неверные входные данные");
     }
 
     @ExceptionHandler(DatabaseConnectionException.class)

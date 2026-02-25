@@ -35,6 +35,6 @@ public class SourceMetricController {
             @RequestBody SourceMetricRequestDto body) {
 
         sourceMetricService.updateSourceMetric(entity, id, body.getSourceMetric());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 }

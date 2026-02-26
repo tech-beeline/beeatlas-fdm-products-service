@@ -30,8 +30,8 @@ public class SourceMetricController {
 
     @PutMapping("/source-metric")
     public ResponseEntity<Void> updateSourceMetric(
-            @RequestParam(name = "entity") String entity,
-            @RequestParam(name = "id") Long id,
+            @RequestParam(name = "entity", required = false) String entity,
+            @RequestParam(name = "id", required = false) Long id,
             @RequestBody SourceMetricRequestDto body) {
 
         sourceMetricService.updateSourceMetric(entity, id, body.getSourceMetric());

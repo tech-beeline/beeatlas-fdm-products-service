@@ -49,6 +49,7 @@ public class HeaderInterceptor implements HandlerInterceptor {
                     || request.getRequestURI().contains("/api/v1/mapic")
                     || request.getRequestURI().contains("/influence")
                     || request.getRequestURI().contains("/tc-implementation")
+                    || (request.getRequestURI().contains("/operation/tech-capability/") && request.getRequestURI().contains("/tree"))
                     || request.getRequestURI().contains("/source-metric")
                     || request.getRequestURI().contains("/api/v1/service")) {
                 return true;

@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationSearchDTO;
+import ru.beeline.fdmproducts.dto.ProductInfoDTOTree;
 import ru.beeline.fdmproducts.service.SearchService;
 
 import java.util.List;
@@ -32,5 +33,11 @@ public class SearchController {
     @ApiOperation(value = "Список всех методов в которых реализованна ТС")
     public List<ArchOperationDTO> searchOperations(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(searchService.getOperationByTc(id)).getBody();
+    }
+
+    @GetMapping("/operation/tech-capability/{id}/tree")
+    @ApiOperation(value = "Список всех  методы и их родительские элементы, реализовывающие ТС в виде дерева")
+    public List<ProductInfoDTOTree> searchOperationsTree(@PathVariable Integer id) {
+        return ResponseEntity.status(HttpStatus.OK).body(searchService.getOperationByTcTree(id)).getBody();
     }
 }

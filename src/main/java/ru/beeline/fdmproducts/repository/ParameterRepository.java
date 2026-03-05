@@ -24,6 +24,8 @@ public interface ParameterRepository extends JpaRepository<Parameter, Integer> {
 
     List<Parameter> findByOperationIdIn(List<Integer> operationIds);
 
+    List<Parameter> findAllByOperationIdIn(List<Integer> operationIds);
+
     List<Parameter> findByOperationIdInAndDeletedDateIsNull(List<Integer> operationIds);
 
     @Modifying

@@ -12,5 +12,8 @@ import java.util.List;
 
 @Repository
 public interface DiscoveredParameterRepository extends JpaRepository<DiscoveredParameter, Integer> {
+
     List<DiscoveredParameter> findByDiscoveredOperationIdAndDeletedDateIsNull(Integer operationId);
+
+    List<DiscoveredParameter> findAllByDiscoveredOperationIdIn(List<Integer> operationId);
 }

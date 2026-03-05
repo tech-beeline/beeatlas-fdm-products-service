@@ -1372,27 +1372,36 @@ public class ProductService {
         List<ProductInterfaceDTO> result = new ArrayList<>();
         List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
         if (!containerProducts.isEmpty()) {
-            List<Integer> containerIds = containerProducts.stream().map(ContainerProduct::getId).toList();
-            List<Interface> interfaces = interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(containerIds);
+            List<Interface> interfaces = containerProducts.stream().flatMap(cp -> cp.getInterfaces().stream())
+                    .filter(iface -> iface.getDeletedDate() == null)
+                    .toList();
             if (!interfaces.isEmpty()) {
-                for (Interface interfaceObj : interfaces) {
+                List<Integer> interfaceIds = interfaces.stream().map(Interface::getId).toList();
+                List<Interface> withDiscovered = interfaceRepository.findAllByIdIn(interfaceIds);
+                List<DiscoveredInterface> allDdInterfaces = discoveredInterfaceRepository.findAllByConnectionInterfaceIdIn(
+                        interfaceIds);
+                Map<Integer, List<DiscoveredInterface>> discoveredInterfaceMap = getDiscoveredInterfaceMap(allDdInterfaces);
+                List<Operation> allOperations = operationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(
+                        interfaceIds);
+                Map<Integer, List<Operation>> operatioMap = getOperatioMap(allOperations);
+                List<Integer> operationIds = allOperations.stream().map(Operation::getId).toList();
+                List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByConnectionOperationIdIn(operationIds);
+                Map<Integer, List<DiscoveredOperation>> discoveredOperationMap = getDiscoveredOperationMap(discoveredOperations);
+                for (Interface interfaceObj : withDiscovered) {
                     ProductInterfaceDTO productInterfaceDTO = InterfaceMapper.createProductInterface(interfaceObj);
-                    List<DiscoveredInterface> dInterfaces = discoveredInterfaceRepository.findAllByConnectionInterfaceId(
-                            interfaceObj.getId());
-                    if (!dInterfaces.isEmpty()) {
+                    List<DiscoveredInterface> dInterfaces = discoveredInterfaceMap.get(interfaceObj.getId());
+                    if (dInterfaces != null && !dInterfaces.isEmpty()) {
                         List<MapicInterfaceDTO> mapicInterfaceDTOS = new ArrayList<>();
                         dInterfaces.forEach(discoveredInterface -> mapicInterfaceDTOS.add(InterfaceMapper.createMapicInterfaceDTO(
                                 discoveredInterface)));
                         productInterfaceDTO.setMapicInterfaces(mapicInterfaceDTOS);
                     }
-                    List<Operation> operations = operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(
-                            interfaceObj.getId());
-                    if (!operations.isEmpty()) {
+                    List<Operation> operations = operatioMap.get(interfaceObj.getId());
+                    if (operations != null && !operations.isEmpty()) {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
                             operationDTOS.add(operationMapper.createOperationDTO(operation,
-                                    discoveredOperationRepository.findAllByConnectionOperationId(
-                                            operation.getId())));
+                                    discoveredOperationMap.get(operation.getId())));
                         }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }
@@ -1401,6 +1410,30 @@ public class ProductService {
             }
         }
         return result;
+    }
+
+    private Map<Integer, List<DiscoveredInterface>> getDiscoveredInterfaceMap(List<DiscoveredInterface> allDdInterfaces) {
+        return allDdInterfaces.stream()
+                .collect(Collectors.groupingBy(
+                        DiscoveredInterface::getConnectionInterfaceId,
+                        Collectors.toList()
+                ));
+    }
+
+    private Map<Integer, List<DiscoveredOperation>> getDiscoveredOperationMap(List<DiscoveredOperation> discoveredOperations) {
+        return discoveredOperations.stream()
+                .collect(Collectors.groupingBy(
+                        DiscoveredOperation::getConnectionOperationId,
+                        Collectors.toList()
+                ));
+    }
+
+    private Map<Integer, List<Operation>> getOperatioMap(List<Operation> allOperations) {
+        return allOperations.stream()
+                .collect(Collectors.groupingBy(
+                        Operation::getInterfaceId,
+                        Collectors.toList()
+                ));
     }
 
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb, Boolean showHidden) {

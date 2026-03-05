@@ -307,4 +307,11 @@ public class ProductController {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
+    @DeleteMapping("product/{id}")
+    @ApiOperation(value = "Удаление продукта и его связей.")
+    public ResponseEntity deleteProduct(@PathVariable Integer id,HttpServletRequest request) {
+        productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
 }

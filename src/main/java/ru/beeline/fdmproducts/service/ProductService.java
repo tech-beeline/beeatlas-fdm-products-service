@@ -64,6 +64,8 @@ public class ProductService {
     private final LocalAcObjectRepository localAcObjectRepository;
     private final LocalAcObjectDetailRepository localAcObjectDetailRepository;
     private final ProductAvailabilityRepository productAvailabilityRepository;
+    private final DiscoveredParameterRepository discoveredParameterRepository;
+    private final LocalAssessmentRepository localAssessmentRepository;
 
 
     public ProductService(ContainerMapper containerMapper,
@@ -93,7 +95,7 @@ public class ProductService {
                           PatternsCheckRepository patternsCheckRepository,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
                           DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient, LocalAcObjectRepository localAcObjectRepository, LocalAcObjectDetailRepository localAcObjectDetailRepository,
-                          ProductAvailabilityRepository productAvailabilityRepository) {
+                          ProductAvailabilityRepository productAvailabilityRepository, DiscoveredParameterRepository discoveredParameterRepository, LocalAssessmentRepository localAssessmentRepository) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -125,6 +127,8 @@ public class ProductService {
         this.localAcObjectRepository = localAcObjectRepository;
         this.localAcObjectDetailRepository = localAcObjectDetailRepository;
         this.productAvailabilityRepository = productAvailabilityRepository;
+        this.discoveredParameterRepository = discoveredParameterRepository;
+        this.localAssessmentRepository = localAssessmentRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -1851,6 +1855,89 @@ public class ProductService {
         switch (changeType) {
             case "DELETE" -> operationRepository.markAsDeleted(id);
             case "UPDATE" -> operationRepository.markAsUpdated(id);
+        }
+    }
+
+    public void deleteProduct(Integer id, String userRoles) {
+        validateRoles(userRoles);
+        Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(
+                "Запись в таблице Product с id= " + id + " не найдена."));
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductId(id);
+        List<Interface> allInterfaces = containerProducts.stream().flatMap(container -> {
+            List<Interface> ifaceList = container.getInterfaces();
+            return ifaceList != null ? ifaceList.stream() : Stream.empty();
+        }).toList();
+        List<Integer> interfaceIds = allInterfaces.stream().map(Interface::getId).toList();
+        List<Operation> allOperations = operationRepository.findAllByInterfaceIdIn(interfaceIds);
+        List<Integer> operationIds = allOperations.stream().map(Operation::getId).toList();
+        deleteLocalAssessment(product);
+        deleteUserProduct(id);
+        if (!operationIds.isEmpty()) {
+            List<DiscoveredParameter> discoveredParameters =
+                    discoveredParameterRepository.findAllByDiscoveredOperationIdIn(operationIds);
+            if (!discoveredParameters.isEmpty()) {
+                discoveredParameterRepository.deleteAll(discoveredParameters);
+            }
+        }
+        if (!operationIds.isEmpty()) {
+            List<DiscoveredOperation> discoveredOperations =
+                    discoveredOperationRepository.findAllByConnectionOperationIdIn(operationIds);
+            if (!discoveredOperations.isEmpty()) {
+                discoveredOperationRepository.deleteAll(discoveredOperations);
+            }
+        }
+        if (!interfaceIds.isEmpty()) {
+            List<DiscoveredInterface> discoveredInterfaces =
+                    discoveredInterfaceRepository.findAllByConnectionInterfaceIdIn(interfaceIds);
+            if (!discoveredInterfaces.isEmpty()) {
+                discoveredInterfaceRepository.deleteAll(discoveredInterfaces);
+            }
+        }
+        if (!operationIds.isEmpty()) {
+            List<Sla> slas = slaRepository.findAllByOperationIdIn(operationIds);
+            if (!slas.isEmpty()) {
+                slaRepository.deleteAll(slas);
+            }
+            List<Parameter> parameters = parameterRepository.findAllByOperationIdIn(operationIds);
+            if (!parameters.isEmpty()) {
+                parameterRepository.deleteAll(parameters);
+            }
+        }
+        if (!allOperations.isEmpty()) {
+            operationRepository.deleteAll(allOperations);
+        }
+        if (!allInterfaces.isEmpty()) {
+            interfaceRepository.deleteAll(allInterfaces);
+        }
+        if (!containerProducts.isEmpty()) {
+            containerRepository.deleteAll(containerProducts);
+        }
+        productRepository.delete(product);
+    }
+
+    private void deleteLocalAssessment(Product product) {
+        List<LocalAssessment> localAssessments = localAssessmentRepository.findAllByProduct(product);
+        if (!localAssessments.isEmpty()) {
+            localAssessmentRepository.deleteAll(localAssessments);
+        }
+    }
+
+    private void deleteUserProduct(Integer id) {
+        List<UserProduct> userProducts = userProductRepository.findAllByProductId(id);
+        if (!userProducts.isEmpty()) {
+            userProductRepository.deleteAll(userProducts);
+        }
+    }
+
+    private void validateRoles(String userRoles) {
+        if (userRoles == null || userRoles.isEmpty()) {
+            throw new EntityNotFoundException("Заголовок роли не должен быть пустым.");
+        }
+        List<String> roles = Arrays.stream(userRoles.split(","))
+                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
+                .toList();
+        if (!roles.contains("ADMINISTRATOR")) {
+            throw new ForbiddenException("403 Forbidden.");
         }
     }
 }

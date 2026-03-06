@@ -18,10 +18,12 @@ import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
+import ru.beeline.fdmproducts.exception.UnauthorizedException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.lang.IllegalArgumentException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -1882,8 +1884,9 @@ public class ProductService {
                 log.info("Удаление discovered_interface для интерфейсов: {} шт", interfaceIds.size());
                 List<Integer> discoveredInterfaceIds = discoveredInterfaceRepository.findIdsByInterfaceIds(interfaceIds);
                 List<Integer> operationIds = operationRepository.findIdsByInterfaceIds(interfaceIds);
+                List<Integer> discoveredOperationIds = new ArrayList<>();
                 if (!discoveredInterfaceIds.isEmpty()) {
-                    List<Integer> discoveredOperationIds = discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds);
+                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds));
                     discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByOperationIds(operationIds));
                     if (!discoveredOperationIds.isEmpty()) {
                         discoveredParameterRepository.deleteByDiscoveredOperationIdIn(discoveredOperationIds);
@@ -1916,9 +1919,8 @@ public class ProductService {
             log.debug("local_assessment не найдены для продукта id: {}", productId);
             return;
         }
-        log.info("Удалено local_assessment: {} записей", localAssessmentIds.size());
         List<Integer> localAssessmentCheckIds = localAssessmentCheckRepository.findByAssessmentIds(localAssessmentIds);
-        List<Integer> localAcObjectIds = localAcObjectRepository.findAllByLocalAssessmentCheckIn(localAssessmentIds);
+        List<Integer> localAcObjectIds = localAcObjectRepository.findAllByLocalAssessmentCheckIn(localAssessmentCheckIds);
         if (!localAcObjectIds.isEmpty()) {
             localAcObjectDetailRepository.deleteByLacoIdIn(localAcObjectIds);
             log.info("Удалено local_ac_object_detail: {} записей", localAcObjectIds.size());
@@ -1934,7 +1936,7 @@ public class ProductService {
 
     private void validateRoles(String userRoles) {
         if (userRoles == null || userRoles.isEmpty()) {
-            throw new EntityNotFoundException("Заголовок роли не должен быть пустым.");
+            throw new UnauthorizedException("Заголовок роли не должен быть пустым.");
         }
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))

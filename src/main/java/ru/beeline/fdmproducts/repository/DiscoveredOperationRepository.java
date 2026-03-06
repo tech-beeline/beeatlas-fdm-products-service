@@ -73,5 +73,15 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             "ORDER BY d.name LIMIT ?3", nativeQuery = true)
     List<DiscoveredOperation> findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(
             String name, String type, Integer size);
+
+    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.interfaceId IN :discoveredInterfaceIds")
+    List<Integer> findIdsByDiscoveredInterfaceIds(@Param("discoveredInterfaceIds") List<Integer> discoveredInterfaceIds);
+
+    @Modifying
+    @Query("DELETE FROM DiscoveredOperation do WHERE do.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
+
+    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds")
+    List<Integer> findIdsByOperationIds(@Param("operationIds") List<Integer> operationIds);
 }
 

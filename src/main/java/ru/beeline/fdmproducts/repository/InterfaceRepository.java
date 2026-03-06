@@ -49,4 +49,7 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
             "AND i.deletedDate IS NULL " +
             "AND (o.deletedDate IS NULL)")
     List<Interface> findByContainerIdInWithOperationsNotDeleted(@Param("containerIds") List<Integer> containerIds);
+
+    @EntityGraph(attributePaths = {"discoveredInterfaces"})
+    List<Interface> findAllByIdIn(List<Integer> ids);
 }

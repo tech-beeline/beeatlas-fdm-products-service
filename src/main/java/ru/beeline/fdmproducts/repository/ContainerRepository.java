@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,8 +18,10 @@ import java.util.List;
 @Repository
 public interface ContainerRepository extends JpaRepository<ContainerProduct, Integer> {
 
+    @EntityGraph(attributePaths = {"interfaces"})
     List<ContainerProduct> findAllByProductId(Integer productId);
 
+    @EntityGraph(attributePaths = {"interfaces"})
     List<ContainerProduct> findAllByProductIdAndDeletedDateIsNull(Integer productId);
 
     List<ContainerProduct> findAllByCodeInAndProductId(List<String> codes, Integer productId);

@@ -12,6 +12,8 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
+import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
@@ -78,5 +80,10 @@ public class CustomExceptionHandler {
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
                 .body(e.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getRawStatusCode()).body(new ErrorResponse(ex.getReason()));
     }
 }

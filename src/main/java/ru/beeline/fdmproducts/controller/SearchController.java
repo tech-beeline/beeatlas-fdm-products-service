@@ -5,12 +5,14 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationSearchDTO;
 import ru.beeline.fdmproducts.dto.ProductInfoDTOTree;
 import ru.beeline.fdmproducts.service.SearchService;
-
+import javax.validation.constraints.Positive;
 import java.util.List;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")
@@ -36,8 +38,16 @@ public class SearchController {
     }
 
     @GetMapping("/operation/tech-capability/{id}/tree")
-    @ApiOperation(value = "Список всех  методы и их родительские элементы, реализовывающие ТС в виде дерева")
-    public List<ProductInfoDTOTree> searchOperationsTree(@PathVariable Integer id) {
-        return ResponseEntity.status(HttpStatus.OK).body(searchService.getOperationByTcTree(id)).getBody();
+    @ApiOperation(value = "Список всех методы и их родительские элементы, реализовывающие ТС в виде дерева")
+    public ResponseEntity<List<ProductInfoDTOTree>> searchOperationsTree(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.valueOf(id);
+            if (idInt <= 0) {
+                throw new IllegalArgumentException("ID должен быть положительным");
+            }
+            return ResponseEntity.ok(searchService.getOperationByTcTree(idInt));
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID должен быть целым числом");
+        }
     }
 }

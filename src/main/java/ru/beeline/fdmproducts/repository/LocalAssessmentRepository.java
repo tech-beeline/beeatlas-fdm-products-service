@@ -24,6 +24,7 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
     Optional<LocalAssessment> findBySourceIdAndProductIdAndSourceTypeId(Integer sourceId, Integer productId, Integer SourceTypeId);
 
     Optional<LocalAssessment> findFirstBySourceTypeIdAndProductIdOrderByCreatedTimeDesc(Integer sourceId, Integer productId);
+    Optional<LocalAssessment> findFirstByProductIdOrderByCreatedTimeDesc(Integer productId);
 
     List<LocalAssessment> findAllByProduct(Product productId);
 }

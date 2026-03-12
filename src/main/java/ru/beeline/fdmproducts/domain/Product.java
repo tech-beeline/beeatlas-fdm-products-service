@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
@@ -74,5 +75,10 @@ public class Product {
     @OneToMany(mappedBy = "product")
     @JsonManagedReference
     private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "domain_id")
+    @JsonBackReference
+    private ProductDomain domain;
 }
 

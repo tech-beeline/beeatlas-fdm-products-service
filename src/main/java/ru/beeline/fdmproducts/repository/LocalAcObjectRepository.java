@@ -14,4 +14,6 @@ import java.util.List;
 public interface LocalAcObjectRepository extends JpaRepository<LocalAcObject, Integer> {
 
     List<LocalAcObject> findAllByLacId(Integer lacId);
+    Integer countByLacId(Integer lacId);
+    Integer countByLacIdAndIsCheckTrue(Integer lacId);
 }

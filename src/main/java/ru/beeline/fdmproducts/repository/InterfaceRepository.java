@@ -52,4 +52,11 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
 
     @EntityGraph(attributePaths = {"discoveredInterfaces"})
     List<Interface> findAllByIdIn(List<Integer> ids);
+
+    @Query("SELECT i.id FROM Interface i WHERE i.containerId IN :containerIds")
+    List<Integer> findIdsByContainerIds(@Param("containerIds") List<Integer> containerIds);
+
+    @Modifying
+    @Query("DELETE FROM Interface i WHERE i.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
 }

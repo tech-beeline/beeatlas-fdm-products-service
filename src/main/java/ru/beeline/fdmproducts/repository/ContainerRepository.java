@@ -51,4 +51,11 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
 
     List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
                                                                            List<String> containerName);
+
+    @Query("SELECT cp.id FROM ContainerProduct cp WHERE cp.product.id = :productId")
+    List<Integer> findIdsByProductId(@Param("productId") Integer productId);
+
+    @Modifying
+    @Query("DELETE FROM ContainerProduct cp WHERE cp.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
 }

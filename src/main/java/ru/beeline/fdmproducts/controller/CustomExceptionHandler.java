@@ -17,7 +17,10 @@ import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
+import ru.beeline.fdmproducts.exception.UnauthorizedException;
 import ru.beeline.fdmproducts.exception.ValidationException;
+
+import java.lang.IllegalArgumentException;
 
 @ControllerAdvice
 @Slf4j
@@ -52,6 +55,12 @@ public class CustomExceptionHandler {
     public ResponseEntity<Object> handleException(IllegalArgumentException e) {
         log.error(e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Неверные входные данные");
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Object> handleException(UnauthorizedException e) {
+        log.error(e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 
     @ExceptionHandler(EntityNotFoundException.class)

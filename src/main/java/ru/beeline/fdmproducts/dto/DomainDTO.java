@@ -10,9 +10,9 @@ import java.util.List;
 @Builder
 @ToString
 public class DomainDTO {
-    private Long id;
+    private Integer id;
     private String name;
     private String alias;
-    private Long ownerId;
+    private Integer ownerId;
     private List<FitnessFunctionProductDTO> product;
 }

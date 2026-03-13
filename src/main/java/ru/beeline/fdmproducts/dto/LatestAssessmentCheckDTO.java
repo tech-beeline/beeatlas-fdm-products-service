@@ -7,9 +7,9 @@ import lombok.*;
 @AllArgsConstructor
 @Builder
 @ToString
-public class FitnessFunctionShortDTO {
-    private Integer id;
+public class LatestAssessmentCheckDTO {
+    private Integer productId;
+    private Integer lacId;
     private Boolean isCheck;
-    private Integer countAll;
-    private Integer countSuccess;
+    private Integer fitnessFunctionId;
 }

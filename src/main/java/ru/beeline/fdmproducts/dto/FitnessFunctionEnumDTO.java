@@ -8,7 +8,7 @@ import lombok.*;
 @Builder
 @ToString
 public class FitnessFunctionEnumDTO {
-    private Long id;
+    private Integer id;
     private String code;
     private String description;
 }

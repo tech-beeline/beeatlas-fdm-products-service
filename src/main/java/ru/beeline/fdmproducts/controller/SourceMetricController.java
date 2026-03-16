@@ -8,7 +8,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.SourceMetricDto;
 import ru.beeline.fdmproducts.service.SourceMetricService;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1")
 @Api(value = "Source Metric API", tags = "source-metric")

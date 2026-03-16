@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.ConnectionRequestDTO;
 import ru.beeline.fdmproducts.service.InterfaceService;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1/connection/interface")
 @Api(value = "Interface API", tags = "interface")

@@ -26,7 +26,6 @@ import java.util.Map;
 import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
 import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1")
 @Api(value = "Product API", tags = "product")

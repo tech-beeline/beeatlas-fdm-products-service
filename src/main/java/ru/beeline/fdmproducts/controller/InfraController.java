@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.InfraRequestDTO;
 import ru.beeline.fdmproducts.service.InfraService;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1/infra")
 @Api(value = "Infra API", tags = "infra")

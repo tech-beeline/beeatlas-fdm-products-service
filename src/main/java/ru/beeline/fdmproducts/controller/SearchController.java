@@ -12,7 +12,6 @@ import ru.beeline.fdmproducts.service.SearchService;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1")
 @Api(value = "Search API", tags = "search")

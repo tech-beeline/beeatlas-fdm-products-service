@@ -16,7 +16,6 @@ import ru.beeline.fdmproducts.service.MapicService;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1/mapic")
 @Api(value = "Mapic API", tags = "mapic")

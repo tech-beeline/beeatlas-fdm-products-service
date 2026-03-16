@@ -16,7 +16,6 @@ import ru.beeline.fdmproducts.service.DiscoveredInterfaceService;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1")
 @Api(value = "Discovered Interface API", tags = "discoveredInterface")

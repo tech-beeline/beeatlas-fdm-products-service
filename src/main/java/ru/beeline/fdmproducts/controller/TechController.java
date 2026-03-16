@@ -15,7 +15,6 @@ import ru.beeline.fdmproducts.service.TechService;
 
 import java.util.List;
 
-@CrossOrigin(origins = "*", allowedHeaders = "*")
 @RestController
 @RequestMapping("/api/v1/tech")
 @Api(value = "Product API", tags = "tech")

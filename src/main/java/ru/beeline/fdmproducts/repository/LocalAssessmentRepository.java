@@ -45,8 +45,8 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
             "FROM LocalAssessment la " +
             "JOIN la.checks lac " +
             "WHERE la.product.id IN :productIds " +
-            "  AND la.id = (" +
-            "      SELECT MAX(la2.id) " +
+            "  AND la.createdTime = (" +
+            "      SELECT MAX(la2.createdTime) " +
             "      FROM LocalAssessment la2 " +
             "      WHERE la2.product.id = la.product.id" +
             "  )")

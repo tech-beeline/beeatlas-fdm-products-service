@@ -5,14 +5,13 @@ import io.swagger.annotations.ApiOperation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationSearchDTO;
 import ru.beeline.fdmproducts.dto.ProductInfoDTOTree;
 import ru.beeline.fdmproducts.service.SearchService;
-import javax.validation.constraints.Positive;
+
 import java.util.List;
 
 @CrossOrigin(origins = "*", allowedHeaders = "*")

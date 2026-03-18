@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
+import ru.beeline.fdmproducts.annotation.CustomHeaders;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
@@ -308,9 +310,11 @@ public class ProductController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
+    @ApiErrorCodes({400, 401, 403, 404, 500})
+    @CustomHeaders
     @DeleteMapping("product/{id}")
     @ApiOperation(value = "Удаление продукта и его связей.")
-    public ResponseEntity deleteProduct(@PathVariable Integer id,HttpServletRequest request) {
+    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id,HttpServletRequest request) {
         productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
         return new ResponseEntity<>(HttpStatus.OK);
     }

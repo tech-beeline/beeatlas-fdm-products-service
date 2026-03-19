@@ -10,6 +10,7 @@ import io.swagger.annotations.ApiResponse;
 import io.swagger.annotations.ApiResponses;
 import io.swagger.v3.oas.annotations.Parameter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,9 @@ public class ProductController {
 
     @Autowired
     private InfraService infraService;
+
+    @Value("${app.force-app-delete}")
+    private boolean forceAppDelete;
 
     @GetMapping("/user/product")
     @ApiOperation(value = "Получить все продукты пользователя", response = List.class)
@@ -315,6 +319,9 @@ public class ProductController {
     @DeleteMapping("product/{id}")
     @ApiOperation(value = "Удаление продукта и его связей.")
     public ResponseEntity<Void> deleteProduct(@PathVariable Integer id,HttpServletRequest request) {
+        if (!forceAppDelete) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
         productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
         return new ResponseEntity<>(HttpStatus.OK);
     }

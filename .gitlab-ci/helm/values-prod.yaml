@@ -40,3 +40,6 @@ resources:
   requests:
     cpu: 250m
     memory: 1256Mi
+
+app:
+  force-app-delete: false

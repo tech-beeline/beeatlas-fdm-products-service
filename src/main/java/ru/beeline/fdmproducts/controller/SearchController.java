@@ -6,8 +6,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationSearchDTO;
+import ru.beeline.fdmproducts.dto.ProductInfoDTOTree;
 import ru.beeline.fdmproducts.service.SearchService;
 
 import java.util.List;
@@ -32,5 +34,19 @@ public class SearchController {
     @ApiOperation(value = "Список всех методов в которых реализованна ТС")
     public List<ArchOperationDTO> searchOperations(@PathVariable Integer id) {
         return ResponseEntity.status(HttpStatus.OK).body(searchService.getOperationByTc(id)).getBody();
+    }
+
+    @GetMapping("/operation/tech-capability/{id}/tree")
+    @ApiOperation(value = "Список всех методы и их родительские элементы, реализовывающие ТС в виде дерева")
+    public ResponseEntity<List<ProductInfoDTOTree>> searchOperationsTree(@PathVariable String id) {
+        try {
+            Integer idInt = Integer.valueOf(id);
+            if (idInt <= 0) {
+                throw new IllegalArgumentException("ID должен быть положительным");
+            }
+            return ResponseEntity.ok(searchService.getOperationByTcTree(idInt));
+        } catch (NumberFormatException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "ID должен быть целым числом");
+        }
     }
 }

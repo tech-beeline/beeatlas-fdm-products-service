@@ -18,7 +18,7 @@ env:
   OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/prod/fdm#opentelemetry"
   INTEGRATION_DASHBOARD_SCENARIOS_SERVER_URL: "vault:eafdmmart/data/prod/fdm#dashboardscenariosserver"
   JWKS: "vault:eafdmmart/data/prod/fdm#jwks"
-
+  APP_FORCE_APP_DELETE: false
 
 ingress:
   annotations:

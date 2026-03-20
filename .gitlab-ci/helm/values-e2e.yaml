@@ -18,6 +18,7 @@ env:
   OTEL_EXPORTER_OTLP_ENDPOINT: "vault:eafdmmart/data/test/e2e/fdm#opentelemetry"
   INTEGRATION_GRAPH_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#graphserverurl"
   INTEGRATION_DASHBOARD_SCENARIOS_SERVER_URL: "vault:eafdmmart/data/test/e2e/fdm#dashboardscenariosserver"
+  APP_FORCE_APP_DELETE: false
 
 
 podAnnotations:

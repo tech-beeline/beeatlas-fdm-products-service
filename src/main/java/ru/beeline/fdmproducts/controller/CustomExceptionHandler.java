@@ -12,10 +12,15 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.server.ResponseStatusException;
+import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
+import ru.beeline.fdmproducts.exception.UnauthorizedException;
 import ru.beeline.fdmproducts.exception.ValidationException;
+
+import java.lang.IllegalArgumentException;
 
 @ControllerAdvice
 @Slf4j
@@ -49,7 +54,13 @@ public class CustomExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Object> handleException(IllegalArgumentException e) {
         log.error(e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("400 Bad Request : " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<Object> handleException(UnauthorizedException e) {
+        log.error(e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
     }
 
     @ExceptionHandler(EntityNotFoundException.class)
@@ -68,7 +79,7 @@ public class CustomExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<String> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
-        return ResponseEntity.badRequest().body("Request body is missing or malformed");
+        return ResponseEntity.badRequest().body("Неверные входные данные");
     }
 
     @ExceptionHandler(DatabaseConnectionException.class)
@@ -78,5 +89,10 @@ public class CustomExceptionHandler {
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
                 .body(e.getMessage());
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ErrorResponse> handleResponseStatus(ResponseStatusException ex) {
+        return ResponseEntity.status(ex.getRawStatusCode()).body(new ErrorResponse(ex.getReason()));
     }
 }

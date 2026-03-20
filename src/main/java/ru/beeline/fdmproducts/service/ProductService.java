@@ -8,15 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.beeline.fdmproducts.dto.TcDTO;
-import ru.beeline.fdmproducts.dto.UserInfoDTO;
-import ru.beeline.fdmproducts.dto.UserProfileDTO;
-import ru.beeline.fdmproducts.dto.UserProfileShortDTO;
-import ru.beeline.fdmproducts.dto.ProductInfluenceDTO;
-import ru.beeline.fdmproducts.dto.GetProductTechDto;
-import ru.beeline.fdmproducts.dto.GetProductsByIdsDTO;
-import ru.beeline.fdmproducts.dto.GetProductsDTO;
-import ru.beeline.fdmproducts.dto.ProductPutDto;
 import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
@@ -27,10 +18,12 @@ import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
+import ru.beeline.fdmproducts.exception.UnauthorizedException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.lang.IllegalArgumentException;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -73,6 +66,9 @@ public class ProductService {
     private final LocalAcObjectRepository localAcObjectRepository;
     private final LocalAcObjectDetailRepository localAcObjectDetailRepository;
     private final ProductAvailabilityRepository productAvailabilityRepository;
+    private final DiscoveredParameterRepository discoveredParameterRepository;
+    private final LocalAssessmentRepository localAssessmentRepository;
+    private final LocalAssessmentCheckRepository localAssessmentCheckRepository;
 
 
     public ProductService(ContainerMapper containerMapper,
@@ -101,8 +97,14 @@ public class ProductService {
                           PatternsAssessmentRepository patternsAssessmentRepository,
                           PatternsCheckRepository patternsCheckRepository,
                           DiscoveredInterfaceRepository discoveredInterfaceRepository,
-                          DiscoveredOperationRepository discoveredOperationRepository, DashboardClient dashboardClient, LocalAcObjectRepository localAcObjectRepository, LocalAcObjectDetailRepository localAcObjectDetailRepository,
-                          ProductAvailabilityRepository productAvailabilityRepository) {
+                          DiscoveredOperationRepository discoveredOperationRepository,
+                          DashboardClient dashboardClient,
+                          LocalAcObjectRepository localAcObjectRepository,
+                          LocalAcObjectDetailRepository localAcObjectDetailRepository,
+                          ProductAvailabilityRepository productAvailabilityRepository,
+                          DiscoveredParameterRepository discoveredParameterRepository,
+                          LocalAssessmentRepository localAssessmentRepository,
+                          LocalAssessmentCheckRepository localAssessmentCheckRepository) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -134,6 +136,9 @@ public class ProductService {
         this.localAcObjectRepository = localAcObjectRepository;
         this.localAcObjectDetailRepository = localAcObjectDetailRepository;
         this.productAvailabilityRepository = productAvailabilityRepository;
+        this.discoveredParameterRepository = discoveredParameterRepository;
+        this.localAssessmentRepository = localAssessmentRepository;
+        this.localAssessmentCheckRepository = localAssessmentCheckRepository;
     }
 
     //кастыль на администратора, в хедеры вернул всепродукты
@@ -1313,6 +1318,7 @@ public class ProductService {
     }
 
     public List<ProductMapicInterfaceDTO> getProductsFromMapic(String cmdb, Boolean showHidden) {
+        List<ProductMapicInterfaceDTO> result = new ArrayList<>();
         Product product = productRepository.findByAliasCaseInsensitive(cmdb);
         if (product == null) {
             throw new EntityNotFoundException("Продукт с данным cmdb не найден.");
@@ -1344,30 +1350,32 @@ public class ProductService {
                                                                           Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId,
                                                                           Map<Integer, Operation> operationsById) {
         return discoveredInterfaces.stream().map(discoveredInterface -> {
-            ProductMapicInterfaceDTO dto = InterfaceMapper.createProductMapicInterface(discoveredInterface);
-            List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
-                    discoveredInterface.getId(), Collections.emptyList());
-            if (interfaceDiscoveredOperations != null && !interfaceDiscoveredOperations.isEmpty()) {
-                dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
-            }
-            List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
-                    .map(discoveredOperation -> {
-                        log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
-                        Operation operation = null;
-                        if (discoveredOperation.getConnectionOperationId() != null) {
-                            operation = operationsById.get(discoveredOperation.getConnectionOperationId());
-                            if (operation != null) {
-                                log.info("operationId = {}", operation.getId());
-                            }
-                        }
-                        return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
-                    })
-                    .collect(Collectors.toList());
-            dto.setOperations(operationDTOs);
-            dto.setConnectInterface(InterfaceMapper.createMapicInterfaceDTO(discoveredInterface,
-                    discoveredInterface.getConnectedInterface()));
-            return dto;
-        }).collect(Collectors.toList());
+                    ProductMapicInterfaceDTO dto = InterfaceMapper.createProductMapicInterface(discoveredInterface);
+                    List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
+                            discoveredInterface.getId(), Collections.emptyList());
+                    if (interfaceDiscoveredOperations != null && !interfaceDiscoveredOperations.isEmpty()) {
+                        dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
+                    }
+                    List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
+                            .map(discoveredOperation -> {
+                                log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
+                                Operation operation = null;
+                                if (discoveredOperation.getConnectionOperationId() != null) {
+                                    operation = operationsById.get(discoveredOperation.getConnectionOperationId());
+                                    if (operation != null) {
+                                        log.info("operationId = {}", operation.getId());
+                                    }
+                                }
+                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                            })
+                            .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
+                            .collect(Collectors.toList());
+                    dto.setOperations(operationDTOs);
+                    dto.setConnectInterface(InterfaceMapper.createMapicInterfaceDTO(discoveredInterface,
+                            discoveredInterface.getConnectedInterface()));
+                    return dto;
+                }).sorted(Comparator.comparing(ProductMapicInterfaceDTO::getCreateDate).reversed())
+                .collect(Collectors.toList());
     }
 
     public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb) {
@@ -1378,27 +1386,36 @@ public class ProductService {
         List<ProductInterfaceDTO> result = new ArrayList<>();
         List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
         if (!containerProducts.isEmpty()) {
-            List<Integer> containerIds = containerProducts.stream().map(ContainerProduct::getId).toList();
-            List<Interface> interfaces = interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(containerIds);
+            List<Interface> interfaces = containerProducts.stream().flatMap(cp -> cp.getInterfaces().stream())
+                    .filter(iface -> iface.getDeletedDate() == null)
+                    .toList();
             if (!interfaces.isEmpty()) {
-                for (Interface interfaceObj : interfaces) {
+                List<Integer> interfaceIds = interfaces.stream().map(Interface::getId).toList();
+                List<Interface> withDiscovered = interfaceRepository.findAllByIdIn(interfaceIds);
+                List<DiscoveredInterface> allDdInterfaces = discoveredInterfaceRepository.findAllByConnectionInterfaceIdIn(
+                        interfaceIds);
+                Map<Integer, List<DiscoveredInterface>> discoveredInterfaceMap = getDiscoveredInterfaceMap(allDdInterfaces);
+                List<Operation> allOperations = operationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(
+                        interfaceIds);
+                Map<Integer, List<Operation>> operatioMap = getOperatioMap(allOperations);
+                List<Integer> operationIds = allOperations.stream().map(Operation::getId).toList();
+                List<DiscoveredOperation> discoveredOperations = discoveredOperationRepository.findAllByConnectionOperationIdIn(operationIds);
+                Map<Integer, List<DiscoveredOperation>> discoveredOperationMap = getDiscoveredOperationMap(discoveredOperations);
+                for (Interface interfaceObj : withDiscovered) {
                     ProductInterfaceDTO productInterfaceDTO = InterfaceMapper.createProductInterface(interfaceObj);
-                    List<DiscoveredInterface> dInterfaces = discoveredInterfaceRepository.findAllByConnectionInterfaceId(
-                            interfaceObj.getId());
-                    if (!dInterfaces.isEmpty()) {
+                    List<DiscoveredInterface> dInterfaces = discoveredInterfaceMap.get(interfaceObj.getId());
+                    if (dInterfaces != null && !dInterfaces.isEmpty()) {
                         List<MapicInterfaceDTO> mapicInterfaceDTOS = new ArrayList<>();
                         dInterfaces.forEach(discoveredInterface -> mapicInterfaceDTOS.add(InterfaceMapper.createMapicInterfaceDTO(
                                 discoveredInterface)));
                         productInterfaceDTO.setMapicInterfaces(mapicInterfaceDTOS);
                     }
-                    List<Operation> operations = operationRepository.findAllByInterfaceIdAndDeletedDateIsNull(
-                            interfaceObj.getId());
-                    if (!operations.isEmpty()) {
+                    List<Operation> operations = operatioMap.get(interfaceObj.getId());
+                    if (operations != null && !operations.isEmpty()) {
                         List<OperationDTO> operationDTOS = new ArrayList<>();
                         for (Operation operation : operations) {
                             operationDTOS.add(operationMapper.createOperationDTO(operation,
-                                    discoveredOperationRepository.findAllByConnectionOperationId(
-                                            operation.getId())));
+                                    discoveredOperationMap.get(operation.getId())));
                         }
                         productInterfaceDTO.setOperations(operationDTOS);
                     }
@@ -1407,6 +1424,30 @@ public class ProductService {
             }
         }
         return result;
+    }
+
+    private Map<Integer, List<DiscoveredInterface>> getDiscoveredInterfaceMap(List<DiscoveredInterface> allDdInterfaces) {
+        return allDdInterfaces.stream()
+                .collect(Collectors.groupingBy(
+                        DiscoveredInterface::getConnectionInterfaceId,
+                        Collectors.toList()
+                ));
+    }
+
+    private Map<Integer, List<DiscoveredOperation>> getDiscoveredOperationMap(List<DiscoveredOperation> discoveredOperations) {
+        return discoveredOperations.stream()
+                .collect(Collectors.groupingBy(
+                        DiscoveredOperation::getConnectionOperationId,
+                        Collectors.toList()
+                ));
+    }
+
+    private Map<Integer, List<Operation>> getOperatioMap(List<Operation> allOperations) {
+        return allOperations.stream()
+                .collect(Collectors.groupingBy(
+                        Operation::getInterfaceId,
+                        Collectors.toList()
+                ));
     }
 
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb, Boolean showHidden) {
@@ -1826,5 +1867,82 @@ public class ProductService {
             case "UPDATE" -> operationRepository.markAsUpdated(id);
         }
     }
-}
 
+    public void deleteProduct(Integer id, String userRoles) {
+        validateRoles(userRoles);
+        if (!productRepository.existsById(id)) {
+            log.error("Продукт с id {} не найден", id);
+            throw new EntityNotFoundException("Запись в таблице Product с id= " + id + " не найдена.");
+        }
+        userProductRepository.deleteByProductId(id);
+        log.info("Удалены user_product для продукта id: {}", id);
+        List<Integer> containerIds = containerRepository.findIdsByProductId(id);
+        if (!containerIds.isEmpty()) {
+            log.info("Удалено container_product: {} записей", containerIds.size());
+            List<Integer> interfaceIds = interfaceRepository.findIdsByContainerIds(containerIds);
+            if (!interfaceIds.isEmpty()) {
+                log.info("Удаление discovered_interface для интерфейсов: {} шт", interfaceIds.size());
+                List<Integer> discoveredInterfaceIds = discoveredInterfaceRepository.findIdsByInterfaceIds(interfaceIds);
+                List<Integer> operationIds = operationRepository.findIdsByInterfaceIds(interfaceIds);
+                List<Integer> discoveredOperationIds = new ArrayList<>();
+                if (!discoveredInterfaceIds.isEmpty()) {
+                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds));
+                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByOperationIds(operationIds));
+                    if (!discoveredOperationIds.isEmpty()) {
+                        discoveredParameterRepository.deleteByDiscoveredOperationIdIn(discoveredOperationIds);
+                        discoveredOperationRepository.deleteByIdIn(discoveredOperationIds);
+                        log.info("Удалено discovered_operation: {} записей", discoveredOperationIds.size());
+                    }
+                    discoveredInterfaceRepository.deleteByIdIn(discoveredInterfaceIds);
+                    log.info("Удалено discovered_interface: {} записей", discoveredInterfaceIds.size());
+                }
+
+                if (!operationIds.isEmpty()) {
+                    slaRepository.deleteByOperationIdIn(operationIds);
+                    parameterRepository.deleteByOperationIdIn(operationIds);
+                    operationRepository.deleteByIdIn(operationIds);
+                }
+                interfaceRepository.deleteByIdIn(interfaceIds);
+            }
+            containerRepository.deleteByIdIn(containerIds);
+        }
+        deleteLocalAssessmentsByProductId(id);
+        techProductRepository.deleteByProductId(id);
+        log.info("Удалено tech_product для продукта id: {}", id);
+        productRepository.deleteById(id);
+        log.info("Продукт id: {} успешно удален", id);
+    }
+
+    private void deleteLocalAssessmentsByProductId(Integer productId) {
+        List<Integer> localAssessmentIds = localAssessmentRepository.findIdsByProductId(productId);
+        if (localAssessmentIds.isEmpty()) {
+            log.debug("local_assessment не найдены для продукта id: {}", productId);
+            return;
+        }
+        List<Integer> localAssessmentCheckIds = localAssessmentCheckRepository.findByAssessmentIds(localAssessmentIds);
+        List<Integer> localAcObjectIds = localAcObjectRepository.findAllByLocalAssessmentCheckIn(localAssessmentCheckIds);
+        if (!localAcObjectIds.isEmpty()) {
+            localAcObjectDetailRepository.deleteByLacoIdIn(localAcObjectIds);
+            log.info("Удалено local_ac_object_detail: {} записей", localAcObjectIds.size());
+        }
+        if (!localAssessmentCheckIds.isEmpty()) {
+            localAcObjectRepository.deleteByLacIdIn(localAssessmentCheckIds);
+            log.info("Удалено local_ac_object: {} записей", localAssessmentCheckIds.size());
+            localAssessmentCheckRepository.deleteByLocalAssessmentIdsIn(localAssessmentIds);
+            log.info("Удалено local_assessment_check: {} записей", localAssessmentCheckIds.size());
+        }
+        localAssessmentRepository.deleteByProductId(productId);
+    }
+
+    private void validateRoles(String userRoles) {
+        if (userRoles == null || userRoles.isEmpty()) {
+            throw new UnauthorizedException("Заголовок роли не должен быть пустым.");
+        }
+        List<String> roles = Arrays.stream(userRoles.split(","))
+                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
+                .toList();
+        if (!roles.contains("ADMINISTRATOR")) {
+            throw new ForbiddenException("403 Forbidden.");
+        }
+    }
+}

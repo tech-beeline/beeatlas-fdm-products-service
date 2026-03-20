@@ -65,4 +65,11 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
+
+    @Query("SELECT di.id FROM DiscoveredInterface di WHERE di.connectionInterfaceId IN :interfaceIds")
+    List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
+
+    @Modifying
+    @Query("DELETE FROM DiscoveredInterface di WHERE di.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
 }

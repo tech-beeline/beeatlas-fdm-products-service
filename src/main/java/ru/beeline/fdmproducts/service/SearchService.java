@@ -17,10 +17,7 @@ import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -158,5 +155,84 @@ public class SearchService {
                     .toList();
         }
         return result;
+    }
+
+    public List<ProductInfoDTOTree> getOperationByTcTree(Integer id) {
+        List<Operation> operations = operationRepository.findOperationsWithFullChainGraph(id);
+        if (operations.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Integer, ProductInfoDTOTree> productMap = new HashMap<>();
+        for (Operation op : operations) {
+            var interf = op.getInterfaceObj();
+            if (interf == null || interf.getDeletedDate() != null) {
+                continue;
+            }
+            var container = interf.getContainerProduct();
+            if (container == null || container.getDeletedDate() != null) {
+                continue;
+            }
+            var product = container.getProduct();
+            if (product == null) {
+                continue;
+            }
+
+            OperationDTOTree opDto = OperationDTOTree.builder()
+                    .operationId(op.getId())
+                    .operationName(op.getName())
+                    .operationType(op.getType())
+                    .build();
+
+            InterfaceDTOTree ifaceDto = InterfaceDTOTree.builder()
+                    .interfaceId(interf.getId())
+                    .interfaceName(interf.getName())
+                    .interfaceCode(interf.getCode())
+                    .operations(new ArrayList<>(List.of(opDto)))
+                    .build();
+
+            ContainerDTOTree contDto = ContainerDTOTree.builder()
+                    .containerId(container.getId())
+                    .containerName(container.getName())
+                    .containerCode(container.getCode())
+                    .interfaces(new ArrayList<>(List.of(ifaceDto)))
+                    .build();
+
+            ProductInfoDTOTree productDto = productMap.computeIfAbsent(
+                    product.getId(),
+                    pid -> ProductInfoDTOTree.builder()
+                            .productId(product.getId())
+                            .productName(product.getName())
+                            .productCode(product.getAlias())
+                            .containers(new ArrayList<>())
+                            .build()
+            );
+
+            ContainerDTOTree existingContainer = productDto.getContainers().stream()
+                    .filter(c -> c.getContainerId().equals(container.getId()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (existingContainer == null) {
+                productDto.getContainers().add(contDto);
+            } else {
+                InterfaceDTOTree existingIface = existingContainer.getInterfaces().stream()
+                        .filter(i -> i.getInterfaceId().equals(interf.getId()))
+                        .findFirst()
+                        .orElse(null);
+
+                if (existingIface == null) {
+                    existingContainer.getInterfaces().add(ifaceDto);
+                } else {
+                    existingIface.getOperations().add(opDto);
+                }
+            }
+        }
+
+        if (productMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return new ArrayList<>(productMap.values());
     }
 }

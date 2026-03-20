@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.domain;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
@@ -63,8 +64,8 @@ public class Product {
     @Column(name = "upload_date ")
     private LocalDateTime uploadDate ;
 
-    @Column(name = "source_metric")          // <-- новое поле
-    private String sourceMetric;             // (тип String, при необходимости поменяйте)
+    @Column(name = "source_metric")
+    private String sourceMetric;
 
     @JsonManagedReference
     @OneToMany(mappedBy = "product")
@@ -74,5 +75,10 @@ public class Product {
     @OneToMany(mappedBy = "product")
     @JsonManagedReference
     private List<DiscoveredInterface> discoveredInterfaces = new ArrayList<>();
+
+    @ManyToOne
+    @JoinColumn(name = "domain_id")
+    @JsonBackReference
+    private ProductDomain domain;
 }
 

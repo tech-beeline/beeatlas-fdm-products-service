@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.repository;
 
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,8 +18,10 @@ import java.util.List;
 @Repository
 public interface ContainerRepository extends JpaRepository<ContainerProduct, Integer> {
 
+    @EntityGraph(attributePaths = {"interfaces"})
     List<ContainerProduct> findAllByProductId(Integer productId);
 
+    @EntityGraph(attributePaths = {"interfaces"})
     List<ContainerProduct> findAllByProductIdAndDeletedDateIsNull(Integer productId);
 
     List<ContainerProduct> findAllByCodeInAndProductId(List<String> codes, Integer productId);
@@ -41,6 +44,18 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
 
     List<ContainerProduct> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
 
+    @Modifying
+    @Query("UPDATE ContainerProduct c SET c.sourceMetric = :sourceMetric WHERE c.id = :id")
+    void updateSourceMetricById(@Param("id") Integer id,
+                                @Param("sourceMetric") String sourceMetric);
+
     List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
                                                                            List<String> containerName);
+
+    @Query("SELECT cp.id FROM ContainerProduct cp WHERE cp.product.id = :productId")
+    List<Integer> findIdsByProductId(@Param("productId") Integer productId);
+
+    @Modifying
+    @Query("DELETE FROM ContainerProduct cp WHERE cp.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
 }

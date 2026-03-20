@@ -74,8 +74,8 @@ public class ArchContainerRelationsService {
                         discoveredOperation.setConnectionOperationId(entityId);
                         log.info("[ШАГ 1] Сопоставлено по name={}, type={} (operationId={})", operation.get().getName(), operation.get().getType(), discoveredOperation.getId());
                     } else {
-                        if (concatContext(discoveredOperation.getContext(),
-                                discoveredOperation.getName().toLowerCase()).equals(operation.get().getName().toLowerCase()) && operation.get().getType().toLowerCase().equals(discoveredOperation.getType().toLowerCase())) {
+                        if (concatContext(discoveredOperation.getContext(),discoveredOperation.getName().toLowerCase()).equals(operation.get().getName().toLowerCase())
+                                && operation.get().getType().toLowerCase().equals(discoveredOperation.getType().toLowerCase())) {
                             discoveredOperation.setConnectionOperationId(entityId);
                             log.info("[ШАГ 2] Сопоставлено по context+name='{}', type={} (operationId={})",
                                     concatContext(discoveredOperation.getContext(), discoveredOperation.getName()), operation.get().getType(), discoveredOperation.getId());

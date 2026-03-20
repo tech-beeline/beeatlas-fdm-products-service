@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import ru.beeline.fdmproducts.domain.ContainerProduct;
+import org.springframework.data.jpa.repository.Modifying;
 import ru.beeline.fdmproducts.domain.Product;
 
 import java.util.List;
@@ -16,9 +16,6 @@ import java.util.Optional;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Integer> {
-
-    @Query("SELECT p FROM Product p WHERE p.id IN :ids")
-    List<Product> findProductsByIds(@Param("ids") List<Integer> ids);
 
     @Query("SELECT p.alias FROM Product p WHERE p.id IN :ids")
     List<String> findAliasesByIds(@Param("ids") List<Integer> ids);
@@ -57,6 +54,11 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
             + "JOIN product.operation o ON o.interface_id = i.id "
             + "WHERE o.id = :id", nativeQuery = true)
     Optional<Product> findProductByOperationID(@Param("id") Integer id);
+
+    @Modifying
+    @Query("UPDATE Product p SET p.sourceMetric = :sourceMetric WHERE p.id = :id")
+    void updateSourceMetricById(@Param("id") Integer id,
+                                @Param("sourceMetric") String sourceMetric);
 
     List<Product> findAllBySourceMetricIsNotNull();
 }

@@ -156,4 +156,11 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     @Query("UPDATE Operation o SET o.isDeletedTc = false " +
             "WHERE o.tcId = :tcId AND (o.isDeletedTc = true OR o.isDeletedTc IS NULL)")
     void markAsUpdated(@Param("tcId") Integer tcId);
+
+    @Query("SELECT o.id FROM Operation o WHERE o.interfaceId IN :interfaceIds")
+    List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
+
+    @Modifying
+    @Query("DELETE FROM Operation o WHERE o.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
 }

@@ -2,12 +2,14 @@ package ru.beeline.fdmproducts.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.crossstore.ChangeSetPersister;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.dto.ContainerMetricDto;
 import ru.beeline.fdmproducts.dto.InterfaceMetricDto;
 import ru.beeline.fdmproducts.dto.ProductMetricDto;
 import ru.beeline.fdmproducts.dto.SourceMetricDto;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
@@ -51,5 +53,30 @@ public class SourceMetricService {
                                             .sourceMetric(anInterface.getSourceMetric()).build())
                                     .collect(Collectors.toUnmodifiableList()))
                 .build();
+    }
+
+    public void updateSourceMetric(String entity, Long id, String sourceMetric) {
+        if (entity == null || entity.isBlank() || id == null || sourceMetric == null || sourceMetric.isEmpty()) {
+            throw new IllegalArgumentException("Неверные входные данные");
+        }
+
+        String normalizedEntity = entity.trim().toLowerCase();
+
+        switch (normalizedEntity) {
+            case "product":
+                productRepository.findById(id.intValue()).orElseThrow(() -> new EntityNotFoundException("Ресурс не найден"));
+                productRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            case "container":
+                containerRepository.findById(id.intValue()).orElseThrow(() -> new EntityNotFoundException("Ресурс не найден"));
+                containerRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            case "interface":
+                interfaceRepository.findById(id.intValue()).orElseThrow(() -> new EntityNotFoundException("Ресурс не найден"));
+                interfaceRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            default:
+                throw new IllegalArgumentException("Неверные входные данные: " + entity);
+        }
     }
 }

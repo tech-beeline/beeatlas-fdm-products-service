@@ -45,5 +45,4 @@ public class ProductTechRelationController {
         productTechRelationService.deleteRelation(techId, productId);
         return new ResponseEntity(HttpStatus.OK);
     }
-
 }

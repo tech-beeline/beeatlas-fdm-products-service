@@ -311,14 +311,4 @@ public class ProductController {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }
-
-    @ConditionalOnProperty(name = "app.force-app-delete", havingValue = "true")
-    @ApiErrorCodes({400, 401, 403, 404, 500})
-    @CustomHeaders
-    @DeleteMapping("product/{id}")
-    @ApiOperation(value = "Удаление продукта и его связей.")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id,HttpServletRequest request) {
-        productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
-        return new ResponseEntity<>(HttpStatus.OK);
-    }
 }

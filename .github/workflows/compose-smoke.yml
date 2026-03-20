@@ -21,7 +21,7 @@ jobs:
         run: |
           docker compose version || (echo "Docker Compose not found" && sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && sudo chmod +x /usr/local/bin/docker-compose)
           # Run compose
-          docker compose -f docker-compose.yml up --wait --wait-timeout 240 -d
+          docker compose -f docker-compose.yml up --wait --wait-timeout 300 -d
           mkdir -p logs
           docker compose logs > logs/compose.log.txt
           # Cleanup

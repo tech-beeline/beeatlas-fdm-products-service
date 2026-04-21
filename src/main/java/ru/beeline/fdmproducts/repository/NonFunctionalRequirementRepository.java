@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,4 +33,8 @@ public interface NonFunctionalRequirementRepository extends JpaRepository<NonFun
     @Query("SELECT nfr FROM NonFunctionalRequirement nfr WHERE nfr.product.id = :productId AND nfr.nfr.id IN :nfrIds")
     List<NonFunctionalRequirement> findByProductIdAndNfrIds(@Param("productId") Integer productId,
                                                             @Param("nfrIds") List<Integer> nfrIds);
+
+    @EntityGraph(attributePaths = {"product"})
+    @Query("SELECT rel FROM NonFunctionalRequirement rel WHERE rel.id IN :ids")
+    List<NonFunctionalRequirement> findAllByIdInWithProduct(@Param("ids") List<Integer> ids);
 }

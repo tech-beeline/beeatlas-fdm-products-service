@@ -145,6 +145,43 @@ public class NfrController {
         return ResponseEntity.ok(nfrList);
     }
 
+    @DeleteMapping("/product/relations")
+    @Operation(summary = "Удалить связи NFR с продуктом (только source='Beeatlas') по списку id связей")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "OK"),
+            @ApiResponse(responseCode = "400", description = "Ошибки валидации/несоответствия source или продукта",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = {
+                                    @ExampleObject(name = "Не передан идентификатор приложения",
+                                            value = "{\"errorMessage\":\"Не передан один из идентификаторов приложения: id/alias/api-key\"}"),
+                                    @ExampleObject(name = "Передано несколько идентификаторов приложения",
+                                            value = "{\"errorMessage\":\"Передано несколько идентификаторов приложения\"}"),
+                                    @ExampleObject(name = "Не переданы идентификаторы связей",
+                                            value = "{\"errorMessage\":\"Не передан ни один идентификатор связи\"}"),
+                                    @ExampleObject(name = "Связь не принадлежит продукту",
+                                            value = "{\"errorMessage\":\"Связь 10 не принадлежит указанному продукту\"}"),
+                                    @ExampleObject(name = "Связь с source != 'Beeatlas'",
+                                            value = "{\"errorMessage\":\"Связь 10 имеет source отличный от 'Beeatlas'\"}"),
+                                    @ExampleObject(name = "Часть связей не найдена",
+                                            value = "{\"errorMessage\":\"Не найдены связи: [10, 11]\"}")
+                            })),
+            @ApiResponse(responseCode = "404", description = "Продукт не найден",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(
+                                    name = "404 NOT FOUND",
+                                    value = "{\"errorMessage\":\"Продукт с указанным идентификатором не найден\"}"
+                            )))
+    })
+    public ResponseEntity<Void> deleteBeeatlasProductNfrRelations(@RequestParam(value = "id", required = false) Integer id,
+                                                                  @RequestParam(value = "alias", required = false) String alias,
+                                                                  @RequestParam(value = "api-key", required = false) String apiKey,
+                                                                  @RequestBody(required = false) List<Integer> relationIds) {
+        nonFunctionalRequirementService.deleteBeeatlasProductNfrRelations(id, alias, apiKey, relationIds);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/{req-id}/product")
     @Operation(summary = "Удалить связь требования NFR с продуктом")
     @ApiResponses(value = {

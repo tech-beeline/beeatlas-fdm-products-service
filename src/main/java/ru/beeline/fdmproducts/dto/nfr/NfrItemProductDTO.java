@@ -20,6 +20,8 @@ import java.util.List;
 @Builder
 public class NfrItemProductDTO {
 
+
+    private Integer relationId;
     private Integer id;
     private String code;
     private Integer version;

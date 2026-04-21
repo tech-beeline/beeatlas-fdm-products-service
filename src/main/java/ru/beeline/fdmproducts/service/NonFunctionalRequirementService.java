@@ -246,6 +246,42 @@ public class NonFunctionalRequirementService {
         deleteProductNfr(productId, reqId);
     }
 
+    public void deleteBeeatlasProductNfrRelations(Integer id, String alias, String apiKey, List<Integer> relationIds) {
+        Integer productId = resolveProductId(id, alias, apiKey);
+        if (relationIds == null || relationIds.isEmpty()) {
+            throw new IllegalArgumentException("Не передан ни один идентификатор связи");
+        }
+        List<Integer> idsDistinct = relationIds.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (idsDistinct.isEmpty()) {
+            throw new IllegalArgumentException("Не передан ни один идентификатор связи");
+        }
+
+        List<NonFunctionalRequirement> rels = nonFunctionalRequirementRepository.findAllByIdInWithProduct(idsDistinct);
+        if (rels.size() != idsDistinct.size()) {
+            Set<Integer> found = rels.stream()
+                    .map(NonFunctionalRequirement::getId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            List<Integer> missing = idsDistinct.stream().filter(i -> !found.contains(i)).toList();
+            throw new IllegalArgumentException("Не найдены связи: " + missing);
+        }
+
+        for (NonFunctionalRequirement rel : rels) {
+            Integer relProductId = (rel.getProduct() != null ? rel.getProduct().getId() : null);
+            if (!Objects.equals(relProductId, productId)) {
+                throw new IllegalArgumentException("Связь " + rel.getId() + " не принадлежит указанному продукту");
+            }
+            if (!"Beeatlas".equals(rel.getSource())) {
+                throw new IllegalArgumentException("Связь " + rel.getId() + " имеет source отличный от 'Beeatlas'");
+            }
+        }
+
+        nonFunctionalRequirementRepository.deleteAll(rels);
+    }
+
     public List<NfrItemProductDTO> getProductNfr(Integer productId) {
         List<NonFunctionalRequirement> requirements = nonFunctionalRequirementRepository
                 .findByProductIdWithNfrAndCore(productId);
@@ -314,6 +350,7 @@ public class NonFunctionalRequirementService {
         List<Chapter> chapters = chapterNfrs.stream().map(ChapterNfr::getChapter).filter(Objects::nonNull).toList();
         List<ChapterNfrDTO> chapterNfrDTOS = buildChapterNfrDTO(chapters);
         return NfrItemProductDTO.builder()
+                .relationId(requirement.getId())
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
                 .version(nfr.getVersion())

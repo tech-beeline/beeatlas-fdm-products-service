@@ -306,4 +306,5 @@ public class ProductController {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }
+
 }

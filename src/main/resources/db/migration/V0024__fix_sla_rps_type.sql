@@ -1,0 +1,1 @@
+ALTER TABLE product.sla ALTER COLUMN rps TYPE NUMERIC(15,5);

@@ -1,62 +1,62 @@
 # fdm-products
 
-## Overview
+## Описание
 
-`fdm-products` is a Spring Boot–based backend service that provides a REST API for:
-- **product management** (product information, availability, links with technologies and infrastructure);
-- **product infrastructure** (synchronization of infrastructure, search by parameters);
-- **analytics and integrations** (interfaces from architecture systems / Mapic, e2e processes, fitness functions, patterns, etc.).
+`fdm-products` — backend-сервис на Spring Boot, предоставляющий REST API для:
+- **управления продуктами** (информация о продукте, доступность, связи с технологиями и инфраструктурой);
+- **инфраструктуры продукта** (синхронизация инфраструктуры, поиск по параметрам);
+- **аналитики и интеграций** (интерфейсы из архитектурных систем / Mapic, e2e-процессы, fitness functions, паттерны и т.д.).
 
-Main REST endpoints are available under `/api/v1/**` and are documented via Swagger.
+Основные REST эндпоинты доступны по префиксу `/api/v1/**` и документируются через Swagger.
 
-## Technology stack
+## Технологический стек
 
-- **Language**: Java 17
-- **Framework**: Spring Boot 2.7.x
-- **Database**: PostgreSQL (Spring Data JPA)
-- **DB migrations**: Flyway
-- **Messaging**: RabbitMQ (Spring AMQP)
-- **API documentation**: Springfox Swagger
-- **Metrics & monitoring**: Spring Boot Actuator, Micrometer, Prometheus
-- **Tracing & profiling**: OpenTelemetry, actuator-profiling
+- **Язык**: Java 17
+- **Фреймворк**: Spring Boot 2.7.x
+- **База данных**: PostgreSQL (Spring Data JPA)
+- **Миграции БД**: Flyway
+- **Очереди/сообщения**: RabbitMQ (Spring AMQP)
+- **Документация API**: Springfox Swagger
+- **Метрики и мониторинг**: Spring Boot Actuator, Micrometer, Prometheus
+- **Трейсинг и профилирование**: OpenTelemetry, actuator-profiling
 
-## Requirements
+## Требования
 
 - JDK **17**
 - Maven **3.8+**
-- Access to PostgreSQL (URL/credentials configured in `application*.yml` or via environment variables)
-- (Optional) access to RabbitMQ broker and external systems the service integrates with
+- Доступ к PostgreSQL (URL/учётные данные настраиваются в `application*.yml` или через переменные окружения)
+- (Опционально) доступ к RabbitMQ и внешним системам, с которыми интегрируется сервис
 
-## Build and run
+## Сборка и запуск
 
-### Local run via Maven
+### Локальный запуск через Maven
 
 ```bash
 mvn clean install
 mvn spring-boot:run
 ```
 
-After successful startup the application is available (by default) at:
+После успешного запуска приложение (по умолчанию) доступно по адресам:
 
 - app: `http://localhost:8080`
-- Swagger UI (if enabled): `http://localhost:8080/swagger-ui/`
+- Swagger UI (Springfox): `http://localhost:8080/swagger-ui/index.html`
 
-### Run JAR directly
+### Запуск JAR напрямую
 
-After the build, the `target` directory contains an artifact like `fdm-products-<version>.jar`:
+После сборки в директории `target` будет артефакт вида `fdm-products-<version>.jar`:
 
 ```bash
 java -jar target/fdm-products-<version>.jar
 ```
 
-### Run in container (Docker / Podman)
+### Запуск в контейнере (Docker / Podman)
 
-The project includes a multi-stage `Dockerfile`:
-- build stage uses image `maven:3.9-eclipse-temurin-17`;
-- runtime stage uses `eclipse-temurin:17-jre-jammy`;
-- the application is run under a non-privileged user `appuser`.
+В проекте используется многоступенчатый `Dockerfile`:
+- стадия сборки использует образ `eclipse-temurin:17-jdk-jammy` и устанавливает Maven через `apt-get`;
+- стадия запуска использует образ `eclipse-temurin:17-jre-jammy`;
+- приложение запускается от непривилегированного пользователя `appuser`.
 
-#### Build image
+#### Сборка образа
 
 ```bash
 docker build -t fdm-products .
@@ -64,7 +64,7 @@ docker build -t fdm-products .
 podman build -t fdm-products .
 ```
 
-#### Simple run (with defaults from application.yml)
+#### Простой запуск (со значениями по умолчанию из `application.yml`)
 
 ```bash
 docker run --rm -p 8080:8080 fdm-products
@@ -72,11 +72,11 @@ docker run --rm -p 8080:8080 fdm-products
 podman run --rm -p 8080:8080 fdm-products
 ```
 
-#### Run with profile and environment variables
+#### Запуск с профилем и переменными окружения
 
-The application can read configuration (DB, queues, integrations) from environment variables, if they are referenced in `application.yml` using `${VAR_NAME:default}`.
+Приложение может читать конфигурацию (БД, очереди, интеграции) из переменных окружения, если они используются в `application.properties`/`application.yml` в формате `${VAR_NAME:default}`.
 
-Example:
+Пример:
 
 ```bash
 docker run --rm -p 8080:8080 \
@@ -88,58 +88,72 @@ docker run --rm -p 8080:8080 \
   fdm-products
 ```
 
-The same configuration can be described in `docker-compose.yml` or Kubernetes manifests.
+Эту же конфигурацию можно описать в `docker-compose.yml` или в манифестах Kubernetes.
 
-## Main REST endpoints
+### Локальный запуск через Docker Compose
 
-Below is a non-exhaustive list of key endpoints (see Swagger for full details).
+В `docker-compose.yml` поднимаются:
+- PostgreSQL
+- RabbitMQ (с web UI по `http://localhost:15672`, логин/пароль по умолчанию: `guest` / `guest`)
+- сам сервис `fdm-products`
 
-- **Products** (`ProductController`, prefix `/api/v1`):
-  - `GET /api/v1/user/product` — get products for the current user;
-  - `GET /api/v1/product/{code}` — get detailed product info by alias;
-  - `GET /api/v1/product/{id}/availability` — get product availability data;
-  - `GET /api/v1/product/by-ids` — get products by list of IDs;
-  - `PUT /api/v1/product/{code}` — create/update product;
-  - `PUT /api/v1/product/{code}/relations` — create/update product relations (containers, interfaces, etc.).
+Запуск:
 
-- **Product infrastructure** (`InfraController`, prefix `/api/v1/infra`):
-  - `POST /api/v1/infra?product={product}` — synchronize product infrastructure.
+```bash
+docker compose up --build
+```
 
-- **Technologies** (`TechController`, prefix `/api/v1/tech`):
-  - `GET /api/v1/tech/{techId}/product` — get all products that use a specific technology.
+## Основные REST эндпоинты
 
-- **Interfaces & Mapic / architecture**:
-  - `/api/v1/product/{cmdb}/interface/arch` — product interfaces from architecture model;
-  - `/api/v1/product/{cmdb}/interface/mapic` — product interfaces from Mapic;
-  - additional controllers `MapicController`, `DiscoveredInterfaceController`, `InterfaceController` describe detailed integration scenarios.
+Ниже приведён неполный список ключевых эндпоинтов (полный список см. в Swagger).
 
-- **Fitness functions & patterns**:
-  - `GET /api/v1/product/{alias}/fitness-function` — get fitness-function results;
-  - `POST /api/v1/product/{alias}/fitness-function/{source_type}` — publish fitness-function results;
-  - `GET /api/v1/product/{alias}/patterns` — patterns implemented in the product;
-  - `POST /api/v1/product/{alias}/patterns/{source-type}` — bind patterns to products.
+- **Продукты** (`ProductController`, префикс `/api/v1`):
+  - `GET /api/v1/user/product` — получить продукты текущего пользователя;
+  - `GET /api/v1/product/{code}` — получить детальную информацию о продукте по alias;
+  - `GET /api/v1/product/{id}/availability` — получить данные о доступности продукта;
+  - `GET /api/v1/product/by-ids` — получить продукты по списку ID;
+  - `PUT /api/v1/product/{code}` — создать/обновить продукт;
+  - `PUT /api/v1/product/{code}/relations` — создать/обновить связи продукта (контейнеры, интерфейсы и т.д.).
 
-## Configuration
+- **Инфраструктура продукта** (`InfraController`, префикс `/api/v1/infra`):
+  - `POST /api/v1/infra?product={product}` — синхронизировать инфраструктуру продукта.
 
-Core application parameters are configured in `application.yml` / `application-*.yml`:
+- **Технологии** (`TechController`, префикс `/api/v1/tech`):
+  - `GET /api/v1/tech/{techId}/product` — получить все продукты, использующие технологию.
 
-- PostgreSQL connection settings;
-- RabbitMQ queues and connection settings;
-- integration parameters for external systems (Structurizr, Mapic, etc.);
-- OpenTelemetry, metrics and other technical settings.
+- **Интерфейсы и Mapic / архитектура**:
+  - `/api/v1/product/{cmdb}/interface/arch` — интерфейсы продукта из архитектурной модели;
+  - `/api/v1/product/{cmdb}/interface/mapic` — интерфейсы продукта из Mapic;
+  - дополнительные контроллеры `MapicController`, `DiscoveredInterfaceController`, `InterfaceController` описывают сценарии интеграций.
 
-Many of these can be overridden via environment variables in dev/test/prod environments.
+- **Fitness functions и паттерны**:
+  - `GET /api/v1/product/{alias}/fitness-function` — получить результаты fitness-функций;
+  - `POST /api/v1/product/{alias}/fitness-function/{source_type}` — опубликовать результаты fitness-функций;
+  - `GET /api/v1/product/{alias}/patterns` — паттерны, реализованные в продукте;
+  - `POST /api/v1/product/{alias}/patterns/{source-type}` — привязать паттерны к продукту.
 
-## Tests and code quality
+## Конфигурация
 
-- Unit and integration tests:
+Основные параметры приложения задаются в `application.yml` / `application-*.yml`:
+
+- параметры подключения к PostgreSQL;
+- параметры подключения и очередей RabbitMQ;
+- параметры интеграций с внешними системами (Structurizr, Mapic и т.д.);
+- настройки OpenTelemetry, метрик и прочие технические параметры.
+
+Многие параметры можно переопределять через переменные окружения в dev/test/prod средах.
+
+## Тесты и качество кода
+
+- Юнит- и интеграционные тесты:
 
 ```bash
 mvn test
 ```
 
-- Code coverage is collected via **JaCoCo** and integrated with **SonarQube**.
+- Покрытие кода собирается через **JaCoCo** и интегрируется с **SonarQube**.
 
-## License
+## Лицензия
 
-See `LICENSE` file in the project root.
+См. файл `LICENSE` в корне проекта.
+

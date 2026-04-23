@@ -1,93 +1,145 @@
 # fdm-products
 
+## Overview
 
+`fdm-products` is a Spring Boot–based backend service that provides a REST API for:
+- **product management** (product information, availability, links with technologies and infrastructure);
+- **product infrastructure** (synchronization of infrastructure, search by parameters);
+- **analytics and integrations** (interfaces from architecture systems / Mapic, e2e processes, fitness functions, patterns, etc.).
 
-## Getting started
+Main REST endpoints are available under `/api/v1/**` and are documented via Swagger.
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+## Technology stack
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- **Language**: Java 17
+- **Framework**: Spring Boot 2.7.x
+- **Database**: PostgreSQL (Spring Data JPA)
+- **DB migrations**: Flyway
+- **Messaging**: RabbitMQ (Spring AMQP)
+- **API documentation**: Springfox Swagger
+- **Metrics & monitoring**: Spring Boot Actuator, Micrometer, Prometheus
+- **Tracing & profiling**: OpenTelemetry, actuator-profiling
 
-## Add your files
+## Requirements
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+- JDK **17**
+- Maven **3.8+**
+- Access to PostgreSQL (URL/credentials configured in `application*.yml` or via environment variables)
+- (Optional) access to RabbitMQ broker and external systems the service integrates with
 
+## Build and run
+
+### Local run via Maven
+
+```bash
+mvn clean install
+mvn spring-boot:run
 ```
-cd existing_repo
-git remote add origin https://git.vimpelcom.ru/products/eafdmmart/fdm-products.git
-git branch -M main
-git push -uf origin main
+
+After successful startup the application is available (by default) at:
+
+- app: `http://localhost:8080`
+- Swagger UI (if enabled): `http://localhost:8080/swagger-ui/`
+
+### Run JAR directly
+
+After the build, the `target` directory contains an artifact like `fdm-products-<version>.jar`:
+
+```bash
+java -jar target/fdm-products-<version>.jar
 ```
 
-## Integrate with your tools
+### Run in container (Docker / Podman)
 
-- [ ] [Set up project integrations](https://git.vimpelcom.ru/products/eafdmmart/fdm-products/-/settings/integrations)
+The project includes a multi-stage `Dockerfile`:
+- build stage uses image `maven:3.9-eclipse-temurin-17`;
+- runtime stage uses `eclipse-temurin:17-jre-jammy`;
+- the application is run under a non-privileged user `appuser`.
 
-## Collaborate with your team
+#### Build image
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+```bash
+docker build -t fdm-products .
+# or
+podman build -t fdm-products .
+```
 
-## Test and Deploy
+#### Simple run (with defaults from application.yml)
 
-Use the built-in continuous integration in GitLab.
+```bash
+docker run --rm -p 8080:8080 fdm-products
+# or
+podman run --rm -p 8080:8080 fdm-products
+```
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+#### Run with profile and environment variables
 
-***
+The application can read configuration (DB, queues, integrations) from environment variables, if they are referenced in `application.yml` using `${VAR_NAME:default}`.
 
-# Editing this README
+Example:
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+```bash
+docker run --rm -p 8080:8080 \
+  -e SPRING_PROFILES_ACTIVE=prod \
+  -e DB_URL="jdbc:postgresql://postgres:5432/fdm" \
+  -e DB_USER="fdm_user" \
+  -e DB_PASSWORD="secret" \
+  -e RABBIT_HOST="rabbitmq" \
+  fdm-products
+```
 
-## Suggestions for a good README
+The same configuration can be described in `docker-compose.yml` or Kubernetes manifests.
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## Main REST endpoints
 
-## Name
-Choose a self-explaining name for your project.
+Below is a non-exhaustive list of key endpoints (see Swagger for full details).
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+- **Products** (`ProductController`, prefix `/api/v1`):
+  - `GET /api/v1/user/product` — get products for the current user;
+  - `GET /api/v1/product/{code}` — get detailed product info by alias;
+  - `GET /api/v1/product/{id}/availability` — get product availability data;
+  - `GET /api/v1/product/by-ids` — get products by list of IDs;
+  - `PUT /api/v1/product/{code}` — create/update product;
+  - `PUT /api/v1/product/{code}/relations` — create/update product relations (containers, interfaces, etc.).
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+- **Product infrastructure** (`InfraController`, prefix `/api/v1/infra`):
+  - `POST /api/v1/infra?product={product}` — synchronize product infrastructure.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+- **Technologies** (`TechController`, prefix `/api/v1/tech`):
+  - `GET /api/v1/tech/{techId}/product` — get all products that use a specific technology.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+- **Interfaces & Mapic / architecture**:
+  - `/api/v1/product/{cmdb}/interface/arch` — product interfaces from architecture model;
+  - `/api/v1/product/{cmdb}/interface/mapic` — product interfaces from Mapic;
+  - additional controllers `MapicController`, `DiscoveredInterfaceController`, `InterfaceController` describe detailed integration scenarios.
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- **Fitness functions & patterns**:
+  - `GET /api/v1/product/{alias}/fitness-function` — get fitness-function results;
+  - `POST /api/v1/product/{alias}/fitness-function/{source_type}` — publish fitness-function results;
+  - `GET /api/v1/product/{alias}/patterns` — patterns implemented in the product;
+  - `POST /api/v1/product/{alias}/patterns/{source-type}` — bind patterns to products.
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+## Configuration
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+Core application parameters are configured in `application.yml` / `application-*.yml`:
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+- PostgreSQL connection settings;
+- RabbitMQ queues and connection settings;
+- integration parameters for external systems (Structurizr, Mapic, etc.);
+- OpenTelemetry, metrics and other technical settings.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+Many of these can be overridden via environment variables in dev/test/prod environments.
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+## Tests and code quality
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+- Unit and integration tests:
+
+```bash
+mvn test
+```
+
+- Code coverage is collected via **JaCoCo** and integrated with **SonarQube**.
 
 ## License
-For open source projects, say how it is licensed.
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+See `LICENSE` file in the project root.

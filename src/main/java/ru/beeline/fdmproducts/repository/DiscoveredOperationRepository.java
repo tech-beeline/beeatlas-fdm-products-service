@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -44,6 +45,13 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.id = :interfaceId)", nativeQuery = true)
     int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_operation " +
+            "SET connection_operation_id = NULL " +
+            "WHERE interface_id = :interfaceId", nativeQuery = true)
+    void clearConnectionOperationIdByDiscoveredInterfaceId(@Param("interfaceId") Integer interfaceId);
 
     @Modifying
     @Transactional
@@ -83,5 +91,9 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds")
     List<Integer> findIdsByOperationIds(@Param("operationIds") List<Integer> operationIds);
+
+    @Modifying
+    @Query("UPDATE DiscoveredOperation do SET do.updatedDate = :updatedDate WHERE do.discoveredInterface.id = :interfaceId")
+    void updateUpdatedDateByInterfaceId(Integer interfaceId, LocalDateTime updatedDate);
 }
 

@@ -7,6 +7,7 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,6 +30,10 @@ import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
 
 @RestController
 @RequestMapping("/api")
+@Tag(name = "product",
+        description = "Каталог продуктов и смежные данные: пользовательские списки, CMDB/инфра, Structurizr, Mapic, "
+                + "паттерны Techradar, NFR/фитнес-функции, ключи API. Эндпоинты с HttpServletRequest используют заголовки "
+                + "user-id и при необходимости user-roles (прокси gateway).")
 public class ProductController {
 
     @Autowired
@@ -39,7 +44,8 @@ public class ProductController {
 
 
     @GetMapping("/v1/user/product")
-    @Operation(summary = "Получить все продукты пользователя")
+    @Operation(summary = "Продукты текущего пользователя",
+            description = "Список продуктов по числовому user-id из заголовка запроса.")
     public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
@@ -52,7 +58,7 @@ public class ProductController {
             @ApiResponse(responseCode = "400", description = "Параметр 'name' отсутствует или пустой"),
             @ApiResponse(responseCode = "404", description = "Элементы инфраструктуры с заданным именем не найдены")
     })
-    public ResponseEntity<ProductInfraDto> getProductInfra(@RequestParam String name) {
+    public ResponseEntity<ProductInfraDto> getProductInfra(@Parameter(description = "Имя или код объекта в CMDB") @RequestParam String name) {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraByName(name));
     }
 
@@ -63,7 +69,7 @@ public class ProductController {
             @ApiResponse(responseCode = "400", description = "Параметр 'name' отсутствует или пустой"),
             @ApiResponse(responseCode = "404", description = "Элементы инфраструктуры с заданным именем не найдены")
     })
-    public ResponseEntity<List<ProductInfraDtoDb>> getProductInfraContainsName(@RequestParam String name) {
+    public ResponseEntity<List<ProductInfraDtoDb>> getProductInfraContainsName(@Parameter(description = "Подстрока имени инфраструктурного элемента") @RequestParam String name) {
         return ResponseEntity.status(HttpStatus.OK).body(infraService.getProductInfraContainsName(name));
     }
 
@@ -80,7 +86,8 @@ public class ProductController {
     }
 
     @GetMapping("/v1/user/product/admin")
-    @Operation(summary = "Получить все продукты пользователя")
+    @Operation(summary = "Продукты пользователя (режим администратора)",
+            description = "Использует user-id и user-roles; расширенная выборка для админ-сценариев.")
     public ResponseEntity<List<Product>> getProductsAdmin(HttpServletRequest request) {
         Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
         return ResponseEntity.status(HttpStatus.OK)
@@ -88,166 +95,181 @@ public class ProductController {
     }
 
     @GetMapping("/v1/product/{code}")
-    @Operation(summary = "Получить продукт по alias")
-    public ProductFullDTO getProductsByCode(@PathVariable String code) {
+    @Operation(summary = "Полная карточка продукта по alias",
+            description = "Путь {code} — alias (код) продукта.")
+    public ProductFullDTO getProductsByCode(@Parameter(description = "Alias продукта") @PathVariable String code) {
         return productService.getProductDTOByCode(code);
     }
 
     @GetMapping("/v1/product/{id}/availability")
-    @Operation(summary = "Получить доступность продукта")
-    public ProductAvailableDTO getAvailableProductsByCode(@PathVariable String id) {
+    @Operation(summary = "Доступность продукта")
+    public ProductAvailableDTO getAvailableProductsByCode(@Parameter(description = "Строковый идентификатор продукта") @PathVariable String id) {
         return productService.getAvailableProductsByCode(id);
     }
 
     @GetMapping("/v1/product/{cmdb}/influence")
-    @Operation(summary = "Получить массив связанных систем для продукта по cmdb мнемонике")
-    public SystemRelationDto getInfluencesByCmdb(@PathVariable String cmdb) {
+    @Operation(summary = "Связанные системы по CMDB-мнемонике",
+            description = "Граф влияний/связей между системами для продукта из CMDB.")
+    public SystemRelationDto getInfluencesByCmdb(@Parameter(description = "Мнемоника CMDB продукта") @PathVariable String cmdb) {
         return productService.getInfluencesByCmdb(cmdb);
     }
 
     @GetMapping("/v1/product/{id}/tc-implementation")
-    @Operation(summary = "Получить идентификаторы реализованных TC по продукту")
-    public List<Integer> getTCIdsByProductId(@PathVariable Integer id) {
+    @Operation(summary = "Идентификаторы технологических возможностей (ТС), реализованных в продукте")
+    public List<Integer> getTCIdsByProductId(@Parameter(description = "Числовой id продукта") @PathVariable Integer id) {
         return productService.getTCIdsByProductId(id);
     }
 
     @GetMapping("/v1/product/by-ids")
-    @Operation(summary = "Получить продукты по списку идентификаторов")
-    public List<GetProductsByIdsDTO> getProductsByIds(@RequestParam List<Integer> ids) {
+    @Operation(summary = "Краткие карточки продуктов по списку id")
+    public List<GetProductsByIdsDTO> getProductsByIds(@Parameter(description = "Повторяющийся query-параметр ids") @RequestParam List<Integer> ids) {
         return productService.getProductByIds(ids);
     }
 
     @GetMapping("/v1/product/{code}/info")
-    @Operation(summary = "Получить инфо продукта по alias")
-    public ProductInfoDTO getProductsInfoByCode(@PathVariable String code) {
+    @Operation(summary = "Информация о продукте по alias (v1)")
+    public ProductInfoDTO getProductsInfoByCode(@Parameter(description = "Alias продукта") @PathVariable String code) {
         return productService.getProductInfoByCode(code);
     }
 
     @GetMapping("/v2/product/{code}/info")
-    @Operation(summary = "Получить инфо продукта по alias")
-    public ProductInfoV2DTO getProductsInfoByCodeV2(@PathVariable String code) {
+    @Operation(summary = "Информация о продукте по alias (v2)",
+            description = "Расширенная схема ответа относительно /v1/product/{code}/info.")
+    public ProductInfoV2DTO getProductsInfoByCodeV2(@Parameter(description = "Alias продукта") @PathVariable String code) {
         return productService.getProductInfoByCodeV2(code);
     }
 
     @GetMapping("/v1/product/info")
-    @Operation(summary = "Информация по продуктам без данных по ключам structurizr")
+    @Operation(summary = "Краткий список продуктов без ключей Structurizr",
+            description = "Облегчённое представление без чувствительных данных workspace.")
     public List<ProductInfoShortDTO> getProductsInfo() {
         return productService.getProductInfo();
     }
 
     @GetMapping("/v1/product/api-secret/{api-key}")
-    @Operation(summary = "Получение api secret из таблицы product")
-    public ApiSecretDTO getProductSecretByApiKey(@PathVariable("api-key") String apiKey) {
+    @Operation(summary = "Секрет API продукта по ключу",
+            description = "Чувствительные данные из таблицы product; ограничивать доступ.")
+    public ApiSecretDTO getProductSecretByApiKey(@Parameter(description = "Публичный api-key продукта") @PathVariable("api-key") String apiKey) {
         return productService.getProductByApiKey(apiKey);
     }
 
     @GetMapping("/v1/service/api-secret/{api-key}")
-    @Operation(summary = "Получение api secret из таблицы service")
-    public ApiSecretDTO getServiceSecretByApiKey(@PathVariable("api-key") String apiKey) {
+    @Operation(summary = "Секрет API сервиса по ключу",
+            description = "Чувствительные данные из таблицы service.")
+    public ApiSecretDTO getServiceSecretByApiKey(@Parameter(description = "Ключ сервиса") @PathVariable("api-key") String apiKey) {
         return productService.getServiceSecretByApiKey(apiKey);
     }
 
     @GetMapping("/v1/products/relations/tech")
-    @Operation(summary = "Получение всех продуктов и связей с технологиями")
+    @Operation(summary = "Все продукты со связями на технологии Techradar")
     public List<GetProductTechDto> getAllProductsAndTechRelations() {
         return productService.getAllProductsAndTechRelations();
     }
 
     @GetMapping("/v1/product/{alias}/fitness-function")
-    @Operation(summary = "Получение результатов фитнесс-функций")
-    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(@PathVariable String alias,
-                                                                     @RequestParam(name = "source_id", required = false) Integer sourceId,
-                                                                     @RequestParam(name = "source_type", required = false) String sourceType) {
+    @Operation(summary = "Результаты фитнес-функций по продукту",
+            description = "Опционально фильтр по источнику: source_id и source_type.")
+    public ResponseEntity<AssessmentResponseDTO> getFitnessFunctions(@Parameter(description = "Alias продукта") @PathVariable String alias,
+                                                                     @Parameter(description = "Идентификатор источника оценки") @RequestParam(name = "source_id", required = false) Integer sourceId,
+                                                                     @Parameter(description = "Тип источника оценки") @RequestParam(name = "source_type", required = false) String sourceType) {
 
         AssessmentResponseDTO response = productService.getFitnessFunctions(alias, sourceId, sourceType);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping("/v1/product/{alias}/patterns")
-    @Operation(summary = "Получение паттернов реализованных в продукте")
-    public List<PatternDTO> getProductPatterns(@PathVariable(value = "alias", required = false) String alias,
-                                               @RequestParam(value = "source-id", required = false) Integer sourceId,
-                                               @RequestParam(value = "source-type", required = false) String sourceType) {
+    @Operation(summary = "Паттерны Techradar, связанные с продуктом")
+    public List<PatternDTO> getProductPatterns(@Parameter(description = "Alias продукта") @PathVariable(value = "alias", required = false) String alias,
+                                               @Parameter(description = "Идентификатор источника") @RequestParam(value = "source-id", required = false) Integer sourceId,
+                                               @Parameter(description = "Тип источника") @RequestParam(value = "source-type", required = false) String sourceType) {
         return productService.getProductPatterns(alias, sourceId, sourceType);
     }
 
     @GetMapping("/v1/product/parent")
-    @Operation(summary = "Получение мнемоники продукта для дочерних сущностей")
-    public ProductInfoShortV2DTO getParent(@RequestParam Integer id, @RequestParam String type) {
+    @Operation(summary = "Родительский продукт для дочерней сущности",
+            description = "По id и типу дочернего объекта возвращает краткую информацию о продукте-владельце.")
+    public ProductInfoShortV2DTO getParent(@Parameter(description = "Id дочерней сущности") @RequestParam Integer id,
+                                           @Parameter(description = "Тип сущности (контракт домена)") @RequestParam String type) {
         return productService.getParent(id, type);
     }
 
     @GetMapping("/v1/products/mnemonic")
-    @Operation(summary = "Получение всех продуктов и связей с технологиями")
+    @Operation(summary = "Список мнемоник всех продуктов",
+            description = "Только строковые идентификаторы (mnemonic/cmdb), без связей с технологиями — не путать с /v1/products/relations/tech.")
     public List<String> getAllMnemonics() {
         return productService.getMnemonics();
     }
 
     @GetMapping("/v1/product/{cmdb}/interface/arch")
-    @Operation(summary = "Интерфейсы продукта полученные из архитектуры")
-    public List<ProductInterfaceDTO> getProductsFromStructurizr(@PathVariable String cmdb) {
+    @Operation(summary = "Интерфейсы из модели архитектуры (Structurizr)")
+    public List<ProductInterfaceDTO> getProductsFromStructurizr(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb) {
         return productService.getProductsFromStructurizr(cmdb);
     }
 
     @GetMapping("/v1/product/{cmdb}/interface/mapic")
-    @Operation(summary = "Интерфейсы продукта полученные из мапик")
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@PathVariable String cmdb,
-                                                               @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
+    @Operation(summary = "Интерфейсы из каталога Mapic")
+    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
+                                                               @Parameter(description = "Включать скрытые интерфейсы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
         return productService.getProductsFromMapic(cmdb, showHidden);
     }
 
     @GetMapping("/v1/product/{id}/structurizr-key")
-    @Operation(summary = "Получение ключей structurizr членом команды")
-    public ApiKeyDTO getKey(@PathVariable Integer id) {
+    @Operation(summary = "Ключи доступа Structurizr для участника команды продукта",
+            description = "Чувствительные ключи workspace; выдавать только авторизованным пользователям продукта.")
+    public ApiKeyDTO getKey(@Parameter(description = "Числовой id продукта") @PathVariable Integer id) {
         return productService.getKey(id);
     }
 
     @GetMapping("/v1/product/{cmdb}/container")
-    @Operation(summary = "Просмотр контейнеров, их интерфейсов и методов в structurizr ")
-    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@PathVariable String cmdb,
-                                                                     @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
+    @Operation(summary = "Контейнеры продукта с интерфейсами и методами (Structurizr)")
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb,
+                                                                     @Parameter(description = "Показывать скрытые элементы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
         return productService.getContainersFromStructurizr(cmdb, showHidden);
     }
 
     @GetMapping("/v1/product/{cmdb}/e2e")
-    @Operation(summary = "Просмотр списка e2e процессов")
-    public List<ResultDTO> getE2eProcessByCmdb(@PathVariable String cmdb) {
+    @Operation(summary = "End-to-end процессы продукта")
+    public List<ResultDTO> getE2eProcessByCmdb(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb) {
         return productService.getE2eProcessByCmdb(cmdb);
     }
 
     @GetMapping("/v1/product/{alias}/free")
-    @Operation(summary = "Проверка доступности alias приложения")
-    public IsUniqAliasDTO getFreeAlias(@PathVariable String alias) {
+    @Operation(summary = "Проверка уникальности alias приложения")
+    public IsUniqAliasDTO getFreeAlias(@Parameter(description = "Предлагаемый alias") @PathVariable String alias) {
         return productService.getFreeAlias(alias);
     }
 
     @GetMapping("/v1/product/{alias}/employee")
-    @Operation(summary = "Информацию о сотрудниках из команды продукта")
-    public List<GetUserProfileDTO> getEmployeeByAlias(@PathVariable String alias) {
+    @Operation(summary = "Сотрудники команды продукта")
+    public List<GetUserProfileDTO> getEmployeeByAlias(@Parameter(description = "Alias продукта") @PathVariable String alias) {
         return productService.getEmployeeByAlias(alias);
     }
 
     @GetMapping("/v1/product/implemented/container/tech-capability")
-    @Operation(summary = "Получение ТС реализованных в контейнерах продукта")
-    public List<TcDTO> getTcByContainerProduct(@RequestParam(value = "alias", required = false) String alias,
-                                               @RequestParam(value = "containers", required = false) List<String> containers) {
+    @Operation(summary = "ТС в контейнерах продукта",
+            description = "Фильтр по alias продукта и/или списку имён контейнеров.")
+    public List<TcDTO> getTcByContainerProduct(@Parameter(description = "Alias продукта") @RequestParam(value = "alias", required = false) String alias,
+                                               @Parameter(description = "Имена контейнеров (повторяющийся параметр)") @RequestParam(value = "containers", required = false) List<String> containers) {
         return productService.getTcByContainerProduct(alias, containers);
     }
 
     @PostMapping("/v1/user/{id}/products")
-    @Operation(summary = "Создание связи пользователя и продукта")
-    public ResponseEntity postUserProducts(@PathVariable Integer id, @RequestBody List<String> aliasLIst) {
+    @Operation(summary = "Привязать продукты к пользователю",
+            description = "Тело — список alias продуктов; path id — пользователь.")
+    public ResponseEntity<Void> postUserProducts(@Parameter(description = "Идентификатор пользователя") @PathVariable Integer id,
+                                                 @RequestBody List<String> aliasLIst) {
         productService.postUserProduct(aliasLIst, id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PostMapping("/v1/product/{alias}/fitness-function/{source_type}")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Публикация результатов фитнесс-функций")
-    public ResponseEntity<Void> postFitnessFunctions(@PathVariable String alias,
-                                                     @PathVariable("source_type") String sourceType,
+    @Operation(summary = "Публикация результатов фитнес-функций",
+            description = "Массовая загрузка результатов оценки; source_type в пути задаёт тип источника.")
+    public ResponseEntity<Void> postFitnessFunctions(@Parameter(description = "Alias продукта") @PathVariable String alias,
+                                                     @Parameter(description = "Тип источника оценки") @PathVariable("source_type") String sourceType,
                                                      @RequestBody List<FitnessFunctionDTO> requests,
-                                                     @RequestParam(value = "source_id", required = false) Integer sourceId) {
+                                                     @Parameter(description = "Идентификатор источника") @RequestParam(value = "source_id", required = false) Integer sourceId) {
 
         productService.postFitnessFunctions(alias, sourceType, requests, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
@@ -256,27 +278,31 @@ public class ProductController {
 
     @PostMapping("/v1/product/{alias}/patterns/{source-type}")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Создание связи паттерна из технорадра с продуктами в которых они реализованны")
-    public ResponseEntity postPatternProduct(@PathVariable String alias,
-                                             @PathVariable(value = "source-type", required = false) String sourceType,
-                                             @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
-                                             @RequestParam(name = "source-id", required = false) Integer sourceId) {
+    @Operation(summary = "Связать паттерны Techradar с продуктом",
+            description = "Создаёт или обновляет привязку паттернов из технорадара к продукту по alias.")
+    public ResponseEntity<Void> postPatternProduct(@Parameter(description = "Alias продукта") @PathVariable String alias,
+                                                   @Parameter(description = "Тип источника связи") @PathVariable(value = "source-type", required = false) String sourceType,
+                                                   @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
+                                                   @Parameter(description = "Идентификатор источника") @RequestParam(name = "source-id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
     @PutMapping("/v1/product/{code}")
-    @Operation(summary = "Редактирование продукта")
-    public ResponseEntity putProducts(@PathVariable String code, @RequestBody ProductPutDto productPutDto) {
+    @Operation(summary = "Создать или обновить продукт",
+            description = "{code} — alias продукта; полное тело карточки ProductPutDto.")
+    public ResponseEntity<Void> putProducts(@Parameter(description = "Alias продукта") @PathVariable String code,
+                                            @RequestBody ProductPutDto productPutDto) {
         productService.createOrUpdate(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PutMapping("/v1/product/{code}/relations")
-    @Operation(summary = "Создание и обновление связей продукта")
-    public ResponseEntity putProductRelations(@PathVariable String code,
-                                              @RequestBody List<ContainerDTO> containerDTO,
-                                              @RequestParam(name = "source", required = false) String source) {
+    @Operation(summary = "Сохранить дерево контейнеров и связей продукта",
+            description = "При ошибках валидации ответ может быть 207 Multi-Status с телом errorEntity.")
+    public ResponseEntity<?> putProductRelations(@Parameter(description = "Alias продукта") @PathVariable String code,
+                                                 @RequestBody List<ContainerDTO> containerDTO,
+                                                 @Parameter(description = "Происхождение данных (интеграция)") @RequestParam(name = "source", required = false) String source) {
         ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code, source);
         if (errorEntity.hasErrors()) {
             return ResponseEntity.status(207).body(Map.of("errorEntity", errorEntity));
@@ -285,26 +311,28 @@ public class ProductController {
     }
 
     @PutMapping("/v1/product")
-    @Operation(summary = "Создавать/обновлять приложения")
-    public ResponseEntity updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO,
-                                        HttpServletRequest request) {
+    @Operation(summary = "Массовое создание/обновление приложений",
+            description = "Использует заголовок user-roles для авторизации.")
+    public ResponseEntity<Void> updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO,
+                                              HttpServletRequest request) {
         productService.updateProduct(putUpdateProductDTO, request.getHeader(USER_ROLES_HEADER));
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("/v1/product/{code}/workspace")
-    @Operation(summary = "Добавление атрибутов к продукту")
-    public ResponseEntity patchProducts(@PathVariable String code, @RequestBody ProductPutDto productPutDto) {
+    @Operation(summary = "Частичное обновление атрибутов продукта (workspace)")
+    public ResponseEntity<Void> patchProducts(@Parameter(description = "Alias продукта") @PathVariable String code,
+                                              @RequestBody ProductPutDto productPutDto) {
         productService.patchProduct(productPutDto, code);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
     @PatchMapping("/v1/product/{cmdb}/source")
-    @Operation(summary = "Проставление источника обновления продукта и время подгрузки данных.")
-    public ResponseEntity patchProductsSource(@PathVariable String cmdb,
-                                              @RequestParam(name = "source-name", required = false) String sourceName) {
+    @Operation(summary = "Обновить метку источника синхронизации продукта",
+            description = "Фиксирует источник и время последней загрузки данных для CMDB-мнемоники.")
+    public ResponseEntity<Void> patchProductsSource(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
+                                                    @Parameter(description = "Имя источника данных") @RequestParam(name = "source-name", required = false) String sourceName) {
         productService.patchProductSource(cmdb, sourceName);
         return new ResponseEntity<>(HttpStatus.OK);
     }
-
 }

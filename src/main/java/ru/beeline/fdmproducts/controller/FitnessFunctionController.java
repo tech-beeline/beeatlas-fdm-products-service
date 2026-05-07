@@ -24,21 +24,23 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(description = "Product API", name = "fitness-function")
+@Tag(name = "fitness-function", description = "Справочник и агрегации фитнес-функций (FF) для дашбордов и NFR.")
 public class FitnessFunctionController {
 
     @Autowired
     private FitnessFunctionService fitnessFunctionService;
 
     @GetMapping("/dashboard/fitness-function")
-    @Operation(summary = "Получение агрегации результатов фитнесс-функций")
+    @Operation(summary = "Агрегированные результаты фитнес-функций для дашборда",
+            description = "Сводная статистика по оценкам FF без детализации по отдельному продукту.")
     public ResponseEntity<MainResponseDTO> getFitnessFunctionsAggregation() {
         return ResponseEntity.ok(fitnessFunctionService.getFitnessFunctionsAggregation());
     }
 
 
     @GetMapping("/ff")
-    @Operation(summary = "Получение всех ФФ")
+    @Operation(summary = "Полный справочник фитнес-функций",
+            description = "Все записи FF из каталога с кодами, статусами и ссылками на документацию.")
     @ApiResponse(responseCode = "200", description = "OK",
             content = @Content(
                     mediaType = "application/json",

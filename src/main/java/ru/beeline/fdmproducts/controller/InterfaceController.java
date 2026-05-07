@@ -18,14 +18,15 @@ import ru.beeline.fdmproducts.service.InterfaceService;
 
 @RestController
 @RequestMapping("/api/v1/connection/interface")
-@Tag(description = "Interface API", name = "interface")
+@Tag(name = "interface", description = "Ручное сопоставление интерфейсов каталога Mapic с элементами архитектурной модели.")
 public class InterfaceController {
     @Autowired
     private InterfaceService interfaceService;
 
 
     @PostMapping
-    @Operation(summary = "Метод ручного сопостовления интерфейсов мапика и архитектуры")
+    @Operation(summary = "Сопоставить интерфейсы Mapic и архитектуры",
+            description = "Тело ConnectionRequestDTO описывает пары для связи; ответ 201 при успешном создании связей.")
     public ResponseEntity<Void> syncInfrastructure(@RequestBody ConnectionRequestDTO request) {
 
         interfaceService.handConnection(request);

@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -33,7 +34,8 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(description = "Requirement API", name = "requirement")
+@Tag(name = "requirement",
+        description = "Создание и версионирование требований NFR в каталоге; связь требований с паттернами.")
 public class RequirementController {
 
     @Autowired
@@ -46,13 +48,16 @@ public class RequirementController {
     private RequirementVersionService requirementVersionService;
 
     @GetMapping("/requirement/pattern/{id}")
-    @Operation(summary = "Получить все требования NFR, связанные с паттерном")
-    public ResponseEntity<List<NfrItemDTO>> getNfrByPatternId(@PathVariable Integer id) {
+    @Operation(summary = "Список NFR, привязанных к паттерну",
+            description = "Все актуальные элементы каталога NFR, связанные с паттерном Techradar по его id.")
+    public ResponseEntity<List<NfrItemDTO>> getNfrByPatternId(
+            @Parameter(description = "Идентификатор паттерна") @PathVariable Integer id) {
         return ResponseEntity.ok(patternRequirementService.getNfrByPatternId(id));
     }
 
     @PostMapping("/requirement")
-    @Operation(summary = "Создать требование NFR (версия 1)")
+    @Operation(summary = "Создать требование NFR (первая версия)",
+            description = "Тело CreateRequirementRequestDTO; права администратора и доступность Auth см. коды ответа.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Требование создано",
                     content = @Content(mediaType = "application/json",
@@ -96,7 +101,8 @@ public class RequirementController {
     }
 
     @PostMapping("/requirement/version")
-    @Operation(summary = "Создать новую версию требования NFR")
+    @Operation(summary = "Создать новую версию существующего NFR",
+            description = "Укажите ровно один из query-параметров id или code для базового требования, плюс тело с изменениями.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Версия требования создана",
                     content = @Content(mediaType = "application/json",
@@ -133,8 +139,8 @@ public class RequirementController {
                             }))
     })
     public ResponseEntity<CreateRequirementVersionResponseDTO> createRequirementVersion(
-            @RequestParam(value = "id", required = false) Integer id,
-            @RequestParam(value = "code", required = false) String code,
+            @Parameter(description = "Числовой id требования-основы") @RequestParam(value = "id", required = false) Integer id,
+            @Parameter(description = "Код требования-основы (альтернатива id)") @RequestParam(value = "code", required = false) String code,
             @RequestBody(required = false) CreateRequirementRequestDTO request) {
         return ResponseEntity.ok(requirementVersionService.createVersion(id, code, request));
     }

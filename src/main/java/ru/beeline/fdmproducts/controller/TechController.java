@@ -6,7 +6,6 @@ package ru.beeline.fdmproducts.controller;
 
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,15 +21,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/tech")
-@Tag(name = "tech", description = "Обратные связи технологий Techradar с продуктами, в которых они применяются.")
+@Tag(description = "Product API", name = "tech")
 public class TechController {
     @Autowired
     private TechService techService;
 
     @GetMapping("/{techId}/product")
-    @Operation(summary = "Продукты, использующие технологию",
-            description = "По id технологии из Techradar возвращает связанные продукты.")
-    public ResponseEntity<List<GetProductDTO>> getProducts(@Parameter(description = "Id технологии") @PathVariable Integer techId) {
+    @Operation(summary = "Получить все продукты использующие технологию")
+    public ResponseEntity<List<GetProductDTO>> getProducts(@PathVariable Integer techId) {
         return ResponseEntity.status(HttpStatus.OK).body(techService.getProductsByTechId(techId));
     }
 }

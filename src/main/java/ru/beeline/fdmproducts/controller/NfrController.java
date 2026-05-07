@@ -4,13 +4,12 @@
 
 package ru.beeline.fdmproducts.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.parameters.RequestBody;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -29,7 +28,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/nfr")
-@Tag(name = "nfr", description = "Нефункциональные требования (NFR): справочник, связи с продуктами и паттернами, детали с фитнес-функциями и главами.")
+@Tag(name = "nfr", description = "Product API")
 public class NfrController {
 
     @Autowired
@@ -215,36 +214,36 @@ public class NfrController {
     }
 
     @GetMapping(path = "/{id}", produces = "application/json")
-    @Operation(summary = "Получить требование NFR по id с обогащением ФФ/главами/паттернами",
-            description = "Возвращает карточку NFR по числовому id из справочника вместе со связанными фитнес-функциями, главами (жизненными ситуациями) и паттернами.")
+    @Operation(summary = "Получить требование NFR по id с обогащением ФФ/главами/паттернами")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK",
-                    content = @Content(
-                            mediaType = "application/json",
-                            schema = @Schema(implementation = NfrDetailsDTO.class),
-                            examples = @ExampleObject(
-                                    name = "Успешный ответ",
-                                    value = """
-                                            {
-                                              "id": 1,
-                                              "code": "NFR-001",
-                                              "version": 1,
-                                              "name": "string",
-                                              "description": "string",
-                                              "fitnessFunctions": [],
-                                              "chapters": [],
-                                              "patterns": []
-                                            }
-                                            """
-                            ))),
             @ApiResponse(responseCode = "404", description = "Требование не найдено",
                     content = @Content(
                             mediaType = "application/json",
                             examples = @ExampleObject(
                                     name = "404 NOT FOUND",
                                     value = "{\"errorMessage\": \"Требование не найдено\"}")))})
-    public ResponseEntity<NfrDetailsDTO> getNfrById(
-            @Parameter(description = "Идентификатор требования NFR в каталоге") @PathVariable("id") Integer id) {
+    @ApiResponse(responseCode = "200", description = "OK",
+            content = @Content(
+                    mediaType = "application/json",
+                    examples = @ExampleObject(
+                            name = "Успешный ответ",
+                            value = """
+                                    {
+                                      "id": 1,
+                                      "code": "NFR-001",
+                                      "version": 1,
+                                      "name": "string",
+                                      "description": "string",
+                                      "fitnessFunctions": [],
+                                      "chapters": [],
+                                      "patterns": []
+                                    }
+                                    """
+                    ),
+                    schema = @Schema(implementation = NfrDetailsDTO.class)
+            )
+    )
+    public ResponseEntity<NfrDetailsDTO> getNfrById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetails(id));
     }
 
@@ -280,8 +279,7 @@ public class NfrController {
     }
 
     @PostMapping("/pattern/{id}")
-    @Operation(summary = "Связать паттерн с требованиями NFR",
-            description = "Привязывает к паттерну (Techradar) список требований NFR по их id. Query-параметр refresh-relation переопределяет связи при значении true.")
+    @Operation(summary = "Связать паттерн с требованиями NFR")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "400", description = "400 BAD REQUEST",
@@ -294,13 +292,12 @@ public class NfrController {
                                             value = "{\"errorMessage\": \"Идентификатор не соответсвует существующему паттерну\"}"),
                                     @ExampleObject(name = "Некорректные идентификаторы требований",
                                             value = "{\"errorMessage\": \"Не все переданные идентификаторы соответствуют существующим требованиям\"}")}))})
-    public ResponseEntity<Void> linkPatternWithNfr(
-            @Parameter(description = "Идентификатор паттерна в системе") @PathVariable("id") Integer patternId,
-            @Parameter(description = "Если true — пересобрать связи паттерна с переданным списком NFR") @RequestParam(name = "refresh-relation", required = false) Boolean refreshRelation,
-            @RequestBody(description = "Идентификаторы требований NFR для связи с паттерном. Пример: [101, 102, 105]",
-                    required = false,
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = Integer.class))))
-            @org.springframework.web.bind.annotation.RequestBody(required = false) List<Integer> nfrIds) {
+    public ResponseEntity<Void> linkPatternWithNfr(@PathVariable("id") Integer patternId,
+                                                   @RequestParam(name = "refresh-relation", required = false) Boolean refreshRelation,
+                                                   @Schema(description = "Массив ID",
+                                                           example = "[101, 102, 105]",
+                                                           type = "array")
+                                                   @RequestBody(required = false) List<Integer> nfrIds) {
         patternRequirementService.linkPatternWithNfr(patternId, nfrIds, Boolean.TRUE.equals(refreshRelation));
         return new ResponseEntity<>(HttpStatus.OK);
     }

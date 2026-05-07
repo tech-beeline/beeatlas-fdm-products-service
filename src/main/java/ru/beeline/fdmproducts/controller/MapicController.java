@@ -6,7 +6,6 @@ package ru.beeline.fdmproducts.controller;
 
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -22,23 +21,21 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/mapic")
-@Tag(name = "mapic", description = "Чтение опубликованных API и спецификаций из интеграции с каталогом Mapic.")
+@Tag(description = "Mapic API", name = "mapic")
 public class MapicController {
 
     @Autowired
     MapicService mapicService;
 
     @GetMapping("/product/{cmdb}/published-api")
-    @Operation(summary = "Опубликованные API продукта из Mapic",
-            description = "Список PublishedApiDTO для CMDB-мнемоники; используется как совместимый ответ с форматом Mapic.")
-    public ResponseEntity<List<PublishedApiDTO>> requestToMapic(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb) {
+    @Operation(summary = "Эмуляция запросов к Mapic")
+    public ResponseEntity<List<PublishedApiDTO>> requestToMapic(@PathVariable String cmdb) {
         return ResponseEntity.status(HttpStatus.OK).body(mapicService.requestToMapic(cmdb));
     }
 
     @GetMapping("/spec/{api-id}")
-    @Operation(summary = "Спецификация API по id в таблице mapic.api",
-            description = "Возвращает строковое представление спецификации (например OpenAPI в текстовом виде).")
-    public ResponseEntity<String> getMapicApi(@Parameter(description = "Первичный ключ записи mapic.api") @PathVariable("api-id") Integer apiId) {
+    @Operation(summary = "Найти запись в таблице mapic.api  по id")
+    public ResponseEntity<String> getMapicApi(@PathVariable("api-id") Integer apiId) {
         return ResponseEntity.status(HttpStatus.OK).body(mapicService.getMapicApi(apiId));
     }
 }

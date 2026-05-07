@@ -10,7 +10,7 @@
     </parent>
     <groupId>ru.beeline</groupId>
     <artifactId>fdm-products</artifactId>
-    <version>1.9.0</version>
+    <version>1.9.2</version>
     <name>fdm-products</name>
     <description>fdm-products</description>
     <properties>
@@ -20,7 +20,7 @@
         <sonar.language>java</sonar.language>
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/target/jacoco_analysis/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
         <java.version>17</java.version>
-        <kotlin.version>1.9.2</kotlin.version>
+        <kotlin.version>1.8.22</kotlin.version>
     </properties>
     <dependencyManagement>
         <dependencies>

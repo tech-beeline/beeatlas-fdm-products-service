@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,7 +25,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1")
-@Tag(name = "chapter", description = "Chapter API")
+@Tag(name = "chapter", description = "Жизненные ситуации (chapter): каталог, паттерны, создание и изменение с привязкой к NFR.")
 public class ChapterController {
 
     @Autowired
@@ -37,7 +38,8 @@ public class ChapterController {
     }
 
     @GetMapping("/chapter/{id}/patterns")
-    @Operation(summary = "Получить список pattern_id для chapter")
+    @Operation(summary = "Идентификаторы паттернов для главы (chapter)",
+            description = "Список pattern_id из Techradar, связанных с жизненной ситуацией.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "404", description = "Chapter с таким id не существует",
                     content = @Content(mediaType = "application/json", examples = @ExampleObject(
@@ -46,12 +48,13 @@ public class ChapterController {
                     content = @Content(mediaType = "application/json", examples = @ExampleObject(
                             value = "[101, 102, 103, 105]")))
     })
-    public ResponseEntity<List<Integer>> getChapterPatterns(@PathVariable("id") Integer id) {
+    public ResponseEntity<List<Integer>> getChapterPatterns(@Parameter(description = "Id главы (chapter)") @PathVariable("id") Integer id) {
         return ResponseEntity.ok(chapterService.getPatternIdsByChapterId(id));
     }
 
     @PostMapping("/chapter")
-    @Operation(summary = "Создать жизненную ситуацию (chapter)")
+    @Operation(summary = "Создать жизненную ситуацию (chapter)",
+            description = "Тело ChapterCreateRequestDTO; заголовок user-roles для проверки прав администратора.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "400", description = "Ошибки валидации",
@@ -79,7 +82,8 @@ public class ChapterController {
     }
 
     @PatchMapping("/chapter")
-    @Operation(summary = "Изменить жизненную ситуацию (chapter) по id или code")
+    @Operation(summary = "Изменить главу по id или code",
+            description = "Ровно один из query-параметров id или code должен задавать изменяемую запись.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
             @ApiResponse(responseCode = "400", description = "Ошибки валидации",
@@ -110,8 +114,8 @@ public class ChapterController {
                                     name = "доступ-запрещен",
                                     summary = "Пользователь не администратор",
                                     value = "{\"error\": \"Пользователь не является администратором\"}")))})
-    public ResponseEntity<Void> patchChapter(@RequestParam(required = false) Integer id,
-                                             @RequestParam(required = false) String code,
+    public ResponseEntity<Void> patchChapter(@Parameter(description = "Id главы") @RequestParam(required = false) Integer id,
+                                             @Parameter(description = "Код главы") @RequestParam(required = false) String code,
                                              @RequestHeader(value = "user-roles", required = false) String userRoles,
                                              @RequestBody(required = false) ChapterPatchRequestDTO body) {
         chapterService.patchChapter(id, code, userRoles, body);

@@ -38,6 +38,7 @@ public class InterfaceService {
 
         LocalDateTime now = LocalDateTime.now();
         discoveredInterface.setConnectionInterfaceId(archInterfaceId);
+        discoveredInterface.setUpdatedDate(now);
 
         if (archInterfaceId != null) {
             interfaceRepository.findById(archInterfaceId)
@@ -46,8 +47,6 @@ public class InterfaceService {
             discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(archInterfaceId, mapicInterfaceId);
 
         } else {
-            discoveredInterface.setUpdatedDate(now);
-
             discoveredOperationRepository.clearConnectionOperationIdByDiscoveredInterfaceId(mapicInterfaceId);
 
         }

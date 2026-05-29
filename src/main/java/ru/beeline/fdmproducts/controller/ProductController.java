@@ -21,7 +21,6 @@ import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.InfraService;
 import ru.beeline.fdmproducts.service.ProductService;
 
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
@@ -46,9 +45,8 @@ public class ProductController {
     @GetMapping("/v1/user/product")
     @Operation(summary = "Продукты текущего пользователя",
             description = "Список продуктов по числовому user-id из заголовка запроса.")
-    public ResponseEntity<List<Product>> getProducts(HttpServletRequest request) {
-        Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
-        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(userId));
+    public ResponseEntity<List<Product>> getProducts(@RequestHeader(value = USER_ID_HEADER) String userId) {
+        return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(Integer.valueOf(userId)));
     }
 
     @GetMapping("/v1/product/infra")
@@ -88,10 +86,10 @@ public class ProductController {
     @GetMapping("/v1/user/product/admin")
     @Operation(summary = "Продукты пользователя (режим администратора)",
             description = "Использует user-id и user-roles; расширенная выборка для админ-сценариев.")
-    public ResponseEntity<List<Product>> getProductsAdmin(HttpServletRequest request) {
-        Integer userId = Integer.valueOf(request.getHeader(USER_ID_HEADER));
+    public ResponseEntity<List<Product>> getProductsAdmin(@RequestHeader(value = USER_ID_HEADER) String userId,
+                                                          @RequestHeader(value = USER_ROLES_HEADER) String userRoles) {
         return ResponseEntity.status(HttpStatus.OK)
-                .body(productService.getProductsByUserAdmin(userId, request.getHeader(USER_ROLES_HEADER)));
+                .body(productService.getProductsByUserAdmin(Integer.valueOf(userId), userRoles));
     }
 
     @GetMapping("/v1/product/{code}")
@@ -311,11 +309,9 @@ public class ProductController {
     }
 
     @PutMapping("/v1/product")
-    @Operation(summary = "Массовое создание/обновление приложений",
-            description = "Использует заголовок user-roles для авторизации.")
-    public ResponseEntity<Void> updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO,
-                                              HttpServletRequest request) {
-        productService.updateProduct(putUpdateProductDTO, request.getHeader(USER_ROLES_HEADER));
+    @Operation(summary = "Массовое создание/обновление приложений")
+    public ResponseEntity<Void> updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO) {
+        productService.updateProduct(putUpdateProductDTO);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 

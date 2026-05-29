@@ -76,9 +76,8 @@ public class ChapterController {
                                     name = "доступ-запрещен",
                                     summary = "Пользователь не администратор",
                                     value = "{\"error\": \"Пользователь не является администратором\"}")))})
-    public ResponseEntity<ChapterCreateDTO> createChapter(@RequestBody(required = false) ChapterCreateRequestDTO body,
-                                                          @RequestHeader(value = "user-roles", required = false) String userRoles) {
-        return ResponseEntity.ok(chapterService.createChapter(body, userRoles));
+    public ResponseEntity<ChapterCreateDTO> createChapter(@RequestBody(required = false) ChapterCreateRequestDTO body) {
+        return ResponseEntity.ok(chapterService.createChapter(body));
     }
 
     @PatchMapping("/chapter")
@@ -116,9 +115,8 @@ public class ChapterController {
                                     value = "{\"error\": \"Пользователь не является администратором\"}")))})
     public ResponseEntity<Void> patchChapter(@Parameter(description = "Id главы") @RequestParam(required = false) Integer id,
                                              @Parameter(description = "Код главы") @RequestParam(required = false) String code,
-                                             @RequestHeader(value = "user-roles", required = false) String userRoles,
                                              @RequestBody(required = false) ChapterPatchRequestDTO body) {
-        chapterService.patchChapter(id, code, userRoles, body);
+        chapterService.patchChapter(id, code, body);
         return ResponseEntity.ok().build();
     }
 }

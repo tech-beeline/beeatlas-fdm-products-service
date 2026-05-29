@@ -19,10 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.beeline.fdmproducts.service.ProductService;
 
-import javax.servlet.http.HttpServletRequest;
-
-import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
-
 @ConditionalOnProperty(name = "app.force-app-delete", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1")
@@ -43,9 +39,8 @@ public class ProductDeleteController {
             @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     @DeleteMapping("product/{id}")
-    public ResponseEntity<Void> deleteProduct(@Parameter(description = "Числовой id продукта") @PathVariable Integer id,
-                                              HttpServletRequest request) {
-        productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
+    public ResponseEntity<Void> deleteProduct(@Parameter(description = "Числовой id продукта") @PathVariable Integer id) {
+        productService.deleteProduct(id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

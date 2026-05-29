@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
-import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
 import ru.beeline.fdmproducts.domain.Chapter;
@@ -48,23 +47,17 @@ public class RequirementCreateService {
     private final PatternRequirementRepository patternRequirementRepository;
 
     @Transactional
-    public CreateRequirementResponseDTO createRequirement(CreateRequirementRequestDTO request) {
-        List<String> roles = RequestContext.getRoles();
-        if (!isAdministrator(roles)) {
-            throw new NotAdministratorException("Пользователь не является администратором");
-        }
-
-        String initiatorUserIdHeader = RequestContext.getUserId();
+    public CreateRequirementResponseDTO createRequirement(CreateRequirementRequestDTO request, String userId) {
         if (request == null
                 || isBlank(request.getName())
                 || isBlank(request.getDescription())
-                || isBlank(initiatorUserIdHeader)) {
+                || isBlank(userId)) {
             throw new IllegalArgumentException("Не переданы обязательные параметры");
         }
 
         Integer initiatorUserId;
         try {
-            initiatorUserId = Integer.valueOf(initiatorUserIdHeader.trim());
+            initiatorUserId = Integer.valueOf(userId.trim());
         } catch (Exception e) {
             throw new IllegalArgumentException("Не переданы обязательные параметры");
         }

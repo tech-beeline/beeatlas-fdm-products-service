@@ -8,7 +8,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.client.TechradarClient;
-import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.Chapter;
 import ru.beeline.fdmproducts.domain.ChapterNfr;
 import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
@@ -47,10 +46,6 @@ public class RequirementVersionService {
 
     @Transactional
     public CreateRequirementVersionResponseDTO createVersion(Integer coreId, String coreCode, CreateRequirementRequestDTO request) {
-        if (!isAdministrator(RequestContext.getRoles())) {
-            throw new NotAdministratorException("Пользователь не является администратором");
-        }
-
         if (coreId != null && coreCode != null && !coreCode.isBlank()) {
             throw new IllegalArgumentException("Переданы несколько идентификаторов");
         }

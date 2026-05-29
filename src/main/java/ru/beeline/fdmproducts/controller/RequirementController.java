@@ -14,15 +14,11 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementRequestDTO;
+
+import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
 import ru.beeline.fdmproducts.dto.CreateRequirementResponseDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementVersionResponseDTO;
 import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
@@ -96,8 +92,9 @@ public class RequirementController {
                             }))
     })
     public ResponseEntity<CreateRequirementResponseDTO> createRequirement(
-            @RequestBody(required = false) CreateRequirementRequestDTO request) {
-        return ResponseEntity.ok(requirementCreateService.createRequirement(request));
+            @RequestBody(required = false) CreateRequirementRequestDTO request,
+            @RequestHeader(value = USER_ID_HEADER) String userId) {
+        return ResponseEntity.ok(requirementCreateService.createRequirement(request, userId));
     }
 
     @PostMapping("/requirement/version")

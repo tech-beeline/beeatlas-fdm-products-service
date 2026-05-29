@@ -21,7 +21,6 @@ import ru.beeline.fdmproducts.dto.chapter.ChapterWithNfrDTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemDTO;
 import ru.beeline.fdmproducts.dto.ProductAvailableDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.exception.ForbiddenException;
 import ru.beeline.fdmproducts.repository.ChapterNfrRepository;
 import ru.beeline.fdmproducts.repository.ChapterPatternRepository;
 import ru.beeline.fdmproducts.repository.ChapterRepository;
@@ -89,8 +88,7 @@ public class ChapterService {
         return rows.stream().map(ChapterPattern::getPatternId).toList();
     }
 
-    public ChapterCreateDTO createChapter(ChapterCreateRequestDTO body, String userRoles) {
-        ensureAdministratorRole(userRoles);
+    public ChapterCreateDTO createChapter(ChapterCreateRequestDTO body) {
         if (body == null
                 || body.getName() == null || body.getName().isBlank()
                 || body.getDescription() == null || body.getDescription().isBlank()) {
@@ -204,9 +202,8 @@ public class ChapterService {
                 .build();
     }
 
-    public void patchChapter(Integer id, String code, String userRoles, ChapterPatchRequestDTO body) {
+    public void patchChapter(Integer id, String code, ChapterPatchRequestDTO body) {
         validateIdentifierParams(id, code);
-        ensureAdministratorRole(userRoles);
         Integer resolvedId = resolveChapterId(id, code);
         boolean emptyBody = body == null
                 || (body.getName() == null
@@ -254,15 +251,6 @@ public class ChapterService {
         }
     }
 
-    private void ensureAdministratorRole(String userRoles) {
-        List<String> roles = userRoles == null ? List.of() : Arrays.stream(userRoles.split(","))
-                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
-                .filter(str -> str != null && !str.isBlank())
-                .toList();
-        if (!roles.contains("ADMINISTRATOR")) {
-            throw new ForbiddenException("Пользователь не является администратором");
-        }
-    }
 
     private Integer resolveChapterId(Integer id, String code) {
         if (id != null) {

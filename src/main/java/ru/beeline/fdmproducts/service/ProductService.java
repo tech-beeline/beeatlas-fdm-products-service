@@ -147,6 +147,10 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    public List<ProductAuthDTO> getProductsForAuth(Integer userId) {
+        return userProductRepository.findProductsForAuthByUserId(userId);
+    }
+
     public List<Product> getProductsByUserAdmin(Integer userId, String userRoles) {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))

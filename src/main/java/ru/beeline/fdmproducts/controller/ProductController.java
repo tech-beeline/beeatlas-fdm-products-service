@@ -49,6 +49,13 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.OK).body(productService.getProductsByUser(Integer.valueOf(userId)));
     }
 
+    @GetMapping("/v1/user/product/auth")
+    @Operation(summary = "Продукты пользователя для авторизации (облегчённый)",
+            description = "Возвращает только id/name/alias без lazy-коллекций. Вызывается fdm-auth.")
+    public ResponseEntity<List<ProductAuthDTO>> getProductsForAuth(@RequestHeader(value = USER_ID_HEADER) String userId) {
+        return ResponseEntity.ok(productService.getProductsForAuth(Integer.valueOf(userId)));
+    }
+
     @GetMapping("/v1/product/infra")
     @Operation(summary = "Получить элементы инфраструктуры cmdb по имени")
     @ApiResponses(value = {

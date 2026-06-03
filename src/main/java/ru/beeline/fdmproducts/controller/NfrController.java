@@ -4,7 +4,6 @@
 
 package ru.beeline.fdmproducts.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,8 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
+import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemPublicDTO;
 import ru.beeline.fdmproducts.service.NonFunctionalRequirementEnumService;
 import ru.beeline.fdmproducts.service.NonFunctionalRequirementService;
@@ -27,7 +28,7 @@ import ru.beeline.fdmproducts.service.PatternRequirementService;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/nfr")
+@RequestMapping("/api")
 @Tag(name = "nfr", description = "Product API")
 public class NfrController {
 
@@ -40,7 +41,7 @@ public class NfrController {
     @Autowired
     PatternRequirementService patternRequirementService;
 
-    @GetMapping
+    @GetMapping("/v1/nfr")
     @Operation(summary = "Получить все актуальные версии требований NFR (без дублей по core_id)")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK",
@@ -68,81 +69,25 @@ public class NfrController {
     public ResponseEntity<List<NfrItemPublicDTO>> getAllNfr() {
         return ResponseEntity.ok(nonFunctionalRequirementEnumService.getAllActualNfr());
     }
-
-    @GetMapping("/product")
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v1/nfr/product")
     @Operation(summary = "Получить все актуальные версии требований NFR, связанные с продуктом")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Список NFR продукта",
-                    content = @Content(
-                            mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = NfrItemProductDTO.class)),
-                            examples = @ExampleObject(
-                                    name = "Успешный ответ",
-                                    value = """
-                                            [
-                                              {
-                                                "id": 1,
-                                                "code": "NFR-001",
-                                                "version": 1,
-                                                "name": "Пример NFR",
-                                                "description": "Описание требования",
-                                                "source": "Источник",
-                                                "sourcePurpose": "Цель источника",
-                                                "createdDate": "2026-04-07T07:37:29.203",
-                                                "fitnessFunctions": [
-                                                  {
-                                                    "id": 101,
-                                                    "code": "FF-001",
-                                                    "description": "Функция пригодности",
-                                                    "docLink": "https://example.com/ff-001"
-                                                  }
-                                                ],
-                                                "chapters": [
-                                                  {
-                                                    "id": 201,
-                                                    "name": "Глава 1",
-                                                    "description": "Описание главы",
-                                                    "docLink": "https://example.com/chapter-1",
-                                                    "code": "CH-001"
-                                                  }
-                                                ],
-                                                "patterns": [
-                                                  {
-                                                    "id": 301,
-                                                    "code": "PAT-001",
-                                                    "name": "Шаблон мониторинга",
-                                                    "description": "Описание шаблона",
-                                                    "rule": "Правило",
-                                                    "dsl": "DSL выражение",
-                                                    "isAntiPattern": false,
-                                                    "createDate": "2026-04-07T07:37:29.203Z",
-                                                    "updateDate": "2026-04-07T07:37:29.203Z",
-                                                    "deleteDate": null
-                                                  }
-                                                ]
-                                              }
-                                            ]
-                                            """
-                            )
-                    )),
-            @ApiResponse(responseCode = "400", description = "Не передан или передано несколько идентификаторов",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "400 BAD REQUEST",
-                                    value = "{\"error\": \"Не передан или передано несколько идентификаторов\"}"))),
-            @ApiResponse(responseCode = "404", description = "Продукт не найден",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "404 NOT FOUND",
-                                    value = "{\"error\": \"Продукт не найден\"}")))})
     public ResponseEntity<List<NfrItemProductDTO>> getProductNfr(@RequestParam(value = "id", required = false) Integer id,
                                                                  @RequestParam(value = "alias", required = false) String alias,
                                                                  @RequestParam(value = "api-key", required = false) String apiKey) {
         Integer productId = nonFunctionalRequirementService.resolveProductId(id, alias, apiKey);
         List<NfrItemProductDTO> nfrList = nonFunctionalRequirementService.getProductNfr(productId);
         return ResponseEntity.ok(nfrList);
+    }
+
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v2/nfr/product")
+    @Operation(summary = "Получить NFR продукта (v2): справочник FF из FF Manager")
+    public ResponseEntity<List<NfrItemProductV2DTO>> getProductNfrV2(@RequestParam(value = "id", required = false) Integer id,
+                                                                     @RequestParam(value = "alias", required = false) String alias,
+                                                                     @RequestParam(value = "api-key", required = false) String apiKey) {
+        Integer productId = nonFunctionalRequirementService.resolveProductId(id, alias, apiKey);
+        return ResponseEntity.ok(nonFunctionalRequirementService.getProductNfrV2(productId));
     }
 
     @DeleteMapping("/product/relations")
@@ -182,7 +127,7 @@ public class NfrController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{req-id}/product")
+    @DeleteMapping("/v1/nfr/{req-id}/product")
     @Operation(summary = "Удалить связь требования NFR с продуктом")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
@@ -213,7 +158,7 @@ public class NfrController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping(path = "/{id}", produces = "application/json")
+    @GetMapping(path = "/v1/nfr/{id}", produces = "application/json")
     @Operation(summary = "Получить требование NFR по id с обогащением ФФ/главами/паттернами")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "404", description = "Требование не найдено",
@@ -247,7 +192,7 @@ public class NfrController {
         return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetails(id));
     }
 
-    @PostMapping("/product")
+    @PostMapping("/v1/nfr/product")
     @Operation(summary = "Связать требования NFR с продуктом")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),
@@ -278,7 +223,7 @@ public class NfrController {
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
-    @PostMapping("/pattern/{id}")
+    @PostMapping("/v1/nfr/pattern/{id}")
     @Operation(summary = "Связать паттерн с требованиями NFR")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "OK"),

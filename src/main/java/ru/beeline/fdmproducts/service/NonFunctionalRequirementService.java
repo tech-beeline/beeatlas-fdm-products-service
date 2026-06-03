@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
+import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
 import ru.beeline.fdmproducts.domain.Chapter;
@@ -19,10 +20,13 @@ import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
 import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnumCore;
 import ru.beeline.fdmproducts.domain.PatternRequirement;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
 import ru.beeline.fdmproducts.dto.chapter.ChapterNfrDTO;
+import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
+import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
+import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
+import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrPatternDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ChapterNfrRepository;
@@ -54,6 +58,8 @@ public class NonFunctionalRequirementService {
     private ChapterNfrRepository chapterNfrRepository;
     @Autowired
     TechradarClient techradarClient;
+    @Autowired
+    private FfManagerClient ffManagerClient;
     @Autowired
     private UserClient userClient;
     @Autowired
@@ -288,48 +294,119 @@ public class NonFunctionalRequirementService {
         if (requirements.isEmpty()) {
             return List.of();
         }
+        Map<Integer, List<Integer>> patternMap = buildNfrIdToPatternIdsMap(requirements);
+        Map<Integer, NonFunctionalRequirement> latestByCore = toLatestByCore(requirements);
+        Map<Integer, NfrPatternDTO> patternById = loadPatternsById(patternMap);
+
+        return latestByCore.values().stream()
+                .map(req -> toNfrItemProductDTO(req, resolvePatternsForNfr(req.getNfrId(), patternMap, patternById)))
+                .toList();
+    }
+
+    public List<NfrItemProductV2DTO> getProductNfrV2(Integer productId) {
+        List<NonFunctionalRequirement> requirements = nonFunctionalRequirementRepository
+                .findByProductIdWithNfrAndCore(productId);
+        if (requirements.isEmpty()) {
+            return List.of();
+        }
+        Map<Integer, List<Integer>> patternMap = buildNfrIdToPatternIdsMap(requirements);
+        Map<Integer, NonFunctionalRequirement> latestByCore = toLatestByCore(requirements);
+        Map<Integer, NfrPatternDTO> patternById = loadPatternsById(patternMap);
+        Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower = loadFfManagerCatalogByCodeLower();
+
+        return latestByCore.values().stream()
+                .map(req -> {
+                    List<NfrPatternDTO> patterns = resolvePatternsForNfr(req.getNfrId(), patternMap, patternById);
+                    String rule = req.getNfr() != null ? req.getNfr().getRule() : null;
+                    List<FitnessFunctionNfrV2DTO> fitnessFunctions =
+                            resolveFitnessFunctionsFromFfManager(rule, catalogByCodeLower);
+                    return toNfrItemProductV2DTO(req, patterns, fitnessFunctions);
+                })
+                .toList();
+    }
+
+    private Map<Integer, List<Integer>> buildNfrIdToPatternIdsMap(List<NonFunctionalRequirement> requirements) {
         List<PatternRequirement> patternRequirements = patternRequirementRepository.findByNfrIdIn(requirements.stream()
                 .map(NonFunctionalRequirement::getNfrId).collect(Collectors.toList()));
-        Map<Integer, List<Integer>> patternMap = patternRequirements.stream()
+        return patternRequirements.stream()
                 .collect(Collectors.groupingBy(
                         PatternRequirement::getNfrId,
                         Collectors.mapping(PatternRequirement::getPatternId, Collectors.toList())
                 ));
-        Map<Integer, NonFunctionalRequirement> latestByCore = requirements.stream()
+    }
+
+    private Map<Integer, NonFunctionalRequirement> toLatestByCore(List<NonFunctionalRequirement> requirements) {
+        return requirements.stream()
                 .filter(req -> req.getNfr() != null && req.getNfr().getCore() != null)
                 .collect(Collectors.toMap(
                         req -> req.getNfr().getCore().getId(),
                         Function.identity(),
                         this::compareByVersion
                 ));
+    }
 
+    private Map<Integer, NfrPatternDTO> loadPatternsById(Map<Integer, List<Integer>> patternMap) {
         List<Integer> allPatternIds = patternMap.values().stream()
                 .filter(Objects::nonNull)
                 .flatMap(List::stream)
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-
-        Map<Integer, NfrPatternDTO> patternById = (allPatternIds.isEmpty()
-                ? List.<NfrPatternDTO>of()
-                : techradarClient.getPatternsByIds(allPatternIds))
-                .stream()
+        if (allPatternIds.isEmpty()) {
+            return Map.of();
+        }
+        return techradarClient.getPatternsByIds(allPatternIds).stream()
                 .filter(Objects::nonNull)
                 .filter(p -> p.getId() != null)
                 .collect(Collectors.toMap(NfrPatternDTO::getId, Function.identity(), (a, b) -> a));
+    }
 
-        return latestByCore.values().stream()
-                .map(req -> {
-                    List<Integer> ids = patternMap.get(req.getNfrId());
-                    List<NfrPatternDTO> resolved = (ids == null ? List.<Integer>of() : ids).stream()
-                            .filter(Objects::nonNull)
-                            .distinct()
-                            .map(patternById::get)
-                            .filter(Objects::nonNull)
-                            .toList();
-                    return toNfrItemProductDTO(req, resolved);
-                })
+    private List<NfrPatternDTO> resolvePatternsForNfr(Integer nfrId, Map<Integer, List<Integer>> patternMap,
+                                                      Map<Integer, NfrPatternDTO> patternById) {
+        List<Integer> ids = patternMap.get(nfrId);
+        if (ids == null) {
+            return List.of();
+        }
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .map(patternById::get)
+                .filter(Objects::nonNull)
                 .toList();
+    }
+
+    private Map<String, FfManagerFitnessFunctionDTO> loadFfManagerCatalogByCodeLower() {
+        Map<String, FfManagerFitnessFunctionDTO> result = ffManagerClient.getAllFitnessFunctions().stream()
+                .filter(ff -> ff.getCode() != null && !ff.getCode().isBlank())
+                .collect(Collectors.toMap(
+                        ff -> ff.getCode().toLowerCase(Locale.ROOT),
+                        Function.identity(),
+                        (a, b) -> a));
+        log.info("Список по запросу из ff-manager, размер: {}", result.size());
+        return result;
+    }
+
+    private List<FitnessFunctionNfrV2DTO> resolveFitnessFunctionsFromFfManager(
+            String rule,
+            Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower) {
+        log.info("rule: {}", rule);
+        List<String> lowerCodes = parseRuleCodesLower(rule);
+        if (lowerCodes.isEmpty()) {
+            return List.of();
+        }
+        List<FitnessFunctionNfrV2DTO> result = new ArrayList<>();
+        for (String lowerCode : lowerCodes) {
+            log.info("rule codes: {}", lowerCode);
+            FfManagerFitnessFunctionDTO ff = catalogByCodeLower.get(lowerCode);
+            if (ff != null) {
+                result.add(FitnessFunctionNfrV2DTO.builder()
+                        .id(ff.getId())
+                        .code(ff.getCode())
+                        .description(ff.getDescription())
+                        .build());
+            }
+        }
+        return result;
     }
 
     private NonFunctionalRequirement compareByVersion(NonFunctionalRequirement req1, NonFunctionalRequirement req2) {
@@ -340,8 +417,7 @@ public class NonFunctionalRequirementService {
         return v1 > v2 ? req1 : req2;
     }
 
-    private NfrItemProductDTO toNfrItemProductDTO(NonFunctionalRequirement requirement,
-                                                  List<NfrPatternDTO> patterns) {
+    private NfrItemProductDTO toNfrItemProductDTO(NonFunctionalRequirement requirement, List<NfrPatternDTO> patterns) {
         NonFunctionalRequirementEnum nfr = requirement.getNfr();
         NonFunctionalRequirementEnumCore core = nfr.getCore();
         List<LocalFitnessFunction> localFitnessFunctions = getFitnessFunctionsFromRule(nfr.getRule());
@@ -365,10 +441,34 @@ public class NonFunctionalRequirementService {
                 .build();
     }
 
-    private List<LocalFitnessFunction> getFitnessFunctionsFromRule(String rule) {
+    private NfrItemProductV2DTO toNfrItemProductV2DTO(NonFunctionalRequirement requirement,
+                                                      List<NfrPatternDTO> patterns,
+                                                      List<FitnessFunctionNfrV2DTO> fitnessFunctions) {
+        NonFunctionalRequirementEnum nfr = requirement.getNfr();
+        NonFunctionalRequirementEnumCore core = nfr.getCore();
+        List<ChapterNfr> chapterNfrs = chapterNfrRepository.findByNfrId(nfr.getId());
+        List<Chapter> chapters = chapterNfrs.stream().map(ChapterNfr::getChapter).filter(Objects::nonNull).toList();
+        List<ChapterNfrDTO> chapterNfrDTOS = buildChapterNfrDTO(chapters);
+        return NfrItemProductV2DTO.builder()
+                .relationId(requirement.getId())
+                .id(nfr.getId())
+                .code(core != null ? core.getCode() : null)
+                .version(nfr.getVersion())
+                .name(nfr.getName())
+                .createdDate(requirement.getCreatedDate())
+                .description(nfr.getDescription())
+                .patterns(patterns != null ? patterns : new ArrayList<>())
+                .fitnessFunctions(fitnessFunctions)
+                .chapters(chapterNfrDTOS)
+                .source(core != null ? core.getSource() : null)
+                .sourcePurpose(requirement.getSource())
+                .build();
+    }
+
+    private List<String> parseRuleCodesLower(String rule) {
         if (rule == null || rule.trim().isEmpty()) {
             log.warn("Rule is null or empty");
-            return new ArrayList<>();
+            return List.of();
         }
         String ruleWithoutSpaces = rule.replaceAll("\\s+", "");
         List<String> lowerCodes = Arrays.stream(ruleWithoutSpaces.split(","))
@@ -379,6 +479,13 @@ public class NonFunctionalRequirementService {
                 .collect(Collectors.toList());
         if (lowerCodes.isEmpty()) {
             log.warn("No valid codes found in rule: {}", rule);
+        }
+        return lowerCodes;
+    }
+
+    private List<LocalFitnessFunction> getFitnessFunctionsFromRule(String rule) {
+        List<String> lowerCodes = parseRuleCodesLower(rule);
+        if (lowerCodes.isEmpty()) {
             return new ArrayList<>();
         }
         List<LocalFitnessFunction> fitnessFunctions = localFitnessFunctionRepository.findByCodeInIgnoreCase(lowerCodes);

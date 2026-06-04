@@ -60,18 +60,12 @@ public class PatternRequirementService {
         patternRequirementRepository.deleteById(id);
     }
 
-    /**
-     * Получить все требования NFR, связанные с паттерном.
-     * Дубли по core_id убираются, остаётся только запись с максимальным version.
-     */
     public List<NfrItemDTO> getNfrByPatternId(Integer patternId) {
         List<PatternRequirement> requirements = patternRequirementRepository
                 .findByPatternIdWithNfrAndCore(patternId);
-
         if (requirements.isEmpty()) {
             return List.of();
         }
-
         return requirements.stream()
                 .map(PatternRequirement::getNfr)
                 .filter(nfr -> nfr != null && nfr.getCore() != null)
@@ -82,6 +76,22 @@ public class PatternRequirementService {
                                 Comparator.nullsFirst(Comparator.naturalOrder())))
                         .orElse(null))
                 .filter(nfr -> nfr != null)
+                .filter(nfr -> {
+                    if (nfr.getVersion() == null) {
+                        log.warn("NFR для Core {} имеет версию null, исключаем из результата",
+                                nfr.getCore().getId());
+                        return false;
+                    }
+                    boolean hasNewerVersion = nonFunctionalRequirementEnumRepository.existsByCoreIdAndVersionGreaterThan(
+                            nfr.getCore().getId(),
+                            nfr.getVersion());
+                    if (hasNewerVersion) {
+                        log.info("NFR для Core {} устарел: текущая версия={}, есть более новая версия в БД",
+                                nfr.getCore().getId(), nfr.getVersion());
+                        return false;
+                    }
+                    return true;
+                })
                 .map(this::toNfrItemDTO)
                 .collect(Collectors.toList());
     }

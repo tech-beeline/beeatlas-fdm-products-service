@@ -36,6 +36,7 @@ public class NonFunctionalRequirementEnumService {
         return nonFunctionalRequirementEnumRepository.findAll();
     }
 
+
     public List<NfrItemPublicDTO> getAllActualNfr() {
         List<NonFunctionalRequirementEnum> all = nonFunctionalRequirementEnumRepository.findAll();
         if (all.isEmpty()) {

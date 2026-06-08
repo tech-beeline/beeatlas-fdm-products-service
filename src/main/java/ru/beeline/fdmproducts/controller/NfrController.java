@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
+import ru.beeline.fdmproducts.dto.nfr.NfrDetailsV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemPublicDTO;
@@ -190,6 +191,13 @@ public class NfrController {
     )
     public ResponseEntity<NfrDetailsDTO> getNfrById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetails(id));
+    }
+
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping(path = "/v2/nfr/{id}", produces = "application/json")
+    @Operation(summary = "Получить требование NFR по id (v2): справочник FF из FF Manager")
+    public ResponseEntity<NfrDetailsV2DTO> getNfrByIdV2(@PathVariable("id") Integer id) {
+        return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetailsV2(id));
     }
 
     @PostMapping("/v1/nfr/product")

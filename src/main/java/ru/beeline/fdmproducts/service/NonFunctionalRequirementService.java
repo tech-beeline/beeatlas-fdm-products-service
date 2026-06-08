@@ -25,6 +25,7 @@ import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
+import ru.beeline.fdmproducts.dto.nfr.NfrDetailsV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
 import ru.beeline.fdmproducts.dto.nfr.NfrPatternDTO;
@@ -538,6 +539,35 @@ public class NonFunctionalRequirementService {
                 .toList();
         List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
         return NfrDetailsDTO.builder()
+                .id(nfr.getId())
+                .code(core != null ? core.getCode() : null)
+                .version(nfr.getVersion())
+                .name(nfr.getName())
+                .description(nfr.getDescription())
+                .fitnessFunctions(fitnessFunctions)
+                .chapters(chapterDtos)
+                .patterns(patterns)
+                .build();
+    }
+
+    public NfrDetailsV2DTO getNfrDetailsV2(Integer id) {
+        NonFunctionalRequirementEnum nfr = nonFunctionalRequirementEnumRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Требование не найдено"));
+        NonFunctionalRequirementEnumCore core = nfr.getCore();
+        Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower = loadFfManagerCatalogByCodeLower();
+        List<FitnessFunctionNfrV2DTO> fitnessFunctions =
+                resolveFitnessFunctionsFromFfManager(nfr.getRule(), catalogByCodeLower);
+        List<ChapterNfr> chapterNfrs = chapterNfrRepository.findByNfrId(nfr.getId());
+        List<Chapter> chapters = chapterNfrs.stream().map(ChapterNfr::getChapter).filter(Objects::nonNull).toList();
+        List<ChapterNfrDTO> chapterDtos = buildChapterNfrDTO(chapters);
+        List<PatternRequirement> patternRequirements = patternRequirementRepository.findByNfrId(nfr.getId());
+        List<Integer> patternIds = patternRequirements.stream()
+                .map(PatternRequirement::getPatternId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
+        return NfrDetailsV2DTO.builder()
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
                 .version(nfr.getVersion())

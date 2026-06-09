@@ -77,4 +77,15 @@ public class RequirementController {
             @RequestBody(required = false) CreateRequirementRequestDTO request) {
         return ResponseEntity.ok(requirementVersionService.createVersion(id, code, request));
     }
+
+    @ApiErrorCodes({400, 403, 404, 500})
+    @PostMapping("/v2/requirement/version")
+    @Operation(summary = "Создать новую версию существующего NFR (v2)",
+            description = "Укажите ровно один из query-параметров id или code; коды ФФ в rule проверяются по справочнику FF Manager.")
+    public ResponseEntity<CreateRequirementVersionResponseDTO> createRequirementVersionV2(
+            @Parameter(description = "Числовой id требования-основы (core_id)") @RequestParam(value = "id", required = false) Integer id,
+            @Parameter(description = "Код требования-основы (альтернатива id)") @RequestParam(value = "code", required = false) String code,
+            @RequestBody(required = false) CreateRequirementRequestDTO request) {
+        return ResponseEntity.ok(requirementVersionService.createVersionV2(id, code, request));
+    }
 }

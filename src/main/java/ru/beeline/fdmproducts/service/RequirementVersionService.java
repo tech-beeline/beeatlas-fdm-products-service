@@ -129,7 +129,7 @@ public class RequirementVersionService {
         if (coreId != null) {
             coreOpt = coreRepository.findById(coreId);
         } else {
-            coreOpt = coreRepository.findByCode(coreCode.trim());
+            coreOpt = coreRepository.findByCodeIgnoreCase(coreCode.trim());
         }
         return coreOpt.orElseThrow(() -> new EntityNotFoundException("Требование не найдено"));
     }

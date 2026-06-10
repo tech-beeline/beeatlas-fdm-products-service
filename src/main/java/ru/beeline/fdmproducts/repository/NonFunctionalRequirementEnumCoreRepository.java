@@ -14,4 +14,6 @@ import java.util.Optional;
 public interface NonFunctionalRequirementEnumCoreRepository extends JpaRepository<NonFunctionalRequirementEnumCore, Integer> {
 
     Optional<NonFunctionalRequirementEnumCore> findByCode(String code);
+
+    Optional<NonFunctionalRequirementEnumCore> findByCodeIgnoreCase(String code);
 }

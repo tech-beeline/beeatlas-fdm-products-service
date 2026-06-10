@@ -21,8 +21,6 @@ import java.util.List;
 @Builder
 public class NfrItemProductDTO {
 
-    @Schema(hidden = true)
-    private Integer relationId;
     private Integer id;
     private String code;
     private Integer version;

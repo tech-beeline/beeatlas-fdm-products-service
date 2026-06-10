@@ -42,34 +42,13 @@ public class NfrController {
     @Autowired
     PatternRequirementService patternRequirementService;
 
+    @ApiErrorCodes({500})
     @GetMapping("/v1/nfr")
     @Operation(summary = "Получить все актуальные версии требований NFR (без дублей по core_id)")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK",
-                    content = @Content(
-                            mediaType = "application/json",
-                            array = @ArraySchema(schema = @Schema(implementation = NfrItemPublicDTO.class)),
-                            examples = @ExampleObject(
-                                    name = "Успешный ответ",
-                                    value = """
-                                            [
-                                              {
-                                                "id": 1,
-                                                "code": "NFR-001",
-                                                "version": 1,
-                                                "name": "string",
-                                                "description": "string",
-                                                "rule": "string",
-                                                "source": "string"
-                                              }
-                                            ]
-                                            """
-                            )
-                    ))
-    })
     public ResponseEntity<List<NfrItemPublicDTO>> getAllNfr() {
         return ResponseEntity.ok(nonFunctionalRequirementEnumService.getAllActualNfr());
     }
+
     @ApiErrorCodes({400, 404, 500})
     @GetMapping("/v1/nfr/product")
     @Operation(summary = "Получить все актуальные версии требований NFR, связанные с продуктом")
@@ -91,35 +70,9 @@ public class NfrController {
         return ResponseEntity.ok(nonFunctionalRequirementService.getProductNfrV2(productId));
     }
 
-    @DeleteMapping("/product/relations")
+    @ApiErrorCodes({400, 404, 500})
+    @DeleteMapping("/v1/nfr/product/relations")
     @Operation(summary = "Удалить связи NFR с продуктом (только source='Beeatlas') по списку id связей")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK"),
-            @ApiResponse(responseCode = "400", description = "Ошибки валидации/несоответствия source или продукта",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = {
-                                    @ExampleObject(name = "Не передан идентификатор приложения",
-                                            value = "{\"errorMessage\":\"Не передан один из идентификаторов приложения: id/alias/api-key\"}"),
-                                    @ExampleObject(name = "Передано несколько идентификаторов приложения",
-                                            value = "{\"errorMessage\":\"Передано несколько идентификаторов приложения\"}"),
-                                    @ExampleObject(name = "Не переданы идентификаторы связей",
-                                            value = "{\"errorMessage\":\"Не передан ни один идентификатор связи\"}"),
-                                    @ExampleObject(name = "Связь не принадлежит продукту",
-                                            value = "{\"errorMessage\":\"Связь 10 не принадлежит указанному продукту\"}"),
-                                    @ExampleObject(name = "Связь с source != 'Beeatlas'",
-                                            value = "{\"errorMessage\":\"Связь 10 имеет source отличный от 'Beeatlas'\"}"),
-                                    @ExampleObject(name = "Часть связей не найдена",
-                                            value = "{\"errorMessage\":\"Не найдены связи: [10, 11]\"}")
-                            })),
-            @ApiResponse(responseCode = "404", description = "Продукт не найден",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "404 NOT FOUND",
-                                    value = "{\"errorMessage\":\"Продукт с указанным идентификатором не найден\"}"
-                            )))
-    })
     public ResponseEntity<Void> deleteBeeatlasProductNfrRelations(@RequestParam(value = "id", required = false) Integer id,
                                                                   @RequestParam(value = "alias", required = false) String alias,
                                                                   @RequestParam(value = "api-key", required = false) String apiKey,
@@ -128,29 +81,9 @@ public class NfrController {
         return ResponseEntity.ok().build();
     }
 
+    @ApiErrorCodes({400, 404, 500})
     @DeleteMapping("/v1/nfr/{req-id}/product")
     @Operation(summary = "Удалить связь требования NFR с продуктом")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK"),
-            @ApiResponse(responseCode = "400", description = "Ошибки валидации входных данных",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = {
-                                    @ExampleObject(name = "Не передан идентификатор приложения",
-                                            value = "{\"errorMessage\":\"Не передан один из идентификаторов приложения: id/alias/api-key\"}"),
-                                    @ExampleObject(name = "Передано несколько идентификаторов приложения",
-                                            value = "{\"errorMessage\":\"Передано несколько идентификаторов приложения\"}"),
-                                    @ExampleObject(name = "Автоматически назначенное требование",
-                                            value = "{\"errorMessage\":\"Требование назначенное автоматически, нельзя удалить вручную\"}")
-                            })),
-            @ApiResponse(responseCode = "404", description = "Продукт не найден",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "404 NOT FOUND",
-                                    value = "{\"errorMessage\":\"Продукт с указанным идентификатором не найден\"}"
-                            )))
-    })
     public ResponseEntity<Void> deleteProductNfr(@PathVariable("req-id") Integer reqId,
                                                  @RequestParam(value = "id", required = false) Integer id,
                                                  @RequestParam(value = "alias", required = false) String alias,
@@ -159,36 +92,9 @@ public class NfrController {
         return ResponseEntity.ok().build();
     }
 
+    @ApiErrorCodes({400, 404, 500})
     @GetMapping(path = "/v1/nfr/{id}", produces = "application/json")
     @Operation(summary = "Получить требование NFR по id с обогащением ФФ/главами/паттернами")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "404", description = "Требование не найдено",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "404 NOT FOUND",
-                                    value = "{\"errorMessage\": \"Требование не найдено\"}")))})
-    @ApiResponse(responseCode = "200", description = "OK",
-            content = @Content(
-                    mediaType = "application/json",
-                    examples = @ExampleObject(
-                            name = "Успешный ответ",
-                            value = """
-                                    {
-                                      "id": 1,
-                                      "code": "NFR-001",
-                                      "version": 1,
-                                      "name": "string",
-                                      "description": "string",
-                                      "fitnessFunctions": [],
-                                      "chapters": [],
-                                      "patterns": []
-                                    }
-                                    """
-                    ),
-                    schema = @Schema(implementation = NfrDetailsDTO.class)
-            )
-    )
     public ResponseEntity<NfrDetailsDTO> getNfrById(@PathVariable("id") Integer id) {
         return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetails(id));
     }
@@ -200,28 +106,9 @@ public class NfrController {
         return ResponseEntity.ok(nonFunctionalRequirementService.getNfrDetailsV2(id));
     }
 
+    @ApiErrorCodes({400, 404, 500})
     @PostMapping("/v1/nfr/product")
     @Operation(summary = "Связать требования NFR с продуктом")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "OK"),
-            @ApiResponse(responseCode = "400", description = "Ошибка валидации идентификаторов/требований",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "400 BAD REQUEST",
-                                    value = "{\"error\": \"Ошибка валидации идентификаторов/требований\"}"))),
-            @ApiResponse(responseCode = "404", description = "Продукт/пользователь не найден",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "404 NOT FOUND",
-                                    value = "{\"error\": \"Продукт/пользователь не найден\"}"))),
-            @ApiResponse(responseCode = "500", description = "Auth недоступен",
-                    content = @Content(
-                            mediaType = "application/json",
-                            examples = @ExampleObject(
-                                    name = "500 SERVER ERROR",
-                                    value = "{\"error\": \"Auth недоступен\"}")))})
     public ResponseEntity<Void> addProductNfr(@RequestParam(value = "id", required = false) Integer id,
                                               @RequestParam(value = "alias", required = false) String alias,
                                               @RequestParam(value = "api-key", required = false) String apiKey,

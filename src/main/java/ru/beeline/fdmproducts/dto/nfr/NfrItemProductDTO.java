@@ -4,6 +4,7 @@
 
 package ru.beeline.fdmproducts.dto.nfr;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,7 +21,7 @@ import java.util.List;
 @Builder
 public class NfrItemProductDTO {
 
-
+    @Schema(hidden = true)
     private Integer relationId;
     private Integer id;
     private String code;

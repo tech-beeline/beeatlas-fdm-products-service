@@ -427,7 +427,6 @@ public class NonFunctionalRequirementService {
         List<Chapter> chapters = chapterNfrs.stream().map(ChapterNfr::getChapter).filter(Objects::nonNull).toList();
         List<ChapterNfrDTO> chapterNfrDTOS = buildChapterNfrDTO(chapters);
         return NfrItemProductDTO.builder()
-                .relationId(requirement.getId())
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
                 .version(nfr.getVersion())
@@ -451,7 +450,6 @@ public class NonFunctionalRequirementService {
         List<Chapter> chapters = chapterNfrs.stream().map(ChapterNfr::getChapter).filter(Objects::nonNull).toList();
         List<ChapterNfrDTO> chapterNfrDTOS = buildChapterNfrDTO(chapters);
         return NfrItemProductV2DTO.builder()
-                .relationId(requirement.getId())
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
                 .version(nfr.getVersion())

@@ -300,6 +300,7 @@ public class NonFunctionalRequirementService {
         Map<Integer, NfrPatternDTO> patternById = loadPatternsById(patternMap);
 
         return latestByCore.values().stream()
+                .filter(req -> isActualNfrVersion(req.getNfr()))
                 .map(req -> toNfrItemProductDTO(req, resolvePatternsForNfr(req.getNfrId(), patternMap, patternById)))
                 .toList();
     }
@@ -316,6 +317,7 @@ public class NonFunctionalRequirementService {
         Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower = loadFfManagerCatalogByCodeLower();
 
         return latestByCore.values().stream()
+                .filter(req -> isActualNfrVersion(req.getNfr()))
                 .map(req -> {
                     List<NfrPatternDTO> patterns = resolvePatternsForNfr(req.getNfrId(), patternMap, patternById);
                     String rule = req.getNfr() != null ? req.getNfr().getRule() : null;
@@ -416,6 +418,26 @@ public class NonFunctionalRequirementService {
         if (v1 == null) return req2;
         if (v2 == null) return req1;
         return v1 > v2 ? req1 : req2;
+    }
+
+    private boolean isActualNfrVersion(NonFunctionalRequirementEnum nfr) {
+        if (nfr == null || nfr.getCore() == null) {
+            return false;
+        }
+        if (nfr.getVersion() == null) {
+            log.warn("NFR для Core {} имеет версию null, исключаем из результата",
+                    nfr.getCore().getId());
+            return false;
+        }
+        boolean hasNewerVersion = nonFunctionalRequirementEnumRepository.existsByCoreIdAndVersionGreaterThan(
+                nfr.getCore().getId(),
+                nfr.getVersion());
+        if (hasNewerVersion) {
+            log.info("NFR для Core {} устарел: текущая версия={}, есть более новая версия в БД",
+                    nfr.getCore().getId(), nfr.getVersion());
+            return false;
+        }
+        return true;
     }
 
     private NfrItemProductDTO toNfrItemProductDTO(NonFunctionalRequirement requirement, List<NfrPatternDTO> patterns) {

@@ -14,4 +14,7 @@ import java.util.List;
 public interface NonFunctionalRequirementEnumRepository extends JpaRepository<NonFunctionalRequirementEnum, Integer> {
 
     List<NonFunctionalRequirementEnum> findByCoreId(Integer coreId);
+
+    boolean existsByCoreIdAndVersionGreaterThan(Integer coreId, Integer version);
 }
+

@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,20 +19,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import ru.beeline.fdmproducts.service.ProductService;
 
-import javax.servlet.http.HttpServletRequest;
-
-import static ru.beeline.fdmproducts.utils.Constant.USER_ROLES_HEADER;
-
 @ConditionalOnProperty(name = "app.force-app-delete", havingValue = "true")
 @RestController
 @RequestMapping("/api/v1")
-@Tag(description = "Product API", name = "product")
+@Tag(name = "product", description = "Операции каталога продуктов (в т.ч. опасные; удаление доступно только при app.force-app-delete=true).")
 public class ProductDeleteController {
 
     @Autowired
     private ProductService productService;
 
-    @Operation(summary = "Удаление продукта и его связей.")
+    @Operation(summary = "Удалить продукт и связанные данные",
+            description = "Необратимая операция; требуются права из заголовка user-roles. Контроллер активен только если включена настройка app.force-app-delete.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Продукт успешно удалён"),
             @ApiResponse(responseCode = "400", description = "Неверные входные данные"),
@@ -41,8 +39,8 @@ public class ProductDeleteController {
             @ApiResponse(responseCode = "500", description = "Внутренняя ошибка сервера")
     })
     @DeleteMapping("product/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Integer id, HttpServletRequest request) {
-        productService.deleteProduct(id, request.getHeader(USER_ROLES_HEADER));
+    public ResponseEntity<Void> deleteProduct(@Parameter(description = "Числовой id продукта") @PathVariable Integer id) {
+        productService.deleteProduct(id);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 }

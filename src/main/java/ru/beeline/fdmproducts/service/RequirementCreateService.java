@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpStatusCodeException;
-import ru.beeline.fdmproducts.controller.RequestContext;
+import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
 import ru.beeline.fdmproducts.domain.Chapter;
@@ -18,6 +18,7 @@ import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnumCore;
 import ru.beeline.fdmproducts.domain.PatternRequirement;
 import ru.beeline.fdmproducts.dto.CreateRequirementRequestDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementResponseDTO;
+import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
 import ru.beeline.fdmproducts.exception.AuthServiceUnavailableException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.NotAdministratorException;
@@ -27,6 +28,7 @@ import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumCoreReposit
 import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumRepository;
 import ru.beeline.fdmproducts.repository.PatternRequirementRepository;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -39,8 +41,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RequirementCreateService {
 
+    private static final String INVALID_RULE_FF_CODES_MESSAGE =
+            "В поле rule переданы коды несуществующих фитнес-функций";
+
     private final UserClient userClient;
     private final TechradarClient techradarClient;
+    private final FfManagerClient ffManagerClient;
     private final ChapterRepository chapterRepository;
     private final NonFunctionalRequirementEnumCoreRepository coreRepository;
     private final NonFunctionalRequirementEnumRepository enumRepository;
@@ -48,38 +54,33 @@ public class RequirementCreateService {
     private final PatternRequirementRepository patternRequirementRepository;
 
     @Transactional
-    public CreateRequirementResponseDTO createRequirement(CreateRequirementRequestDTO request) {
-        List<String> roles = RequestContext.getRoles();
-        if (!isAdministrator(roles)) {
-            throw new NotAdministratorException("Пользователь не является администратором");
-        }
+    public CreateRequirementResponseDTO createRequirementV2(CreateRequirementRequestDTO request, String userId) {
+        validateRuleAgainstFfManager(request != null ? request.getRule() : null);
+        return createRequirement(request, userId);
+    }
 
-        String initiatorUserIdHeader = RequestContext.getUserId();
+    @Transactional
+    public CreateRequirementResponseDTO createRequirement(CreateRequirementRequestDTO request, String userId) {
         if (request == null
                 || isBlank(request.getName())
                 || isBlank(request.getDescription())
-                || isBlank(initiatorUserIdHeader)) {
+                || isBlank(userId)) {
             throw new IllegalArgumentException("Не переданы обязательные параметры");
         }
-
         Integer initiatorUserId;
         try {
-            initiatorUserId = Integer.valueOf(initiatorUserIdHeader.trim());
+            initiatorUserId = Integer.valueOf(userId.trim());
         } catch (Exception e) {
             throw new IllegalArgumentException("Не переданы обязательные параметры");
         }
-
         List<Integer> chapters = distinctIds(request.getChapters());
         List<Integer> patterns = distinctIds(request.getPatterns());
-
         if (!chapters.isEmpty()) {
             validateChaptersExist(chapters);
         }
-
         if (!patterns.isEmpty()) {
             validatePatternsExistInTechradar(patterns);
         }
-
         String fullName = fetchInitiatorFullName(initiatorUserId);
 
         NonFunctionalRequirementEnumCore core = coreRepository.saveAndFlush(NonFunctionalRequirementEnumCore.builder()
@@ -88,7 +89,6 @@ public class RequirementCreateService {
                 .build());
         core.setCode(buildCoreCode(core.getId()));
         core = coreRepository.save(core);
-
         NonFunctionalRequirementEnum nfrEnum = enumRepository.save(NonFunctionalRequirementEnum.builder()
                 .name(request.getName())
                 .description(request.getDescription())
@@ -96,7 +96,6 @@ public class RequirementCreateService {
                 .version(1)
                 .core(core)
                 .build());
-
         if (!chapters.isEmpty()) {
             List<Chapter> chapterEntities = chapterRepository.findAllById(chapters);
             Map<Integer, Chapter> chapterById = chapterEntities.stream()
@@ -111,7 +110,6 @@ public class RequirementCreateService {
                     .collect(Collectors.toList());
             chapterNfrRepository.saveAll(chapterNfrs);
         }
-
         if (!patterns.isEmpty()) {
             List<PatternRequirement> patternRequirements = patterns.stream()
                     .map(patternId -> PatternRequirement.builder()
@@ -121,7 +119,6 @@ public class RequirementCreateService {
                     .collect(Collectors.toList());
             patternRequirementRepository.saveAll(patternRequirements);
         }
-
         return CreateRequirementResponseDTO.builder()
                 .coreId(core.getId())
                 .versionId(nfrEnum.getId())
@@ -194,6 +191,39 @@ public class RequirementCreateService {
                 + digits.substring(4, 6) + "."
                 + digits.substring(6, 8);
         return "REQ." + grouped;
+    }
+
+    private void validateRuleAgainstFfManager(String rule) {
+        if (rule == null || rule.trim().isEmpty()) {
+            return;
+        }
+        List<String> lowerCodes = parseRuleCodesLower(rule);
+        if (lowerCodes.isEmpty()) {
+            return;
+        }
+        Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower = ffManagerClient.getAllFitnessFunctions().stream()
+                .filter(ff -> ff.getCode() != null && !ff.getCode().isBlank())
+                .collect(Collectors.toMap(
+                        ff -> ff.getCode().toLowerCase(Locale.ROOT),
+                        Function.identity(),
+                        (a, b) -> a));
+        boolean allCodesExist = lowerCodes.stream().allMatch(catalogByCodeLower::containsKey);
+        if (!allCodesExist) {
+            throw new IllegalArgumentException(INVALID_RULE_FF_CODES_MESSAGE);
+        }
+    }
+
+    private List<String> parseRuleCodesLower(String rule) {
+        if (rule == null || rule.trim().isEmpty()) {
+            return List.of();
+        }
+        String ruleWithoutSpaces = rule.replaceAll("\\s+", "");
+        return Arrays.stream(ruleWithoutSpaces.split(","))
+                .map(String::trim)
+                .filter(code -> !code.isEmpty())
+                .map(code -> code.toLowerCase(Locale.ROOT))
+                .distinct()
+                .collect(Collectors.toList());
     }
 }
 

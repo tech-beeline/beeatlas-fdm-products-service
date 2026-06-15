@@ -11,7 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.dto.ConnectionRequestDTO;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
+import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
+
+import java.time.LocalDateTime;
 
 @Transactional
 @Service
@@ -21,17 +24,32 @@ public class InterfaceService {
     private DiscoveredInterfaceRepository discoveredInterfaceRepository;
     @Autowired
     private InterfaceRepository interfaceRepository;
+    @Autowired
+    private DiscoveredOperationRepository discoveredOperationRepository;
 
 
     public void handConnection(ConnectionRequestDTO request) {
 
-        DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(request.getMapicInterfaceId())
-                .orElseThrow(() -> new IllegalArgumentException("discoveredInterface отсутствует в БЖ"));
-        interfaceRepository.findById(request.getArchInterfaceId())
-                .orElseThrow(() -> new IllegalArgumentException("Interface отсутствует в БЖ"));
-        discoveredInterface.setConnectionInterfaceId(request.getArchInterfaceId());
-        discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(request.getArchInterfaceId(),
-                                                                       request.getMapicInterfaceId());
+        Integer mapicInterfaceId = request.getMapicInterfaceId();
+        Integer archInterfaceId = request.getArchInterfaceId();
 
+        DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(mapicInterfaceId)
+                .orElseThrow(() -> new IllegalArgumentException("DiscoveredInterface отсутствует в БД"));
+
+        LocalDateTime now = LocalDateTime.now();
+        discoveredInterface.setConnectionInterfaceId(archInterfaceId);
+        discoveredInterface.setUpdatedDate(now);
+
+        if (archInterfaceId != null) {
+            interfaceRepository.findById(archInterfaceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Interface отсутствует в БД"));
+
+            discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(archInterfaceId, mapicInterfaceId);
+
+        } else {
+            discoveredOperationRepository.clearConnectionOperationIdByDiscoveredInterfaceId(mapicInterfaceId);
+
+        }
+        discoveredOperationRepository.updateUpdatedDateByInterfaceId(mapicInterfaceId, now);
     }
 }

@@ -7,8 +7,8 @@ package ru.beeline.fdmproducts.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
-import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.Chapter;
 import ru.beeline.fdmproducts.domain.ChapterNfr;
 import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
@@ -16,6 +16,7 @@ import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnumCore;
 import ru.beeline.fdmproducts.domain.PatternRequirement;
 import ru.beeline.fdmproducts.dto.CreateRequirementRequestDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementVersionResponseDTO;
+import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.NotAdministratorException;
 import ru.beeline.fdmproducts.repository.ChapterNfrRepository;
@@ -24,6 +25,7 @@ import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumCoreReposit
 import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumRepository;
 import ru.beeline.fdmproducts.repository.PatternRequirementRepository;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -38,7 +40,11 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RequirementVersionService {
 
+    private static final String INVALID_RULE_FF_CODES_MESSAGE =
+            "В поле rule переданы коды несуществующих фитнес-функций";
+
     private final TechradarClient techradarClient;
+    private final FfManagerClient ffManagerClient;
     private final ChapterRepository chapterRepository;
     private final NonFunctionalRequirementEnumCoreRepository coreRepository;
     private final NonFunctionalRequirementEnumRepository enumRepository;
@@ -46,11 +52,13 @@ public class RequirementVersionService {
     private final PatternRequirementRepository patternRequirementRepository;
 
     @Transactional
-    public CreateRequirementVersionResponseDTO createVersion(Integer coreId, String coreCode, CreateRequirementRequestDTO request) {
-        if (!isAdministrator(RequestContext.getRoles())) {
-            throw new NotAdministratorException("Пользователь не является администратором");
-        }
+    public CreateRequirementVersionResponseDTO createVersionV2(Integer coreId, String coreCode, CreateRequirementRequestDTO request) {
+        validateRuleAgainstFfManager(request != null ? request.getRule() : null);
+        return createVersion(coreId, coreCode, request);
+    }
 
+    @Transactional
+    public CreateRequirementVersionResponseDTO createVersion(Integer coreId, String coreCode, CreateRequirementRequestDTO request) {
         if (coreId != null && coreCode != null && !coreCode.isBlank()) {
             throw new IllegalArgumentException("Переданы несколько идентификаторов");
         }
@@ -121,7 +129,7 @@ public class RequirementVersionService {
         if (coreId != null) {
             coreOpt = coreRepository.findById(coreId);
         } else {
-            coreOpt = coreRepository.findByCode(coreCode.trim());
+            coreOpt = coreRepository.findByCodeIgnoreCase(coreCode.trim());
         }
         return coreOpt.orElseThrow(() -> new EntityNotFoundException("Требование не найдено"));
     }
@@ -170,6 +178,39 @@ public class RequirementVersionService {
         }
         return ids.stream()
                 .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private void validateRuleAgainstFfManager(String rule) {
+        if (rule == null || rule.trim().isEmpty()) {
+            return;
+        }
+        List<String> lowerCodes = parseRuleCodesLower(rule);
+        if (lowerCodes.isEmpty()) {
+            return;
+        }
+        Map<String, FfManagerFitnessFunctionDTO> catalogByCodeLower = ffManagerClient.getAllFitnessFunctions().stream()
+                .filter(ff -> ff.getCode() != null && !ff.getCode().isBlank())
+                .collect(Collectors.toMap(
+                        ff -> ff.getCode().toLowerCase(Locale.ROOT),
+                        Function.identity(),
+                        (a, b) -> a));
+        boolean allCodesExist = lowerCodes.stream().allMatch(catalogByCodeLower::containsKey);
+        if (!allCodesExist) {
+            throw new IllegalArgumentException(INVALID_RULE_FF_CODES_MESSAGE);
+        }
+    }
+
+    private List<String> parseRuleCodesLower(String rule) {
+        if (rule == null || rule.trim().isEmpty()) {
+            return List.of();
+        }
+        String ruleWithoutSpaces = rule.replaceAll("\\s+", "");
+        return Arrays.stream(ruleWithoutSpaces.split(","))
+                .map(String::trim)
+                .filter(code -> !code.isEmpty())
+                .map(code -> code.toLowerCase(Locale.ROOT))
                 .distinct()
                 .collect(Collectors.toList());
     }

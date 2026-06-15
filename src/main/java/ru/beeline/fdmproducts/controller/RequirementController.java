@@ -5,35 +5,28 @@
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
-import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import ru.beeline.fdmproducts.dto.nfr.NfrItemDTO;
+import org.springframework.web.bind.annotation.*;
+import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.CreateRequirementRequestDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementResponseDTO;
 import ru.beeline.fdmproducts.dto.CreateRequirementVersionResponseDTO;
-import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
+import ru.beeline.fdmproducts.dto.nfr.NfrItemDTO;
 import ru.beeline.fdmproducts.service.PatternRequirementService;
 import ru.beeline.fdmproducts.service.RequirementCreateService;
 import ru.beeline.fdmproducts.service.RequirementVersionService;
 
 import java.util.List;
 
+import static ru.beeline.fdmproducts.utils.Constant.USER_ID_HEADER;
+
 @RestController
-@RequestMapping("/api/v1")
-@Tag(description = "Requirement API", name = "requirement")
+@RequestMapping("/api")
+@Tag(name = "requirement",
+        description = "Создание и версионирование требований NFR в каталоге; связь требований с паттернами.")
 public class RequirementController {
 
     @Autowired
@@ -45,97 +38,54 @@ public class RequirementController {
     @Autowired
     private RequirementVersionService requirementVersionService;
 
-    @GetMapping("/requirement/pattern/{id}")
-    @Operation(summary = "Получить все требования NFR, связанные с паттерном")
-    public ResponseEntity<List<NfrItemDTO>> getNfrByPatternId(@PathVariable Integer id) {
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v1/requirement/pattern/{id}")
+    @Operation(summary = "Список NFR, привязанных к паттерну",
+            description = "Все актуальные элементы каталога NFR, связанные с паттерном Techradar по его id.")
+    public ResponseEntity<List<NfrItemDTO>> getNfrByPatternId(
+            @Parameter(description = "Идентификатор паттерна") @PathVariable Integer id) {
         return ResponseEntity.ok(patternRequirementService.getNfrByPatternId(id));
     }
 
-    @PostMapping("/requirement")
-    @Operation(summary = "Создать требование NFR (версия 1)")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Требование создано",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CreateRequirementResponseDTO.class))),
-            @ApiResponse(responseCode = "400", description = "Ошибки валидации входных данных",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Обязательные параметры не переданы",
-                                            value = "{\"errorMessage\":\"Не переданы обязательные параметры\"}"),
-                                    @ExampleObject(name = "Некорректные chapters",
-                                            value = "{\"errorMessage\":\"В массиве chapters переданы идентификаторы несуществующих жизненных ситуаций\"}"),
-                                    @ExampleObject(name = "Некорректные patterns",
-                                            value = "{\"errorMessage\":\"В массиве patterns переданы идентификаторы несуществующих паттернов\"}")
-                            })),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Пользователь не администратор",
-                                            value = "{\"errorMessage\":\"Пользователь не является администратором\"}")
-                            })),
-            @ApiResponse(responseCode = "404", description = "Пользователь не найден",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Инициатор не найден",
-                                            value = "{\"errorMessage\":\"Пользователь, являющийся инициатором добавления требования к продукту, не найден\"}")
-                            })),
-            @ApiResponse(responseCode = "500", description = "Внутренняя ошибка / недоступность Auth",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Auth недоступен",
-                                            value = "{\"errorMessage\":\"Сервис Auth недоступен\"}")
-                            }))
-    })
+    @ApiErrorCodes({400, 403, 404, 500})
+    @PostMapping("/v1/requirement")
+    @Operation(summary = "Создать требование NFR (версия v1)",
+            description = "Тело CreateRequirementRequestDTO; права администратора и доступность Auth см. коды ответа.")
     public ResponseEntity<CreateRequirementResponseDTO> createRequirement(
-            @RequestBody(required = false) CreateRequirementRequestDTO request) {
-        return ResponseEntity.ok(requirementCreateService.createRequirement(request));
+            @RequestBody(required = false) CreateRequirementRequestDTO request,
+            @RequestHeader(value = USER_ID_HEADER) String userId) {
+        return ResponseEntity.ok(requirementCreateService.createRequirement(request, userId));
     }
 
-    @PostMapping("/requirement/version")
-    @Operation(summary = "Создать новую версию требования NFR")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Версия требования создана",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = CreateRequirementVersionResponseDTO.class))),
+    @ApiErrorCodes({400, 403, 404, 500})
+    @PostMapping("/v2/requirement")
+    @Operation(summary = "Создать требование NFR (версия v2)",
+            description = "Тело CreateRequirementRequestDTO; коды ФФ в rule проверяются по справочнику FF Manager.")
+    public ResponseEntity<CreateRequirementResponseDTO> createRequirementV2(
+            @RequestBody(required = false) CreateRequirementRequestDTO request,
+            @RequestHeader(value = USER_ID_HEADER) String userId) {
+        return ResponseEntity.ok(requirementCreateService.createRequirementV2(request, userId));
+    }
 
-            @ApiResponse(responseCode = "400", description = "Ошибки валидации входных данных",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Переданы несколько идентификаторов",
-                                            value = "{\"errorMessage\":\"Переданы несколько идентификаторов\"}"),
-                                    @ExampleObject(name = "Не передан id/code",
-                                            value = "{\"errorMessage\":\"Не передан идентификатор требования (id или code)\"}"),
-                                    @ExampleObject(name = "Обязательные параметры не переданы",
-                                            value = "{\"errorMessage\":\"Не переданы обязательные параметры\"}"),
-                                    @ExampleObject(name = "Некорректные chapters",
-                                            value = "{\"errorMessage\":\"В массиве chapters переданы идентификаторы несуществующих жизненных ситуаций\"}"),
-                                    @ExampleObject(name = "Некорректные patterns",
-                                            value = "{\"errorMessage\":\"В массиве patterns переданы идентификаторы несуществующих паттернов\"}")
-                            })),
-            @ApiResponse(responseCode = "403", description = "Недостаточно прав",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Пользователь не администратор",
-                                            value = "{\"errorMessage\":\"Пользователь не является администратором\"}")
-                            })),
-            @ApiResponse(responseCode = "404", description = "Требование не найдено",
-                    content = @Content(mediaType = "application/json",
-                            schema = @Schema(implementation = ErrorMessageDTO.class),
-                            examples = {
-                                    @ExampleObject(name = "Требование не найдено",
-                                            value = "{\"errorMessage\":\"Требование не найдено\"}")
-                            }))
-    })
+    @ApiErrorCodes({400, 403, 404, 500})
+    @PostMapping("/v1/requirement/version")
+    @Operation(summary = "Создать новую версию существующего NFR",
+            description = "Укажите ровно один из query-параметров id или code для базового требования, плюс тело с изменениями.")
     public ResponseEntity<CreateRequirementVersionResponseDTO> createRequirementVersion(
-            @RequestParam(value = "id", required = false) Integer id,
-            @RequestParam(value = "code", required = false) String code,
+            @Parameter(description = "Числовой id требования-основы") @RequestParam(value = "id", required = false) Integer id,
+            @Parameter(description = "Код требования-основы (альтернатива id)") @RequestParam(value = "code", required = false) String code,
             @RequestBody(required = false) CreateRequirementRequestDTO request) {
         return ResponseEntity.ok(requirementVersionService.createVersion(id, code, request));
+    }
+
+    @ApiErrorCodes({400, 403, 404, 500})
+    @PostMapping("/v2/requirement/version")
+    @Operation(summary = "Создать новую версию существующего NFR (v2)",
+            description = "Укажите ровно один из query-параметров id или code; коды ФФ в rule проверяются по справочнику FF Manager.")
+    public ResponseEntity<CreateRequirementVersionResponseDTO> createRequirementVersionV2(
+            @Parameter(description = "Числовой id требования-основы (core_id)") @RequestParam(value = "id", required = false) Integer id,
+            @Parameter(description = "Код требования-основы (альтернатива id)") @RequestParam(value = "code", required = false) String code,
+            @RequestBody(required = false) CreateRequirementRequestDTO request) {
+        return ResponseEntity.ok(requirementVersionService.createVersionV2(id, code, request));
     }
 }

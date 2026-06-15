@@ -10,7 +10,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import ru.beeline.fdmproducts.dto.chapter.ChapterNfrDTO;
-import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
+import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrV2DTO;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -19,7 +19,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class NfrItemProductDTO {
+public class NfrItemProductV2DTO {
 
     private Integer id;
     private String code;
@@ -27,7 +27,7 @@ public class NfrItemProductDTO {
     private String name;
     private String description;
     private LocalDateTime createdDate;
-    private List<FitnessFunctionNfrDTO> fitnessFunctions;
+    private List<FitnessFunctionNfrV2DTO> fitnessFunctions;
     private List<ChapterNfrDTO> chapters;
     private List<NfrPatternDTO> patterns;
     private String source;

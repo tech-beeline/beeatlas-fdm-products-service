@@ -9,7 +9,6 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.client.*;
-import ru.beeline.fdmproducts.controller.RequestContext;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.E2eProcessInfoDTO;
@@ -19,8 +18,6 @@ import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.dto.techradar.TechAdvancedGetDTO;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.exception.ForbiddenException;
-import ru.beeline.fdmproducts.exception.UnauthorizedException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
@@ -150,6 +147,10 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    public List<ProductAuthDTO> getProductsForAuth(Integer userId) {
+        return userProductRepository.findProductsForAuthByUserId(userId);
+    }
+
     public List<Product> getProductsByUserAdmin(Integer userId, String userRoles) {
         List<String> roles = Arrays.stream(userRoles.split(","))
                 .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
@@ -274,13 +275,7 @@ public class ProductService {
         }
     }
 
-    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO, String userRoles) {
-        List<String> roles = Arrays.stream(userRoles.split(","))
-                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
-                .toList();
-        if (!roles.contains("ADMINISTRATOR")) {
-            throw new ForbiddenException("403 Forbidden.");
-        }
+    public void updateProduct(PutUpdateProductDTO putUpdateProductDTO) {
         Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
         if (product == null) {
             product = Product.builder()
@@ -1716,9 +1711,6 @@ public class ProductService {
 
     public ApiKeyDTO getKey(Integer id) {
         Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
-        if (!RequestContext.getUserProducts().contains(id)) {
-            throw new ForbiddenException("403 Forbidden.");
-        }
         return ApiKeyDTO.builder()
                 .structurizrApiKey(product.getStructurizrApiKey())
                 .structurizrApiSecret(product.getStructurizrApiSecret())
@@ -1896,8 +1888,7 @@ public class ProductService {
         }
     }
 
-    public void deleteProduct(Integer id, String userRoles) {
-        validateRoles(userRoles);
+    public void deleteProduct(Integer id) {
         if (!productRepository.existsById(id)) {
             log.error("Продукт с id {} не найден", id);
             throw new EntityNotFoundException("Запись в таблице Product с id= " + id + " не найдена.");
@@ -1962,15 +1953,4 @@ public class ProductService {
         localAssessmentRepository.deleteByProductId(productId);
     }
 
-    private void validateRoles(String userRoles) {
-        if (userRoles == null || userRoles.isEmpty()) {
-            throw new UnauthorizedException("Заголовок роли не должен быть пустым.");
-        }
-        List<String> roles = Arrays.stream(userRoles.split(","))
-                .map(role -> role.replaceAll("^[^a-zA-Z]+|[^a-zA-Z]+$", ""))
-                .toList();
-        if (!roles.contains("ADMINISTRATOR")) {
-            throw new ForbiddenException("403 Forbidden.");
-        }
-    }
 }

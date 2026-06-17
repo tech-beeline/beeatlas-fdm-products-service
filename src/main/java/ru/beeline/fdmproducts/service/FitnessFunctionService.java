@@ -13,7 +13,6 @@ import ru.beeline.fdmproducts.dto.DomainDTO;
 import ru.beeline.fdmproducts.dto.LacCountsDTO;
 import ru.beeline.fdmproducts.dto.LatestAssessmentCheckDTO;
 import ru.beeline.fdmproducts.dto.MainResponseDTO;
-import ru.beeline.fdmproducts.repository.LatestAssessmentCheckProjection;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionEnumDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionProductDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionShortDTO;
@@ -55,12 +54,22 @@ public class FitnessFunctionService {
         List<Product> products = productRepository.findAllWithDomain();
         List<Integer> productIds = products.stream().map(Product::getId).collect(Collectors.toList());
 
-        List<LatestAssessmentCheckDTO> allChecks = productIds.isEmpty()
-                ? Collections.emptyList()
-                : localAssessmentRepository.findLatestChecksForProducts(productIds).stream()
-                        .map(p -> new LatestAssessmentCheckDTO(
-                                p.getProductId(), p.getLacId(), p.getIsCheck(), p.getFitnessFunctionId()))
-                        .collect(Collectors.toList());
+        List<LatestAssessmentCheckDTO> allChecks;
+        if (productIds.isEmpty()) {
+            allChecks = Collections.emptyList();
+        } else {
+            List<Object[]> rows = localAssessmentRepository.findAssessmentIdsOrderedByProductAndTime(productIds);
+            Map<Integer, Integer> latestAssessmentByProduct = new LinkedHashMap<>();
+            for (Object[] row : rows) {
+                Integer assessmentId = (Integer) row[0];
+                Integer productId   = (Integer) row[1];
+                latestAssessmentByProduct.putIfAbsent(productId, assessmentId);
+            }
+            List<Integer> latestAssessmentIds = new ArrayList<>(latestAssessmentByProduct.values());
+            allChecks = latestAssessmentIds.isEmpty()
+                    ? Collections.emptyList()
+                    : localAssessmentRepository.findChecksByAssessmentIds(latestAssessmentIds);
+        }
 
         List<Integer> allLacIds = allChecks.stream()
                 .map(LatestAssessmentCheckDTO::getLacId)

@@ -11,7 +11,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.LocalAssessment;
 import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.dto.LatestAssessmentCheckDTO;
 
 import java.util.List;
 import java.util.Optional;
@@ -36,19 +35,16 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
     @Query("DELETE FROM LocalAssessment la WHERE la.product.id = :productId")
     void deleteByProductId(@Param("productId") Integer productId);
 
-    @Query("SELECT NEW ru.beeline.fdmproducts.dto.LatestAssessmentCheckDTO(" +
-            "    la.product.id, " +
-            "    lac.id, " +
-            "    lac.isCheck, " +
-            "    lac.fitnessFunction.id" +
-            ") " +
-            "FROM LocalAssessment la " +
-            "JOIN la.checks lac " +
-            "WHERE la.product.id IN :productIds " +
-            "  AND la.createdTime = (" +
-            "      SELECT MAX(la2.createdTime) " +
-            "      FROM LocalAssessment la2 " +
-            "      WHERE la2.product.id = la.product.id" +
-            "  )")
-    List<LatestAssessmentCheckDTO> findLatestChecksForProducts(@Param("productIds") List<Integer> productIds);
+    @Query(value = """
+            SELECT DISTINCT ON (la.product_id)
+                la.product_id  AS "productId",
+                lac.id         AS "lacId",
+                lac.is_check   AS "isCheck",
+                lac.lff_id     AS "fitnessFunctionId"
+            FROM product.local_assessment la
+            JOIN product.local_assessment_check lac ON lac.assessment_id = la.id
+            WHERE la.product_id IN (:productIds)
+            ORDER BY la.product_id, la.created_time DESC
+            """, nativeQuery = true)
+    List<LatestAssessmentCheckProjection> findLatestChecksForProducts(@Param("productIds") List<Integer> productIds);
 }

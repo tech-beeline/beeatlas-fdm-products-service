@@ -13,6 +13,7 @@ import ru.beeline.fdmproducts.dto.DomainDTO;
 import ru.beeline.fdmproducts.dto.LacCountsDTO;
 import ru.beeline.fdmproducts.dto.LatestAssessmentCheckDTO;
 import ru.beeline.fdmproducts.dto.MainResponseDTO;
+import ru.beeline.fdmproducts.repository.LatestAssessmentCheckProjection;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionEnumDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionProductDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionShortDTO;
@@ -51,10 +52,15 @@ public class FitnessFunctionService {
 
     public MainResponseDTO getFitnessFunctionsAggregation() {
         List<LocalFitnessFunction> fitnessFunctions = localFitnessFunctionRepository.findAll();
-        List<Product> products = productRepository.findAll();
+        List<Product> products = productRepository.findAllWithDomain();
         List<Integer> productIds = products.stream().map(Product::getId).collect(Collectors.toList());
 
-        List<LatestAssessmentCheckDTO> allChecks = localAssessmentRepository.findLatestChecksForProducts(productIds);
+        List<LatestAssessmentCheckDTO> allChecks = productIds.isEmpty()
+                ? Collections.emptyList()
+                : localAssessmentRepository.findLatestChecksForProducts(productIds).stream()
+                        .map(p -> new LatestAssessmentCheckDTO(
+                                p.getProductId(), p.getLacId(), p.getIsCheck(), p.getFitnessFunctionId()))
+                        .collect(Collectors.toList());
 
         List<Integer> allLacIds = allChecks.stream()
                 .map(LatestAssessmentCheckDTO::getLacId)

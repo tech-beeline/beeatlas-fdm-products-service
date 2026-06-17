@@ -36,15 +36,19 @@ public interface LocalAssessmentRepository extends JpaRepository<LocalAssessment
     void deleteByProductId(@Param("productId") Integer productId);
 
     @Query(value = """
-            SELECT DISTINCT ON (la.product_id)
+            SELECT
                 la.product_id  AS "productId",
                 lac.id         AS "lacId",
                 lac.is_check   AS "isCheck",
                 lac.lff_id     AS "fitnessFunctionId"
             FROM product.local_assessment la
             JOIN product.local_assessment_check lac ON lac.assessment_id = la.id
-            WHERE la.product_id IN (:productIds)
-            ORDER BY la.product_id, la.created_time DESC
+            WHERE la.id IN (
+                SELECT DISTINCT ON (product_id) id
+                FROM product.local_assessment
+                WHERE product_id IN (:productIds)
+                ORDER BY product_id, created_time DESC
+            )
             """, nativeQuery = true)
     List<LatestAssessmentCheckProjection> findLatestChecksForProducts(@Param("productIds") List<Integer> productIds);
 }

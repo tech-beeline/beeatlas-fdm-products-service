@@ -87,6 +87,7 @@ public class ProductTechMapper {
         List<TechProductInfoV2DTO> techInfos = product.getTechProducts()
                 .stream()
                 .filter(tp -> tp.getDeletedDate() == null)
+                .filter(tp -> techAdvancedGetDTOMap.containsKey(tp.getTechId()))
                 .map(tp -> {
                     TechAdvancedGetDTO tech = techAdvancedGetDTOMap.get(tp.getTechId());
 

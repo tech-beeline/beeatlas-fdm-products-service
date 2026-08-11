@@ -733,13 +733,12 @@ public class ProductService {
 
     private void enrichMethodType(InterfaceDTO iface, MethodDTO method) {
         String protocol = iface.getProtocol();
-        if (protocol == null)
+        if (protocol == null) {
+            method.setType(null);
             return;
+        }
         switch (protocol.toLowerCase()) {
             case "rest" -> {
-                if (method.getType() != null && !method.getType().isBlank()) {
-                    return;
-                }
                 if (method.getName().contains(" ")) {
                     String[] parts = method.getName().split(" ", 2);
                     method.setType(parts[0]);
@@ -750,6 +749,7 @@ public class ProductService {
             }
             case "soap" -> method.setType("SOAP");
             case "grpc" -> method.setType("gRPC");
+            default -> method.setType(null);
         }
     }
 

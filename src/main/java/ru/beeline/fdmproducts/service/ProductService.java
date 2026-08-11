@@ -1302,7 +1302,7 @@ public class ProductService {
 
     public List<GetProductTechDto> getAllProductsAndTechRelations() {
         try {
-            List<TechProduct> techProducts = techProductRepository.findAll();
+            List<TechProduct> techProducts = techProductRepository.findAllByDeletedDateIsNull();
             Map<Integer, List<GetProductsDTO>> productsDTOByTechId = techProducts.stream()
                     .filter(techProduct -> techProduct.getProduct() != null)
                     .collect(Collectors.groupingBy(TechProduct::getTechId,

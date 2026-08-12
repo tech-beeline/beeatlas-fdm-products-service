@@ -2074,9 +2074,12 @@ public class ProductService {
     public List<TcDTO> getTcByContainerProduct(String alias, List<String> containers) {
         List<TcDTO> result = new ArrayList<>();
         Product product = validateAliasContainers(alias, containers);
+        List<String> lowerCaseContainers = containers.stream()
+                .map(String::toLowerCase)
+                .toList();
         List<ContainerProduct> containerProducts =
-                containerRepository.findAllByProductIdAndNameInAndDeletedDateIsNull(
-                        product.getId(), containers);
+                containerRepository.findAllByProductIdAndNameInIgnoreCaseAndDeletedDateIsNull(
+                        product.getId(), lowerCaseContainers);
         if (containerProducts.isEmpty()) {
             return new ArrayList<>();
         }

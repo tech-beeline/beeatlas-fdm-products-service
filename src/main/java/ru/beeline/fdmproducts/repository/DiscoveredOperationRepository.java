@@ -22,6 +22,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
                                                                                       String name,
                                                                                       String type);
 
+    Optional<DiscoveredOperation> findByInterfaceIdAndNameAndType(Integer interfaceId, String name, String type);
+
     List<DiscoveredOperation> findAllByConnectionOperationIdIn(List<Integer> interfaceId);
 
     List<DiscoveredOperation> findAllByConnectionOperationId(Integer operationId);

@@ -33,7 +33,7 @@ public class DiscoveredInterface {
     private String name;
 
     @Column(name = "external_id")
-    private Integer externalId;
+    private String externalId;
 
     @Column(name = "api_id")
     private Integer apiId;
@@ -51,6 +51,10 @@ public class DiscoveredInterface {
     private String status;
 
     private String context;
+
+    @Builder.Default
+    @Column(name = "source")
+    private String source = "MAPIC";
 
     @JsonBackReference
     @ToString.Exclude

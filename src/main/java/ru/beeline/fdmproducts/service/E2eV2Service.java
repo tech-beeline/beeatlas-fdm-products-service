@@ -14,29 +14,45 @@ import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.Sla;
+import ru.beeline.fdmproducts.dto.SlaV2DTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eCardResponseDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eInfoDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eOperationCatalogItemDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eOperationSlaDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eProductDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eUpsertResponseDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eV2DiscoveredOperationCatalogItemDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eV2GetResponseDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2InterfaceDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationRelationDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eV2RelationTreeNodeDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2UpsertRequestDTO;
+import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
+import ru.beeline.fdmproducts.dto.search.projection.DiscoveredOperationProjection;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
+import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
+import ru.beeline.fdmproducts.repository.SlaRepository;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -51,6 +67,8 @@ public class E2eV2Service {
     private final DiscoveredOperationRepository discoveredOperationRepository;
     private final E2eRepository e2eRepository;
     private final OperationRelationRepository operationRelationRepository;
+    private final OperationRepository operationRepository;
+    private final SlaRepository slaRepository;
 
     @Transactional
     public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request) {
@@ -364,6 +382,172 @@ public class E2eV2Service {
             operationRelationRepository.saveAll(toSave);
         }
         log.info("E2E v2 upsert: сохранены operation_relations, e2eId={}, count={}", e2eId, toSave.size());
+    }
+
+    @Transactional
+    public E2eV2GetResponseDTO getByCode(String code) {
+        log.info("E2E v2 get: начало, code={}", code);
+        E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new EntityNotFoundException("E2e с указанным кодом не найден"));
+        List<OperationRelation> relations = operationRelationRepository.findAllByE2eId(e2e.getId());
+        log.info("E2E v2 get: найден e2e id={}, code={}, relations={}", e2e.getId(), e2e.getCode(), relations.size());
+        List<E2eV2RelationTreeNodeDTO> tree = relations.isEmpty()
+                ? List.of() : buildBranch(relations, null, null, new HashSet<>());
+        Set<Integer> operationIds = new LinkedHashSet<>();
+        Set<Integer> discoveredOperationIds = new LinkedHashSet<>();
+        collectOperationIds(tree, operationIds, discoveredOperationIds);
+        List<E2eOperationCatalogItemDTO> operations = buildOperationsCatalog(operationIds);
+        List<E2eV2DiscoveredOperationCatalogItemDTO> discoveredOperations = buildDiscoveredOperationsCatalog(discoveredOperationIds);
+        log.info("E2E v2 get: завершён, code={}, treeNodes={}, operations={}, discoveredOperations={}",
+                e2e.getCode(), tree.size(), operations.size(), discoveredOperations.size());
+        return E2eV2GetResponseDTO.builder()
+                .e2e(mapE2eCard(e2e))
+                .operationsRelations(tree)
+                .operations(operations)
+                .discoveredOperations(discoveredOperations)
+                .build();
+    }
+
+    private E2eCardResponseDTO mapE2eCard(E2e e2e) {
+        return E2eCardResponseDTO.builder()
+                .id(e2e.getId())
+                .code(e2e.getCode())
+                .name(e2e.getName())
+                .description(e2e.getDescription())
+                .biStepCode(e2e.getBiStepCode())
+                .build();
+    }
+
+    private List<E2eV2RelationTreeNodeDTO> buildBranch(List<OperationRelation> relations, Integer parentOperationId,
+                                                         String parentEntityType, Set<String> ancestry) {
+        return relations.stream()
+                .filter(relation -> parentOperationId == null
+                        ? relation.getOperationId() == null
+                        : Objects.equals(relation.getOperationId(), parentOperationId)
+                            && Objects.equals(relation.getEntityTypeOperation(), parentEntityType))
+                .sorted(Comparator.comparing(OperationRelation::getOrder))
+                .map(relation -> {
+                    Integer relatedOperationId = relation.getRelatedOperationId();
+                    String relatedEntityType = relation.getEntityTypeOperationRelation();
+                    String ancestryKey = relatedEntityType + "::" + relatedOperationId;
+                    List<E2eV2RelationTreeNodeDTO> children;
+                    if (relatedOperationId != null && ancestry.contains(ancestryKey)) {
+                        log.warn("E2E v2 get: обнаружена циклическая связь operationId={}, entityType={}, "
+                                        + "relatedOperationId={}, relatedEntityType={} — ветка далее не разворачивается",
+                                relation.getOperationId(), relation.getEntityTypeOperation(),
+                                relatedOperationId, relatedEntityType);
+                        children = List.of();
+                    } else {
+                        Set<String> nextAncestry = new HashSet<>(ancestry);
+                        nextAncestry.add(ancestryKey);
+                        children = buildBranch(relations, relatedOperationId, relatedEntityType, nextAncestry);
+                    }
+                    return E2eV2RelationTreeNodeDTO.builder()
+                            .order(relation.getOrder())
+                            .relatedOperationId(relatedOperationId)
+                            .stereotype(relation.getStereoType())
+                            .entityTypeRelatedOperation(relatedEntityType)
+                            .operationsRelations(children)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
+    private void collectOperationIds(List<E2eV2RelationTreeNodeDTO> nodes, Set<Integer> operationIds,
+                                      Set<Integer> discoveredOperationIds) {
+        for (E2eV2RelationTreeNodeDTO node : nodes) {
+            if (node.getRelatedOperationId() != null) {
+                if (ENTITY_TYPE_DISCOVERED_OPERATION.equals(node.getEntityTypeRelatedOperation())) {
+                    discoveredOperationIds.add(node.getRelatedOperationId());
+                } else {
+                    operationIds.add(node.getRelatedOperationId());
+                }
+            }
+            if (node.getOperationsRelations() != null && !node.getOperationsRelations().isEmpty()) {
+                collectOperationIds(node.getOperationsRelations(), operationIds, discoveredOperationIds);
+            }
+        }
+    }
+
+    private List<E2eOperationCatalogItemDTO> buildOperationsCatalog(Set<Integer> operationIds) {
+        if (operationIds.isEmpty()) {
+            return List.of();
+        }
+        List<Integer> operationIdList = new ArrayList<>(operationIds);
+        Map<Integer, Sla> slaByOperationId = slaRepository.findAllByOperationIdIn(operationIdList)
+                .stream()
+                .collect(Collectors.toMap(Sla::getOperationId, sla -> sla, (existing, duplicate) -> existing));
+        Map<Integer, E2eOperationCatalogItemDTO> catalogById = operationRepository
+                .findOperationsProjection(operationIdList)
+                .stream()
+                .collect(Collectors.toMap(
+                        ArchOperationProjection::getOpId,
+                        projection -> mapOperationCatalogItem(projection, slaByOperationId.get(projection.getOpId())),
+                        (existing, duplicate) -> existing,
+                        LinkedHashMap::new));
+        return operationIds.stream()
+                .map(catalogById::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private E2eOperationCatalogItemDTO mapOperationCatalogItem(ArchOperationProjection projection, Sla sla) {
+        return E2eOperationCatalogItemDTO.builder()
+                .id(projection.getOpId())
+                .name(projection.getOpName())
+                .type(projection.getOpType())
+                .interfaceCode(projection.getInterfaceCode())
+                .containerCode(projection.getContainerCode())
+                .productAlias(projection.getProductAlias())
+                .sla(toSlaV2DTO(sla))
+                .build();
+    }
+
+    private SlaV2DTO toSlaV2DTO(Sla sla) {
+        if (sla == null) {
+            return null;
+        }
+        return SlaV2DTO.builder()
+                .latency(sla.getLatency())
+                .errorRate(sla.getErrorRate())
+                .rps(sla.getRps())
+                .build();
+    }
+
+    private List<E2eV2DiscoveredOperationCatalogItemDTO> buildDiscoveredOperationsCatalog(Set<Integer> discoveredOperationIds) {
+        if (discoveredOperationIds.isEmpty()) {
+            return List.of();
+        }
+        List<Integer> idList = new ArrayList<>(discoveredOperationIds);
+        Map<Integer, E2eV2DiscoveredOperationCatalogItemDTO> catalogById = discoveredOperationRepository
+                .findDiscoveredOperationsProjection(idList)
+                .stream()
+                .collect(Collectors.toMap(
+                        DiscoveredOperationProjection::getOpId,
+                        this::mapDiscoveredOperationCatalogItem,
+                        (existing, duplicate) -> existing,
+                        LinkedHashMap::new));
+        return discoveredOperationIds.stream()
+                .map(catalogById::get)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+    }
+
+    private E2eV2DiscoveredOperationCatalogItemDTO mapDiscoveredOperationCatalogItem(DiscoveredOperationProjection projection) {
+        boolean hasSla = projection.getRps() != null || projection.getLatency() != null || projection.getErrorRate() != null;
+        return E2eV2DiscoveredOperationCatalogItemDTO.builder()
+                .id(projection.getOpId())
+                .name(projection.getOpName())
+                .type(projection.getOpType())
+                .interfaceCode(projection.getInterfaceCode())
+                .productAlias(projection.getProductAlias())
+                .source(projection.getSource())
+                .sla(hasSla ? SlaV2DTO.builder()
+                        .rps(projection.getRps())
+                        .latency(projection.getLatency())
+                        .errorRate(projection.getErrorRate())
+                        .build() : null)
+                .build();
     }
 
     private void requireNonBlank(String value, String fieldName) {

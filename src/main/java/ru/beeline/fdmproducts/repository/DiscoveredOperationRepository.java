@@ -25,6 +25,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     Optional<DiscoveredOperation> findByInterfaceIdAndNameAndType(Integer interfaceId, String name, String type);
 
+    Optional<DiscoveredOperation> findByInterfaceIdAndNameAndTypeAllIgnoreCase(Integer interfaceId, String name, String type);
+
     @Query("""
             SELECT
                 do.id AS opId,

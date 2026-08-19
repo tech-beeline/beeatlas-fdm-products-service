@@ -190,7 +190,7 @@ public class E2eV2Service {
                 throw new IllegalArgumentException("Не найден parentProductCmdb для интерфейса: " + dto.getCode());
             }
             DiscoveredInterface iface = discoveredInterfaceRepository
-                    .findBySourceAndProductIdAndExternalId(SOURCE_SPARX, product.getId(), dto.getCode())
+                    .findBySourceAndProductIdAndExternalIdIgnoreCase(SOURCE_SPARX, product.getId(), dto.getCode())
                     .orElse(null);
             if (iface == null) {
                 iface = DiscoveredInterface.builder()
@@ -253,7 +253,7 @@ public class E2eV2Service {
         for (E2eV2OperationDTO dto : operations) {
             DiscoveredInterface iface = resolveInterface(dto.getParentInterfaceCode(), interfacesByCode);
             DiscoveredOperation operation = discoveredOperationRepository
-                    .findByInterfaceIdAndNameAndType(iface.getId(), dto.getName(), dto.getType())
+                    .findByInterfaceIdAndNameAndTypeAllIgnoreCase(iface.getId(), dto.getName(), dto.getType())
                     .orElse(null);
             if (operation == null) {
                 DiscoveredOperation.DiscoveredOperationBuilder builder = DiscoveredOperation.builder()
@@ -319,7 +319,7 @@ public class E2eV2Service {
                     + ". Интерфейс с таким code передан для нескольких продуктов");
         }
         List<DiscoveredInterface> dbMatches = discoveredInterfaceRepository
-                .findAllBySourceAndExternalId(SOURCE_SPARX, code)
+                .findAllBySourceAndExternalIdIgnoreCase(SOURCE_SPARX, code)
                 .stream()
                 .filter(candidate -> candidate.getDeletedDate() == null)
                 .toList();

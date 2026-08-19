@@ -73,6 +73,10 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllBySourceAndExternalId(String source, String externalId);
 
+    Optional<DiscoveredInterface> findBySourceAndProductIdAndExternalIdIgnoreCase(String source, Integer productId, String externalId);
+
+    List<DiscoveredInterface> findAllBySourceAndExternalIdIgnoreCase(String source, String externalId);
+
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 

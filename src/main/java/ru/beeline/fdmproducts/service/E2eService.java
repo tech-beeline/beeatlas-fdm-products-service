@@ -178,11 +178,7 @@ public class E2eService {
                 throw new IllegalArgumentException("Не найден parentProductCmdb для контейнера: " + dto.getCode());
             }
             String productKey = normalizeKey(product.getAlias());
-            ContainerProduct container = containerRepository.findAllByCodeInAndProductId(
-                            List.of(dto.getCode()), product.getId())
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
+            ContainerProduct container = findContainerInDb(dto.getCode(), dto.getName(), product.getId());
             if (container == null) {
                 container = ContainerProduct.builder()
                         .code(dto.getCode())
@@ -252,10 +248,7 @@ public class E2eService {
                 throw new IllegalArgumentException("Не найден parentContainerCode для интерфейса: " + dto.getCode());
             }
             registerContainer(containerIndex.byKey(), productIndex.byCmdb(), container);
-            Interface iface = interfaceRepository.findAllByContainerIdAndCodeIn(container.getId(), List.of(dto.getCode()))
-                    .stream()
-                    .findFirst()
-                    .orElse(null);
+            Interface iface = findInterfaceInDb(dto.getCode(), dto.getName(), container.getId());
             if (iface == null) {
                 iface = Interface.builder()
                         .code(dto.getCode())
@@ -544,9 +537,41 @@ public class E2eService {
     }
 
     private ContainerProduct findContainerInDb(String containerCode, Integer productId) {
-        return containerRepository.findAllByCodeInAndProductId(List.of(containerCode), productId)
+        return containerRepository.findAllByProductIdAndCodeIgnoreCase(productId, containerCode)
                 .stream()
                 .filter(c -> c.getDeletedDate() == null)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private ContainerProduct findContainerInDb(String containerCode, String containerName, Integer productId) {
+        ContainerProduct container = containerRepository
+                .findAllByProductIdAndCodeIgnoreCase(productId, containerCode)
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (container != null) {
+            return container;
+        }
+        return containerRepository
+                .findAllByProductIdAndCodeIsNullAndNameIgnoreCase(productId, containerName)
+                .stream()
+                .findFirst()
+                .orElse(null);
+    }
+
+    private Interface findInterfaceInDb(String interfaceCode, String interfaceName, Integer containerId) {
+        Interface iface = interfaceRepository
+                .findAllByContainerIdAndCodeIgnoreCase(containerId, interfaceCode)
+                .stream()
+                .findFirst()
+                .orElse(null);
+        if (iface != null) {
+            return iface;
+        }
+        return interfaceRepository
+                .findAllByContainerIdAndCodeIsNullAndNameIgnoreCase(containerId, interfaceName)
+                .stream()
                 .findFirst()
                 .orElse(null);
     }
@@ -592,7 +617,7 @@ public class E2eService {
                 matches.add(byKey);
                 continue;
             }
-            interfaceRepository.findAllByContainerIdAndCodeIn(container.getId(), List.of(dto.getParentInterfaceCode()))
+            interfaceRepository.findAllByContainerIdAndCodeIgnoreCase(container.getId(), dto.getParentInterfaceCode())
                     .stream()
                     .filter(i -> i.getDeletedDate() == null)
                     .forEach(matches::add);

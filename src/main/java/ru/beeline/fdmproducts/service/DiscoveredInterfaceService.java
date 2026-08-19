@@ -231,4 +231,8 @@ public class DiscoveredInterfaceService {
             list.add(obj);
         }
     }
+
+    public List<String> getDistinctSources() {
+        return discoveredInterfaceRepository.findDistinctSources();
+    }
 }

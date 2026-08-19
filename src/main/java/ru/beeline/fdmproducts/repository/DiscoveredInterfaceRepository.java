@@ -74,4 +74,9 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     @Modifying
     @Query("DELETE FROM DiscoveredInterface di WHERE di.id IN :ids")
     void deleteByIdIn(@Param("ids") List<Integer> ids);
+
+    @Query(value = "SELECT DISTINCT ON (LOWER(source)) source FROM product.discovered_interface "
+            + "WHERE source IS NOT NULL ORDER BY LOWER(source), source",
+            nativeQuery = true)
+    List<String> findDistinctSources();
 }

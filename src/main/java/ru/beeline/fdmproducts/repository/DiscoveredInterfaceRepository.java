@@ -20,7 +20,7 @@ import java.util.Optional;
 @Repository
 public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredInterface, Integer> {
 
-    List<DiscoveredInterface> findByExternalIdIn(List<Integer> externalIds);
+    List<DiscoveredInterface> findByExternalIdIn(List<String> externalIds);
 
     @Modifying
     @Transactional
@@ -61,9 +61,17 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllByProductAndDeletedDateIsNull(Product product);
 
-    Optional<DiscoveredInterface> findByExternalId(Integer externalId);
+    List<DiscoveredInterface> findAllByProductAndSourceIgnoreCase(Product product, String source);
+
+    List<DiscoveredInterface> findAllByProductAndSourceIgnoreCaseAndDeletedDateIsNull(Product product, String source);
+
+    Optional<DiscoveredInterface> findByExternalId(String externalId);
 
     Optional<DiscoveredInterface> findByApiId(Integer apiId);
+
+    Optional<DiscoveredInterface> findBySourceAndProductIdAndExternalId(String source, Integer productId, String externalId);
+
+    List<DiscoveredInterface> findAllBySourceAndExternalId(String source, String externalId);
 
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);

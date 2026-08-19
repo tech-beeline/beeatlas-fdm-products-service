@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.dto.search.projection.DiscoveredOperationProjection;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +22,26 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     Optional<DiscoveredOperation> findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(Integer interfaceId,
                                                                                       String name,
                                                                                       String type);
+
+    Optional<DiscoveredOperation> findByInterfaceIdAndNameAndType(Integer interfaceId, String name, String type);
+
+    @Query("""
+            SELECT
+                do.id AS opId,
+                do.name AS opName,
+                do.type AS opType,
+                di.externalId AS interfaceCode,
+                p.alias AS productAlias,
+                di.source AS source,
+                do.rps AS rps,
+                do.latency AS latency,
+                do.errorRate AS errorRate
+            FROM DiscoveredOperation do
+            JOIN do.discoveredInterface di
+            JOIN di.product p
+            WHERE do.id IN :ids
+            """)
+    List<DiscoveredOperationProjection> findDiscoveredOperationsProjection(@Param("ids") List<Integer> ids);
 
     List<DiscoveredOperation> findAllByConnectionOperationIdIn(List<Integer> interfaceId);
 

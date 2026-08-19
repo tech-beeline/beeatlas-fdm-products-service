@@ -39,4 +39,12 @@ public class OperationRelation {
 
     @Column(name = "e2e_id", nullable = false)
     private Integer e2eId;
+
+    @Builder.Default
+    @Column(name = "entity_type_operation", nullable = false)
+    private String entityTypeOperation = "operation";
+
+    @Builder.Default
+    @Column(name = "entity_type_operation_relation", nullable = false)
+    private String entityTypeOperationRelation = "operation";
 }

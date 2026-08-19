@@ -23,7 +23,7 @@ public class DiscoveredInterfaceMapper {
         return DiscoveredInterfaceDTO.builder()
                 .id(entity.getId())
                 .name(entity.getName())
-                .externalId(entity.getExternalId())
+                .externalId(entity.getExternalId() == null ? null : Integer.valueOf(entity.getExternalId()))
                 .apiId(entity.getApiId())
                 .apiLink(entity.getApiLink())
                 .version(entity.getVersion())
@@ -40,7 +40,7 @@ public class DiscoveredInterfaceMapper {
                 .orElseThrow(() -> new IllegalArgumentException("Продукт с данным id не найден"));
         return DiscoveredInterface.builder()
                 .name(dto.getName())
-                .externalId(dto.getExternalId())
+                .externalId(dto.getExternalId() == null ? null : String.valueOf(dto.getExternalId()))
                 .apiId(dto.getApiId())
                 .apiLink(dto.getApiLink())
                 .version(dto.getVersion())
@@ -56,7 +56,7 @@ public class DiscoveredInterfaceMapper {
         Product product = productRepository.findById(dto.getProductId())
                 .orElseThrow(() -> new IllegalArgumentException("Продукт с данным id не найден"));
         entity.setName(dto.getName());
-        entity.setExternalId(dto.getExternalId());
+        entity.setExternalId(dto.getExternalId() == null ? null : String.valueOf(dto.getExternalId()));
         entity.setApiId(dto.getApiId());
         entity.setApiLink(dto.getApiLink());
         entity.setVersion(dto.getVersion());

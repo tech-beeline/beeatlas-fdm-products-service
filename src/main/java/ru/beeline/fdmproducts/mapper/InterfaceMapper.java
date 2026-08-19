@@ -88,7 +88,7 @@ public class InterfaceMapper {
                 .name(interfaceObj.getName())
                 .version(interfaceObj.getVersion())
                 .description(interfaceObj.getDescription())
-                .externalId(interfaceObj.getExternalId())
+                .externalId(interfaceObj.getExternalId() == null ? null : Integer.valueOf(interfaceObj.getExternalId()))
                 .createDate(interfaceObj.getCreatedDate())
                 .updateDate(interfaceObj.getUpdatedDate())
                 .deletedDate(interfaceObj.getDeletedDate())

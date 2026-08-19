@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
@@ -23,6 +24,8 @@ import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -1559,14 +1562,19 @@ public class ProductService {
         return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
     }
 
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(String cmdb, Boolean showHidden) {
-        List<ProductMapicInterfaceDTO> result = new ArrayList<>();
-        Product product = productRepository.findByAliasCaseInsensitive(cmdb);
-        if (product == null) {
-            throw new EntityNotFoundException("Продукт с данным cmdb: " + cmdb + " не найден.");
+    public List<ProductMapicInterfaceDTO> getInterfacesBySource(String cmdb, String sourceType, Boolean showHidden) {
+        String decodedCmdb = URLDecoder.decode(cmdb, StandardCharsets.UTF_8);
+        String decodedSourceType = URLDecoder.decode(sourceType, StandardCharsets.UTF_8);
+        if (!StringUtils.hasText(decodedSourceType)) {
+            throw new IllegalArgumentException("Отсутствует обязательный параметр source-type");
         }
-        List<DiscoveredInterface> discoveredInterfaces = showHidden ? discoveredInterfaceRepository.findAllByProduct(product)
-                : discoveredInterfaceRepository.findAllByProductAndDeletedDateIsNull(product);
+        Product product = productRepository.findByAliasCaseInsensitive(decodedCmdb);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт с данным cmdb: " + decodedCmdb + " не найден.");
+        }
+        List<DiscoveredInterface> discoveredInterfaces = showHidden
+                ? discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCase(product, decodedSourceType)
+                : discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCaseAndDeletedDateIsNull(product, decodedSourceType);
         if (discoveredInterfaces.isEmpty()) {
             return Collections.emptyList();
         }

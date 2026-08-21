@@ -97,6 +97,22 @@ public class InterfaceMapper {
                 .build();
     }
 
+    /** Same as {@link #createProductMapicInterface}, but externalId is passed through as-is instead of parsed as Integer. */
+    public static ProductMapicInterfaceV2DTO createProductMapicInterfaceV2(DiscoveredInterface interfaceObj) {
+        return ProductMapicInterfaceV2DTO.builder()
+                .id(interfaceObj.getId())
+                .name(interfaceObj.getName())
+                .version(interfaceObj.getVersion())
+                .description(interfaceObj.getDescription())
+                .externalId(interfaceObj.getExternalId())
+                .createDate(interfaceObj.getCreatedDate())
+                .updateDate(interfaceObj.getUpdatedDate())
+                .deletedDate(interfaceObj.getDeletedDate())
+                .apiId(interfaceObj.getApiId())
+                .context(interfaceObj.getContext())
+                .build();
+    }
+
     public static ConnectOperationDTO createConnectOperationDTO(Operation operation,
                                                                 DiscoveredOperation discoveredOperation) {
         ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()

@@ -55,4 +55,12 @@ public class DiscoveredInterfaceController {
             @Parameter(description = "Идентификатор API в Mapic") @RequestParam(name = "api-id", required = false) Integer apiId) {
         return ResponseEntity.status(HttpStatus.OK).body(discoveredInterfaceService.getOperationsByInterfaceId(interfaceId, externalId, apiId));
     }
+
+    @ApiErrorCodes({500})
+    @GetMapping("/discovered-interface/sources")
+    @Operation(summary = "Получить все источники обнаруженных интерфейсов",
+            description = "Уникальные значения source из discovered_interface (без учёта регистра), в алфавитном порядке.")
+    public ResponseEntity<List<String>> getDiscoveredInterfaceSources() {
+        return ResponseEntity.status(HttpStatus.OK).body(discoveredInterfaceService.getDistinctSources());
+    }
 }

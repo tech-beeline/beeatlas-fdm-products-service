@@ -52,6 +52,15 @@ public class DiscoveredOperation {
     @Column(name = "return_type")
     private String returnType;
 
+    @Column(name = "rps")
+    private Double rps;
+
+    @Column(name = "latency")
+    private Double latency;
+
+    @Column(name = "error_rate")
+    private Double errorRate;
+
     @Column(name = "created_date")
     private LocalDateTime createdDate;
 

@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import ru.beeline.fdmproducts.client.*;
 import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.*;
@@ -23,6 +24,8 @@ import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.mapper.*;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.function.Function;
@@ -733,13 +736,12 @@ public class ProductService {
 
     private void enrichMethodType(InterfaceDTO iface, MethodDTO method) {
         String protocol = iface.getProtocol();
-        if (protocol == null)
+        if (protocol == null) {
+            method.setType(null);
             return;
+        }
         switch (protocol.toLowerCase()) {
             case "rest" -> {
-                if (method.getType() != null && !method.getType().isBlank()) {
-                    return;
-                }
                 if (method.getName().contains(" ")) {
                     String[] parts = method.getName().split(" ", 2);
                     method.setType(parts[0]);
@@ -750,6 +752,7 @@ public class ProductService {
             }
             case "soap" -> method.setType("SOAP");
             case "grpc" -> method.setType("gRPC");
+            default -> method.setType(null);
         }
     }
 
@@ -1302,7 +1305,7 @@ public class ProductService {
 
     public List<GetProductTechDto> getAllProductsAndTechRelations() {
         try {
-            List<TechProduct> techProducts = techProductRepository.findAll();
+            List<TechProduct> techProducts = techProductRepository.findAllByDeletedDateIsNull();
             Map<Integer, List<GetProductsDTO>> productsDTOByTechId = techProducts.stream()
                     .filter(techProduct -> techProduct.getProduct() != null)
                     .collect(Collectors.groupingBy(TechProduct::getTechId,
@@ -1559,14 +1562,19 @@ public class ProductService {
         return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
     }
 
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(String cmdb, Boolean showHidden) {
-        List<ProductMapicInterfaceDTO> result = new ArrayList<>();
-        Product product = productRepository.findByAliasCaseInsensitive(cmdb);
-        if (product == null) {
-            throw new EntityNotFoundException("Продукт с данным cmdb: " + cmdb + " не найден.");
+    public List<ProductMapicInterfaceDTO> getInterfacesBySource(String cmdb, String sourceType, Boolean showHidden) {
+        String decodedCmdb = URLDecoder.decode(cmdb, StandardCharsets.UTF_8);
+        String decodedSourceType = URLDecoder.decode(sourceType, StandardCharsets.UTF_8);
+        if (!StringUtils.hasText(decodedSourceType)) {
+            throw new IllegalArgumentException("Отсутствует обязательный параметр source-type");
         }
-        List<DiscoveredInterface> discoveredInterfaces = showHidden ? discoveredInterfaceRepository.findAllByProduct(product)
-                : discoveredInterfaceRepository.findAllByProductAndDeletedDateIsNull(product);
+        Product product = productRepository.findByAliasCaseInsensitive(decodedCmdb);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт с данным cmdb: " + decodedCmdb + " не найден.");
+        }
+        List<DiscoveredInterface> discoveredInterfaces = showHidden
+                ? discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCase(product, decodedSourceType)
+                : discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCaseAndDeletedDateIsNull(product, decodedSourceType);
         if (discoveredInterfaces.isEmpty()) {
             return Collections.emptyList();
         }
@@ -1586,6 +1594,68 @@ public class ProductService {
         Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
                 .collect(Collectors.toMap(Operation::getId, Function.identity()));
         return buildProductMapicInterfaceDTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById);
+    }
+
+    /** Same as {@link #getInterfacesBySource}, but externalId in the response is String, not Integer — see ProductMapicInterfaceV2DTO. */
+    public List<ProductMapicInterfaceV2DTO> getInterfacesBySourceV2(String cmdb, String sourceType, Boolean showHidden) {
+        String decodedCmdb = URLDecoder.decode(cmdb, StandardCharsets.UTF_8);
+        String decodedSourceType = URLDecoder.decode(sourceType, StandardCharsets.UTF_8);
+        if (!StringUtils.hasText(decodedSourceType)) {
+            throw new IllegalArgumentException("Отсутствует обязательный параметр source-type");
+        }
+        Product product = productRepository.findByAliasCaseInsensitive(decodedCmdb);
+        if (product == null) {
+            throw new EntityNotFoundException("Продукт с данным cmdb: " + decodedCmdb + " не найден.");
+        }
+        List<DiscoveredInterface> discoveredInterfaces = showHidden
+                ? discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCase(product, decodedSourceType)
+                : discoveredInterfaceRepository.findAllByProductAndSourceIgnoreCaseAndDeletedDateIsNull(product, decodedSourceType);
+        if (discoveredInterfaces.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Integer> discoveredInterfaceIds = discoveredInterfaces.stream()
+                .map(DiscoveredInterface::getId)
+                .collect(Collectors.toList());
+        List<DiscoveredOperation> allDiscoveredOperations = showHidden
+                ? discoveredOperationRepository.findAllByInterfaceIdIn(discoveredInterfaceIds)
+                : discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(discoveredInterfaceIds);
+        Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId = allDiscoveredOperations.stream()
+                .collect(Collectors.groupingBy(DiscoveredOperation::getInterfaceId));
+        List<Integer> connectionOperationIds = allDiscoveredOperations.stream()
+                .map(DiscoveredOperation::getConnectionOperationId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
+                .collect(Collectors.toMap(Operation::getId, Function.identity()));
+        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById);
+    }
+
+    private List<ProductMapicInterfaceV2DTO> buildProductMapicInterfaceV2DTOs(List<DiscoveredInterface> discoveredInterfaces,
+                                                                              Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId,
+                                                                              Map<Integer, Operation> operationsById) {
+        return discoveredInterfaces.stream().map(discoveredInterface -> {
+                    ProductMapicInterfaceV2DTO dto = InterfaceMapper.createProductMapicInterfaceV2(discoveredInterface);
+                    List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
+                            discoveredInterface.getId(), Collections.emptyList());
+                    if (interfaceDiscoveredOperations != null && !interfaceDiscoveredOperations.isEmpty()) {
+                        dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
+                    }
+                    List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
+                            .map(discoveredOperation -> {
+                                Operation operation = discoveredOperation.getConnectionOperationId() != null
+                                        ? operationsById.get(discoveredOperation.getConnectionOperationId())
+                                        : null;
+                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                            })
+                            .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
+                            .collect(Collectors.toList());
+                    dto.setOperations(operationDTOs);
+                    dto.setConnectInterface(InterfaceMapper.createMapicInterfaceDTO(discoveredInterface,
+                            discoveredInterface.getConnectedInterface()));
+                    return dto;
+                }).sorted(Comparator.comparing(ProductMapicInterfaceV2DTO::getCreateDate).reversed())
+                .collect(Collectors.toList());
     }
 
     private List<ProductMapicInterfaceDTO> buildProductMapicInterfaceDTOs(List<DiscoveredInterface> discoveredInterfaces,
@@ -2074,9 +2144,12 @@ public class ProductService {
     public List<TcDTO> getTcByContainerProduct(String alias, List<String> containers) {
         List<TcDTO> result = new ArrayList<>();
         Product product = validateAliasContainers(alias, containers);
+        List<String> lowerCaseContainers = containers.stream()
+                .map(String::toLowerCase)
+                .toList();
         List<ContainerProduct> containerProducts =
-                containerRepository.findAllByProductIdAndNameInAndDeletedDateIsNull(
-                        product.getId(), containers);
+                containerRepository.findAllByProductIdAndNameInIgnoreCaseAndDeletedDateIsNull(
+                        product.getId(), lowerCaseContainers);
         if (containerProducts.isEmpty()) {
             return new ArrayList<>();
         }

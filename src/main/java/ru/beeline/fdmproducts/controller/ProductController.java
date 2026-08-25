@@ -224,11 +224,28 @@ public class ProductController {
     }
 
     @ApiErrorCodes({400, 404, 500})
-    @GetMapping("/v1/product/{cmdb}/interface/mapic")
-    @Operation(summary = "Интерфейсы из каталога Mapic")
-    public List<ProductMapicInterfaceDTO> getProductsFromMapic(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
-                                                               @Parameter(description = "Включать скрытые интерфейсы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
-        return productService.getProductsFromMapic(cmdb, showHidden);
+    @GetMapping("/v1/product/{cmdb}/interface/{source-type}")
+    @Operation(summary = "Интерфейсы, обнаруженные из указанного источника",
+            description = "source-type сравнивается с discovered_interface.source без учёта регистра (mapic, sparx, ...). "
+                    + "/interface/arch обрабатывается отдельным маршрутом и сюда не попадает.")
+    public List<ProductMapicInterfaceDTO> getInterfacesBySource(
+            @Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
+            @Parameter(description = "Тип источника интерфейсов (mapic, sparx, ...)") @PathVariable("source-type") String sourceType,
+            @Parameter(description = "Включать скрытые интерфейсы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
+        return productService.getInterfacesBySource(cmdb, sourceType, showHidden);
+    }
+
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v2/product/{cmdb}/interface/{source-type}")
+    @Operation(summary = "Интерфейсы, обнаруженные из указанного источника (v2)",
+            description = "То же самое, что /v1/product/{cmdb}/interface/{source-type}, но externalId в ответе — string, "
+                    + "а не number: discovered_interface.external_id хранит и числовые id (MAPIC), и составные коды "
+                    + "интерфейсов (Sparx, вида \"interfaceCode.containerCode\"), поэтому v1 падает 400 на Sparx-данных.")
+    public List<ProductMapicInterfaceV2DTO> getInterfacesBySourceV2(
+            @Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
+            @Parameter(description = "Тип источника интерфейсов (mapic, sparx, ...)") @PathVariable("source-type") String sourceType,
+            @Parameter(description = "Включать скрытые интерфейсы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
+        return productService.getInterfacesBySourceV2(cmdb, sourceType, showHidden);
     }
 
     @ApiErrorCodes({400, 404, 500})

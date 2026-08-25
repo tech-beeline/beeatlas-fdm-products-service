@@ -48,10 +48,12 @@ public class DiscoveredInterfaceService {
 
     public void createOrUpdateDiscoveredInterfaces(List<DiscoveredInterfaceDTO> dInterfacesDTOS) {
         dInterfacesDTOS.forEach(this::validateDiscoveredInterfaceDTO);
-        List<Integer> externalIds = dInterfacesDTOS.stream().map(DiscoveredInterfaceDTO::getExternalId).toList();
+        List<String> externalIds = dInterfacesDTOS.stream()
+                .map(dto -> String.valueOf(dto.getExternalId()))
+                .toList();
         List<DiscoveredInterface> existingInterfaces = discoveredInterfaceRepository.findByExternalIdIn(externalIds);
         List<Integer> existingExternalIds = existingInterfaces.stream()
-                .map(DiscoveredInterface::getExternalId)
+                .map(entity -> Integer.valueOf(entity.getExternalId()))
                 .toList();
         List<DiscoveredInterfaceDTO> missingInterfaces = dInterfacesDTOS.stream()
                 .filter(dto -> !existingExternalIds.contains(dto.getExternalId()))
@@ -73,7 +75,7 @@ public class DiscoveredInterfaceService {
                 .collect(Collectors.toMap(DiscoveredInterfaceDTO::getExternalId, Function.identity()));
         for (DiscoveredInterface entity : existingInterfaces) {
             DiscoveredInterfaceDTO existingDto = discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(entity);
-            DiscoveredInterfaceDTO incomingDto = dtoByExternalId.get(entity.getExternalId());
+            DiscoveredInterfaceDTO incomingDto = dtoByExternalId.get(Integer.valueOf(entity.getExternalId()));
             if (incomingDto != null && !incomingDto.equals(existingDto)) {
                 discoveredInterfaceMapper.updateEntityFromDto(incomingDto, entity);
             }
@@ -215,7 +217,7 @@ public class DiscoveredInterfaceService {
                                 "discoveredInterface с " + "данным interface-id не найден")));
             } else if (externalId != null) {
                 return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository
-                        .findByExternalId(externalId).orElseThrow(() -> new IllegalArgumentException(
+                        .findByExternalId(String.valueOf(externalId)).orElseThrow(() -> new IllegalArgumentException(
                                 "discoveredInterface с " + "данным external-id не найден")));
             } else if (apiId != null) {
                 return discoveredInterfaceMapper.convertToDiscoveredInterfaceDto(discoveredInterfaceRepository
@@ -230,5 +232,9 @@ public class DiscoveredInterfaceService {
         if (obj != null) {
             list.add(obj);
         }
+    }
+
+    public List<String> getDistinctSources() {
+        return discoveredInterfaceRepository.findDistinctSources();
     }
 }

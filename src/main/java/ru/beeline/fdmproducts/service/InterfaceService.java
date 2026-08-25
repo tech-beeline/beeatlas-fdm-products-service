@@ -33,6 +33,10 @@ public class InterfaceService {
         Integer mapicInterfaceId = request.getMapicInterfaceId();
         Integer archInterfaceId = request.getArchInterfaceId();
 
+        if (mapicInterfaceId == null) {
+            throw new IllegalArgumentException("Не передан обязательный параметр mapicInterfaceId");
+        }
+
         DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(mapicInterfaceId)
                 .orElseThrow(() -> new IllegalArgumentException("DiscoveredInterface отсутствует в БД"));
 

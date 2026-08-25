@@ -26,6 +26,14 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
 
     List<ContainerProduct> findAllByCodeInAndProductId(List<String> codes, Integer productId);
 
+    @Query("SELECT c FROM ContainerProduct c WHERE c.productId = :productId AND LOWER(c.code) = LOWER(:code)")
+    List<ContainerProduct> findAllByProductIdAndCodeIgnoreCase(@Param("productId") Integer productId,
+                                                                @Param("code") String code);
+
+    @Query("SELECT c FROM ContainerProduct c WHERE c.productId = :productId AND c.code IS NULL AND LOWER(c.name) = LOWER(:name)")
+    List<ContainerProduct> findAllByProductIdAndCodeIsNullAndNameIgnoreCase(@Param("productId") Integer productId,
+                                                                            @Param("name") String name);
+
     @Query("SELECT c.id FROM ContainerProduct c WHERE c.productId = :productId AND c.deletedDate IS NULL")
     List<Integer> findContainerIdsByProductIdAndDeletedDateIsNull(Integer productId);
 
@@ -46,8 +54,9 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     void updateSourceMetricById(@Param("id") Integer id,
                                 @Param("sourceMetric") String sourceMetric);
 
-    List<ContainerProduct> findAllByProductIdAndNameInAndDeletedDateIsNull(Integer productId,
-                                                                           List<String> containerName);
+    @Query("SELECT c FROM ContainerProduct c WHERE c.productId = :productId AND LOWER(c.name) IN :containerNames AND c.deletedDate IS NULL")
+    List<ContainerProduct> findAllByProductIdAndNameInIgnoreCaseAndDeletedDateIsNull(@Param("productId") Integer productId,
+                                                                                     @Param("containerNames") List<String> containerNames);
 
     @Query("SELECT cp.id FROM ContainerProduct cp WHERE cp.product.id = :productId")
     List<Integer> findIdsByProductId(@Param("productId") Integer productId);

@@ -27,6 +27,14 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
 
     List<Interface> findAllByContainerIdAndCodeIn(Integer containerId, List<String> interfaceCodes);
 
+    @Query("SELECT i FROM Interface i WHERE i.containerId = :containerId AND LOWER(i.code) = LOWER(:code)")
+    List<Interface> findAllByContainerIdAndCodeIgnoreCase(@Param("containerId") Integer containerId,
+                                                           @Param("code") String code);
+
+    @Query("SELECT i FROM Interface i WHERE i.containerId = :containerId AND i.code IS NULL AND LOWER(i.name) = LOWER(:name)")
+    List<Interface> findAllByContainerIdAndCodeIsNullAndNameIgnoreCase(@Param("containerId") Integer containerId,
+                                                                       @Param("name") String name);
+
     @Query("SELECT i.id FROM Interface i WHERE i.containerId IN (:containerIds) AND i.deletedDate IS NULL")
     List<Integer> findInterfaceIdsByContainerIdInAndDeletedDateIsNull(List<Integer> containerIds);
 

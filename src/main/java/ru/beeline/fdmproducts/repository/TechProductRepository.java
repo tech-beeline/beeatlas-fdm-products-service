@@ -16,6 +16,8 @@ public interface TechProductRepository extends JpaRepository<TechProduct, Long> 
 
     List<TechProduct> findAllByTechId(Integer techId);
 
+    List<TechProduct> findAllByDeletedDateIsNull();
+
     List<TechProduct> findAllByProductId(Integer productId);
 
     TechProduct findByTechIdAndProduct(Integer techId, Product product);

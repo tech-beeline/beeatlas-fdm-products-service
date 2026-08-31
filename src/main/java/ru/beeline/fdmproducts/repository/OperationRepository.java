@@ -67,7 +67,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
-            JOIN product.product p ON cp.product_id = p.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
             WHERE o.name ILIKE CONCAT('%', ?1, '%')
               AND (?2 IS NULL OR o.type ILIKE ?2)
               AND o.deleted_date IS NULL
@@ -95,7 +96,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
-            JOIN product.product p ON cp.product_id = p.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
             WHERE o.name ILIKE CONCAT('%', ?1, '%')
               AND o.deleted_date IS NULL
               AND i.deleted_date IS NULL
@@ -122,7 +124,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             FROM Operation o
             JOIN o.interfaceObj i
             JOIN i.containerProduct cp
-            JOIN cp.product p
+            JOIN cp.productBranch pb
+            JOIN pb.product p
             WHERE o.id IN :connectionOperationIds
               AND o.deletedDate IS NULL
               AND i.deletedDate IS NULL
@@ -135,12 +138,14 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     @EntityGraph(attributePaths = {
             "interfaceObj",
             "interfaceObj.containerProduct",
-            "interfaceObj.containerProduct.product"
+            "interfaceObj.containerProduct.productBranch",
+            "interfaceObj.containerProduct.productBranch.product"
     })
     @Query("SELECT o FROM Operation o " +
             "LEFT JOIN o.interfaceObj i " +
             "LEFT JOIN i.containerProduct c " +
-            "LEFT JOIN c.product p " +
+            "LEFT JOIN c.productBranch pb " +
+            "LEFT JOIN pb.product p " +
             "WHERE o.tcId = :tcId " +
             "AND o.deletedDate IS NULL " +
             "AND (i IS NULL OR i.deletedDate IS NULL) " +

@@ -178,7 +178,8 @@ public class SearchService {
             if (container == null || container.getDeletedDate() != null) {
                 continue;
             }
-            var product = container.getProduct();
+            var productBranch = container.getProductBranch();
+            var product = productBranch == null ? null : productBranch.getProduct();
             if (product == null) {
                 continue;
             }

@@ -72,7 +72,9 @@ public class ProductService {
     private final LocalAssessmentRepository localAssessmentRepository;
     private final LocalAssessmentCheckRepository localAssessmentCheckRepository;
     private final OperationRelationRepository operationRelationRepository;
+    private final ProductBranchRepository productBranchRepository;
 
+    private static final String DEFAULT_BRANCH = "main";
 
     public ProductService(ContainerMapper containerMapper,
                           OperationMapper operationMapper,
@@ -108,7 +110,8 @@ public class ProductService {
                           DiscoveredParameterRepository discoveredParameterRepository,
                           LocalAssessmentRepository localAssessmentRepository,
                           LocalAssessmentCheckRepository localAssessmentCheckRepository,
-                          OperationRelationRepository operationRelationRepository) {
+                          OperationRelationRepository operationRelationRepository,
+                          ProductBranchRepository productBranchRepository) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -144,6 +147,19 @@ public class ProductService {
         this.localAssessmentRepository = localAssessmentRepository;
         this.localAssessmentCheckRepository = localAssessmentCheckRepository;
         this.operationRelationRepository = operationRelationRepository;
+        this.productBranchRepository = productBranchRepository;
+    }
+
+    private String normalizeBranch(String branch) {
+        return (branch == null || branch.isBlank()) ? DEFAULT_BRANCH : branch.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private Optional<ProductBranch> findBranch(String alias, String branch) {
+        return productBranchRepository.findByAliasAndBranchName(alias, normalizeBranch(branch));
+    }
+
+    private Integer getOrCreateBranchId(String alias, String branch) {
+        return productBranchRepository.upsert(alias, normalizeBranch(branch));
     }
 
     public List<Product> getProductsByUser(Integer userId) {
@@ -515,20 +531,22 @@ public class ProductService {
 
     public ValidationErrorResponse createOrUpdateProductRelations(List<ContainerDTO> containerDTOS,
                                                                   String code,
+                                                                  String branch,
                                                                   String source) {
-        log.info("Старт метода Создание, обновление связей продукта с code: {}", code);
+        log.info("Старт метода Создание, обновление связей продукта с code: {}, branch: {}", code, branch);
         log.debug("тело запроса: source={}, body={}", source, containerDTOS);
         ValidationErrorResponse errorEntity = new ValidationErrorResponse();
         validateContainers(containerDTOS, errorEntity);
         validateInterfaces(containerDTOS, errorEntity);
         validateMethods(containerDTOS, errorEntity);
         Product product = getProductByCode(code);
+        Integer productBranchId = getOrCreateBranchId(product.getAlias(), branch);
         if (!containerDTOS.isEmpty()) {
             log.info("Обработка контейнеров продукта с code: " + code);
-            saveRelations(containerDTOS, product);
+            saveRelations(containerDTOS, productBranchId);
         } else {
             log.info("Пустой список, каскадное удаление данных о продукте: {}", code);
-            deleteAllContainers(product.getId());
+            deleteAllContainers(productBranchId);
         }
         product.setSource(source);
         product.setUploadDate(LocalDateTime.now());
@@ -537,16 +555,16 @@ public class ProductService {
         return errorEntity;
     }
 
-    private void deleteAllContainers(Integer productId) {
+    private void deleteAllContainers(Integer productBranchId) {
         LocalDateTime deleteDateNow = LocalDateTime.now();
-        List<Integer> containerIds = containerRepository.findContainerIdsByProductIdAndDeletedDateIsNull(productId);
+        List<Integer> containerIds = containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(productBranchId);
         if (containerIds.isEmpty()) {
             return;
         }
         List<Interface> interfaces = interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(containerIds);
         if (interfaces.isEmpty()) {
-            containerRepository.markAllContainersAsDeleted(productId, new Date());
-            log.info("Удаление Containers с productId: {}", productId);
+            containerRepository.markAllContainersAsDeleted(productBranchId, new Date());
+            log.info("Удаление Containers с productBranchId: {}", productBranchId);
             return;
         }
         List<Integer> interfaceIds = interfaces.stream().map(Interface::getId).toList();
@@ -756,11 +774,11 @@ public class ProductService {
         }
     }
 
-    public void saveRelations(List<ContainerDTO> containerDTOS, Product product) {
-        Map<String, ContainerProduct> existingContainers = containerRepository.findAllByCodeInAndProductId(containerDTOS.stream()
+    public void saveRelations(List<ContainerDTO> containerDTOS, Integer productBranchId) {
+        Map<String, ContainerProduct> existingContainers = containerRepository.findAllByCodeInAndProductBranchId(containerDTOS.stream()
                                 .map(ContainerDTO::getCode)
                                 .toList(),
-                        product.getId())
+                        productBranchId)
                 .stream()
                 .collect(Collectors.toMap(ContainerProduct::getCode, c -> c,
                         (a, b) -> a.getDeletedDate() == null ? a : b));
@@ -769,7 +787,7 @@ public class ProductService {
         List<InterfaceDTO> allInterfaces = new ArrayList<>();
         List<MethodDTO> allMethods = new ArrayList<>();
         prepareContainersAndCollectData(containerDTOS,
-                product,
+                productBranchId,
                 existingContainers,
                 toSave,
                 interfacesByCode,
@@ -779,9 +797,9 @@ public class ProductService {
             log.info("Сохранение контейнеров. Количество: " + toSave.size());
             containerRepository.saveAll(toSave);
         }
-        markContainersAsDeleted(product.getId(), containerDTOS);
-        log.info("TC: загрузка capability для productId={}, interfaces={}, methods={}",
-                product.getId(), allInterfaces.size(), allMethods.size());
+        markContainersAsDeleted(productBranchId, containerDTOS);
+        log.info("TC: загрузка capability для productBranchId={}, interfaces={}, methods={}",
+                productBranchId, allInterfaces.size(), allMethods.size());
         Map<String, Long> codesIdMap = loadInterfaceCapabilityMap(allInterfaces);
         Map<String, Long> methodCodesIdMap = loadMethodCapabilityMap(allMethods);
         log.info("TC: карты загружены, interfaceMapSize={}, methodMapSize={}",
@@ -795,7 +813,7 @@ public class ProductService {
         }
     }
 
-    private void prepareContainersAndCollectData(List<ContainerDTO> containerDTOS, Product product,
+    private void prepareContainersAndCollectData(List<ContainerDTO> containerDTOS, Integer productBranchId,
                                                  Map<String, ContainerProduct> existingContainers,
                                                  List<ContainerProduct> toSave, Map<String, List<InterfaceDTO>> interfacesByCode,
                                                  List<InterfaceDTO> allInterfaces,
@@ -806,12 +824,12 @@ public class ProductService {
             validateField(dto.getCode(), container, "code");
             ContainerProduct containerEntity = existingContainers.get(dto.getCode());
             if (containerEntity == null) {
-                containerEntity = containerMapper.convertToContainerProduct(dto, product);
+                containerEntity = containerMapper.convertToContainerProduct(dto, productBranchId);
                 toSave.add(containerEntity);
             } else {
                 if (!Objects.equals(containerEntity.getName(),
                         dto.getName()) || !Objects.equals(containerEntity.getVersion(), dto.getVersion())) {
-                    containerMapper.updateContainerProduct(containerEntity, dto, product);
+                    containerMapper.updateContainerProduct(containerEntity, dto, productBranchId);
                 }
                 if (containerEntity.getDeletedDate() != null) {
                     containerEntity.setDeletedDate(null);
@@ -907,9 +925,9 @@ public class ProductService {
         }
     }
 
-    private void markContainersAsDeleted(Integer productId, List<ContainerDTO> newContainers) {
+    private void markContainersAsDeleted(Integer productBranchId, List<ContainerDTO> newContainers) {
         Set<String> dtoCodes = newContainers.stream().map(ContainerDTO::getCode).collect(Collectors.toSet());
-        List<ContainerProduct> candidates = containerRepository.findAllByProductIdAndDeletedDateIsNull(productId)
+        List<ContainerProduct> candidates = containerRepository.findAllByProductBranchIdAndDeletedDateIsNull(productBranchId)
                 .stream()
                 .filter(c -> !dtoCodes.contains(c.getCode()))
                 .toList();
@@ -1690,13 +1708,18 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
-    public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb) {
+    public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb, String branch) {
         Product product = productRepository.findByAliasCaseInsensitive(cmdb);
         if (product == null) {
             throw new EntityNotFoundException("Продукт с данным cmdb: " + cmdb + " не найден.");
         }
         List<ProductInterfaceDTO> result = new ArrayList<>();
-        List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
+        Optional<ProductBranch> productBranch = findBranch(product.getAlias(), branch);
+        if (productBranch.isEmpty()) {
+            return result;
+        }
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductBranchIdAndDeletedDateIsNull(
+                productBranch.get().getId());
         if (!containerProducts.isEmpty()) {
             List<Interface> interfaces = containerProducts.stream().flatMap(cp -> cp.getInterfaces().stream())
                     .filter(iface -> iface.getDeletedDate() == null)
@@ -1762,13 +1785,18 @@ public class ProductService {
                 ));
     }
 
-    public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb, Boolean showHidden) {
+    public List<ContainerInterfacesDTO> getContainersFromStructurizr(String cmdb, String branch, Boolean showHidden) {
         Product product = productRepository.findByAliasCaseInsensitive(cmdb);
         if (product == null) {
             throw new EntityNotFoundException("Продукт с данным cmdb: " + cmdb + " не найден.");
         }
-        List<ContainerProduct> containerProducts = showHidden ? containerRepository.findAllByProductId(product.getId())
-                : containerRepository.findAllByProductIdAndDeletedDateIsNull(product.getId());
+        Optional<ProductBranch> productBranch = findBranch(product.getAlias(), branch);
+        if (productBranch.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Integer productBranchId = productBranch.get().getId();
+        List<ContainerProduct> containerProducts = showHidden ? containerRepository.findAllByProductBranchId(productBranchId)
+                : containerRepository.findAllByProductBranchIdAndDeletedDateIsNull(productBranchId);
         log.info("Количество containerProducts = {}", containerProducts.size());
         return buildContainerInterfacesDTO(containerProducts, showHidden);
     }
@@ -1977,9 +2005,14 @@ public class ProductService {
         return userProfiles.stream().collect(Collectors.toMap(UserProfileShortDTO::getId, Function.identity()));
     }
 
-    public List<Integer> getTCIdsByProductId(Integer id) {
-        productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
-        List<ContainerProduct> containerProducts = containerRepository.findAllByProductIdAndDeletedDateIsNull(id);
+    public List<Integer> getTCIdsByProductId(Integer id, String branch) {
+        Product product = productRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("not found"));
+        Optional<ProductBranch> productBranch = findBranch(product.getAlias(), branch);
+        if (productBranch.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<ContainerProduct> containerProducts = containerRepository.findAllByProductBranchIdAndDeletedDateIsNull(
+                productBranch.get().getId());
         log.info("containerProducts: " + containerProducts);
         if (containerProducts == null && containerProducts.size() == 0) {
             return new ArrayList<Integer>();
@@ -2141,15 +2174,19 @@ public class ProductService {
         return result;
     }
 
-    public List<TcDTO> getTcByContainerProduct(String alias, List<String> containers) {
+    public List<TcDTO> getTcByContainerProduct(String alias, List<String> containers, String branch) {
         List<TcDTO> result = new ArrayList<>();
         Product product = validateAliasContainers(alias, containers);
+        Optional<ProductBranch> productBranch = findBranch(product.getAlias(), branch);
+        if (productBranch.isEmpty()) {
+            return result;
+        }
         List<String> lowerCaseContainers = containers.stream()
                 .map(String::toLowerCase)
                 .toList();
         List<ContainerProduct> containerProducts =
-                containerRepository.findAllByProductIdAndNameInIgnoreCaseAndDeletedDateIsNull(
-                        product.getId(), lowerCaseContainers);
+                containerRepository.findAllByProductBranchIdAndNameInIgnoreCaseAndDeletedDateIsNull(
+                        productBranch.get().getId(), lowerCaseContainers);
         if (containerProducts.isEmpty()) {
             return new ArrayList<>();
         }
@@ -2195,13 +2232,17 @@ public class ProductService {
     }
 
     public void deleteProduct(Integer id) {
-        if (!productRepository.existsById(id)) {
+        Product product = productRepository.findById(id).orElse(null);
+        if (product == null) {
             log.error("Продукт с id {} не найден", id);
             throw new EntityNotFoundException("Запись в таблице Product с id= " + id + " не найдена.");
         }
         userProductRepository.deleteByProductId(id);
         log.info("Удалены user_product для продукта id: {}", id);
-        List<Integer> containerIds = containerRepository.findIdsByProductId(id);
+        List<ProductBranch> branches = productBranchRepository.findAllByAlias(product.getAlias());
+        List<Integer> branchIds = branches.stream().map(ProductBranch::getId).toList();
+        List<Integer> containerIds = branchIds.isEmpty()
+                ? Collections.emptyList() : containerRepository.findIdsByProductBranchIdIn(branchIds);
         if (!containerIds.isEmpty()) {
             log.info("Удалено container_product: {} записей", containerIds.size());
             List<Integer> interfaceIds = interfaceRepository.findIdsByContainerIds(containerIds);
@@ -2234,6 +2275,10 @@ public class ProductService {
         deleteLocalAssessmentsByProductId(id);
         techProductRepository.deleteByProductId(id);
         log.info("Удалено tech_product для продукта id: {}", id);
+        if (!branchIds.isEmpty()) {
+            productBranchRepository.deleteByAlias(product.getAlias());
+            log.info("Удалено product_branch: {} записей для alias={}", branchIds.size(), product.getAlias());
+        }
         productRepository.deleteById(id);
         log.info("Продукт id: {} успешно удален", id);
     }

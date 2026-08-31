@@ -6,16 +6,15 @@ package ru.beeline.fdmproducts.mapper;
 
 import org.springframework.stereotype.Component;
 import ru.beeline.fdmproducts.domain.ContainerProduct;
-import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.ContainerDTO;
 
 import java.util.Date;
 
 @Component
 public class ContainerMapper {
-    public ContainerProduct convertToContainerProduct(ContainerDTO containerDTO, Product product) {
+    public ContainerProduct convertToContainerProduct(ContainerDTO containerDTO, Integer productBranchId) {
         return ContainerProduct.builder()
-                .productId(product.getId())
+                .productBranchId(productBranchId)
                 .name(containerDTO.getName())
                 .code(containerDTO.getCode())
                 .version(containerDTO.getVersion())
@@ -23,8 +22,8 @@ public class ContainerMapper {
                 .build();
     }
 
-    public void updateContainerProduct(ContainerProduct container, ContainerDTO containerDTO, Product product) {
-        container.setProductId(product.getId());
+    public void updateContainerProduct(ContainerProduct container, ContainerDTO containerDTO, Integer productBranchId) {
+        container.setProductBranchId(productBranchId);
         container.setName(containerDTO.getName());
         container.setVersion(containerDTO.getVersion());
         container.setUpdatedDate(new Date());

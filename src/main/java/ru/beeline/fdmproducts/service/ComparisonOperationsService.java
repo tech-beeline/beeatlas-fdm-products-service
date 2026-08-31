@@ -11,8 +11,10 @@ import ru.beeline.fdmproducts.domain.ContainerProduct;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.repository.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -21,22 +23,27 @@ import java.util.stream.Collectors;
 @Service
 @Slf4j
 public class ComparisonOperationsService {
+    private static final String MAIN_BRANCH = "main";
+
     private final DiscoveredOperationRepository discoveredOperationRepository;
     private final InterfaceRepository interfaceRepository;
     private final ContainerRepository containerRepository;
     private final OperationRepository operationRepository;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
+    private final ProductBranchRepository productBranchRepository;
 
     public ComparisonOperationsService(DiscoveredOperationRepository discoveredOperationRepository,
                                        InterfaceRepository interfaceRepository,
                                        ContainerRepository containerRepository,
                                        OperationRepository operationRepository,
-                                       DiscoveredInterfaceRepository discoveredInterfaceRepository) {
+                                       DiscoveredInterfaceRepository discoveredInterfaceRepository,
+                                       ProductBranchRepository productBranchRepository) {
         this.discoveredOperationRepository = discoveredOperationRepository;
         this.interfaceRepository = interfaceRepository;
         this.containerRepository = containerRepository;
         this.operationRepository = operationRepository;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
+        this.productBranchRepository = productBranchRepository;
     }
 
     public void process(Integer id) {
@@ -49,8 +56,11 @@ public class ComparisonOperationsService {
                 discoveredOperation.getType(),
                 discoveredOperation.getInterfaceId(),
                 discoveredOperation.getContext());
-        List<ContainerProduct> containerProductList = containerRepository.findAllByProductId(
-                discoveredOperation.getDiscoveredInterface().getProduct().getId());
+        Product product = discoveredOperation.getDiscoveredInterface().getProduct();
+        List<ContainerProduct> containerProductList = productBranchRepository
+                .findByAliasAndBranchName(product.getAlias(), MAIN_BRANCH)
+                .map(branch -> containerRepository.findAllByProductBranchId(branch.getId()))
+                .orElse(Collections.emptyList());
         log.info("[CONTAINER_PRODUCT] Найдено записей: {}. ID: {}",
                 containerProductList.size(),
                 containerProductList.stream().map(ContainerProduct::getId).collect(Collectors.toList()));

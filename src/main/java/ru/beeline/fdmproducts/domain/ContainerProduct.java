@@ -29,12 +29,12 @@ public class ContainerProduct {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "product_id")
-    private Integer productId;
+    @Column(name = "product_branch_id")
+    private Integer productBranchId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id", insertable = false, updatable = false)
-    private Product product;
+    @JoinColumn(name = "product_branch_id", insertable = false, updatable = false)
+    private ProductBranch productBranch;
 
     @Column(name = "code")
     private String code;

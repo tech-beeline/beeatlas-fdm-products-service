@@ -63,7 +63,7 @@ public class ArchContainerRelationsService {
             Interface interfaceEntity = interfaceRepository.findById(operation.get().getInterfaceId()).get();
             ContainerProduct containerProduct = containerRepository.findById(interfaceEntity.getContainerId()).get();
             List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(
-                    containerProduct.getProductId(), interfaceEntity.getId());
+                    containerProduct.getProductBranch().getProduct().getId(), interfaceEntity.getId());
             log.info("[ШАГ ] discoveredInterfaces size is {}", discoveredInterfaces.size());
             discoveredInterfaces.forEach(discoveredInterface -> {
                 log.info("[ШАГ ] discoveredInterface is {}", discoveredInterface.getName());

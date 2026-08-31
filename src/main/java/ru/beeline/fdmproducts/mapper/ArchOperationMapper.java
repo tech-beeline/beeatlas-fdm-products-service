@@ -51,9 +51,9 @@ public class ArchOperationMapper {
                         .code(operation.getInterfaceObj().getContainerProduct().getCode())
                         .build())
                 .product(ProductSearchDTO.builder()
-                        .id(operation.getInterfaceObj().getContainerProduct().getProductId())
-                        .name(operation.getInterfaceObj().getContainerProduct().getProduct().getName())
-                        .alias(operation.getInterfaceObj().getContainerProduct().getProduct().getAlias())
+                        .id(operation.getInterfaceObj().getContainerProduct().getProductBranch().getProduct().getId())
+                        .name(operation.getInterfaceObj().getContainerProduct().getProductBranch().getProduct().getName())
+                        .alias(operation.getInterfaceObj().getContainerProduct().getProductBranch().getProduct().getAlias())
                         .build())
                 .build();
     }

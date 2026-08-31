@@ -25,6 +25,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class E2eService {
 
+    private static final String MAIN_BRANCH = "main";
+
     private final ProductRepository productRepository;
     private final ContainerRepository containerRepository;
     private final InterfaceRepository interfaceRepository;
@@ -32,6 +34,7 @@ public class E2eService {
     private final SlaRepository slaRepository;
     private final E2eRepository e2eRepository;
     private final OperationRelationRepository operationRelationRepository;
+    private final ProductBranchRepository productBranchRepository;
 
     @Transactional
     public E2eUpsertResponseDTO upsert(E2eUpsertRequestDTO request) {
@@ -46,8 +49,9 @@ public class E2eService {
         log.info("входные данные, products={}, containers={}, interfaces={}, operations={}, relations={}",
                 products.size(), containers.size(), interfaces.size(), operations.size(), relations.size());
         ProductIndex productIndex = upsertProducts(products);
-        ContainerIndex containerIndex = upsertContainers(containers, productIndex);
-        InterfaceIndex interfaceIndex = upsertInterfaces(interfaces, containerIndex, containers, productIndex);
+        Map<Integer, Integer> branchIdByProductId = new HashMap<>();
+        ContainerIndex containerIndex = upsertContainers(containers, productIndex, branchIdByProductId);
+        InterfaceIndex interfaceIndex = upsertInterfaces(interfaces, containerIndex, containers, productIndex, branchIdByProductId);
         Map<String, Integer> operationIdByUid = upsertOperations(
                 operations, interfaceIndex, interfaces, containerIndex.byKey().values());
         validateRelations(relations, operationIdByUid);
@@ -169,7 +173,8 @@ public class E2eService {
         return new ProductIndex(byCmdb, byVersionId);
     }
 
-    private ContainerIndex upsertContainers(List<E2eContainerDTO> containers, ProductIndex productIndex) {
+    private ContainerIndex upsertContainers(List<E2eContainerDTO> containers, ProductIndex productIndex,
+                                            Map<Integer, Integer> branchIdByProductId) {
         Map<String, ContainerProduct> byKey = new HashMap<>();
         Map<Long, ContainerProduct> byVersionId = new HashMap<>();
         for (E2eContainerDTO dto : containers) {
@@ -177,18 +182,19 @@ public class E2eService {
             if (product == null) {
                 throw new IllegalArgumentException("Не найден parentProductCmdb для контейнера: " + dto.getCode());
             }
+            Integer productBranchId = resolveMainBranchId(product, branchIdByProductId);
             String productKey = normalizeKey(product.getAlias());
-            ContainerProduct container = findContainerInDb(dto.getCode(), dto.getName(), product.getId());
+            ContainerProduct container = findContainerInDb(dto.getCode(), dto.getName(), productBranchId);
             if (container == null) {
                 container = ContainerProduct.builder()
                         .code(dto.getCode())
                         .name(dto.getName())
-                        .productId(product.getId())
+                        .productBranchId(productBranchId)
                         .createdDate(new Date())
                         .build();
                 container = containerRepository.save(container);
-                log.info("Создан container, id={}, code={}, productId={}, productVersionId={}, containerVersionId={}",
-                        container.getId(), dto.getCode(), product.getId(),
+                log.info("Создан container, id={}, code={}, productBranchId={}, productVersionId={}, containerVersionId={}",
+                        container.getId(), dto.getCode(), productBranchId,
                         dto.getProductVersionId(), dto.getContainerVersionId());
             } else {
                 boolean update = false;
@@ -203,11 +209,11 @@ public class E2eService {
                 if (update) {
                     container.setUpdatedDate(new Date());
                     container = containerRepository.save(container);
-                    log.info("Обновлён container, id={}, code={}, productId={}, containerVersionId={}",
-                            container.getId(), dto.getCode(), product.getId(), dto.getContainerVersionId());
+                    log.info("Обновлён container, id={}, code={}, productBranchId={}, containerVersionId={}",
+                            container.getId(), dto.getCode(), productBranchId, dto.getContainerVersionId());
                 } else {
-                    log.info("Найден container, id={}, code={}, productId={}, containerVersionId={}",
-                            container.getId(), dto.getCode(), product.getId(), dto.getContainerVersionId());
+                    log.info("Найден container, id={}, code={}, productBranchId={}, containerVersionId={}",
+                            container.getId(), dto.getCode(), productBranchId, dto.getContainerVersionId());
                 }
             }
             byKey.put(containerKey(productKey, dto.getCode()), container);
@@ -216,6 +222,11 @@ public class E2eService {
             }
         }
         return new ContainerIndex(byKey, byVersionId);
+    }
+
+    private Integer resolveMainBranchId(Product product, Map<Integer, Integer> branchIdByProductId) {
+        return branchIdByProductId.computeIfAbsent(product.getId(),
+                id -> productBranchRepository.upsert(product.getAlias(), MAIN_BRANCH));
     }
 
     private Product resolveProductForContainer(E2eContainerDTO dto, ProductIndex productIndex) {
@@ -238,16 +249,18 @@ public class E2eService {
     private InterfaceIndex upsertInterfaces(List<E2eInterfaceDTO> interfaces,
                                              ContainerIndex containerIndex,
                                              List<E2eContainerDTO> containerDtos,
-                                             ProductIndex productIndex) {
+                                             ProductIndex productIndex,
+                                             Map<Integer, Integer> branchIdByProductId) {
         Map<String, String> containerToProduct = buildContainerToProductMap(containerDtos);
         Map<String, Interface> byKey = new HashMap<>();
         Map<Long, Interface> byVersionId = new HashMap<>();
         for (E2eInterfaceDTO dto : interfaces) {
-            ContainerProduct container = resolveContainerForInterface(dto, containerIndex, containerToProduct, productIndex);
+            ContainerProduct container = resolveContainerForInterface(dto, containerIndex, containerToProduct, productIndex,
+                    branchIdByProductId);
             if (container == null) {
                 throw new IllegalArgumentException("Не найден parentContainerCode для интерфейса: " + dto.getCode());
             }
-            registerContainer(containerIndex.byKey(), productIndex.byCmdb(), container);
+            registerContainer(containerIndex.byKey(), productIndex.byCmdb(), container, branchIdByProductId);
             Interface iface = findInterfaceInDb(dto.getCode(), dto.getName(), container.getId());
             if (iface == null) {
                 iface = Interface.builder()
@@ -284,7 +297,8 @@ public class E2eService {
     }
 
     private ContainerProduct resolveContainerForInterface(E2eInterfaceDTO dto, ContainerIndex containerIndex,
-                                                           Map<String, String> containerToProduct, ProductIndex productIndex) {
+                                                           Map<String, String> containerToProduct, ProductIndex productIndex,
+                                                           Map<Integer, Integer> branchIdByProductId) {
         if (dto.getContainerVersionId() != null) {
             ContainerProduct container = containerIndex.byVersionId().get(dto.getContainerVersionId());
             if (container != null) {
@@ -298,10 +312,12 @@ public class E2eService {
 
         ContainerProduct container = null;
         if (productKey != null) {
-            container = resolveContainer(dto.getParentContainerCode(), productKey, productIndex.byCmdb(), containerIndex.byKey());
+            container = resolveContainer(dto.getParentContainerCode(), productKey, productIndex.byCmdb(), containerIndex.byKey(),
+                    branchIdByProductId);
         }
         if (container == null) {
-            container = resolveContainerAcrossProducts(dto.getParentContainerCode(), productIndex.byCmdb(), containerIndex.byKey());
+            container = resolveContainerAcrossProducts(dto.getParentContainerCode(), productIndex.byCmdb(), containerIndex.byKey(),
+                    branchIdByProductId);
         }
         return container;
     }
@@ -504,7 +520,8 @@ public class E2eService {
     }
 
     private ContainerProduct resolveContainer(String containerCode, String productKey, Map<String, Product> productByCmdb,
-                                              Map<String, ContainerProduct> containerByKey) {
+                                              Map<String, ContainerProduct> containerByKey,
+                                              Map<Integer, Integer> branchIdByProductId) {
         ContainerProduct container = containerByKey.get(containerKey(productKey, containerCode));
         if (container != null) {
             return container;
@@ -513,17 +530,18 @@ public class E2eService {
         if (product == null) {
             return null;
         }
-        return findContainerInDb(containerCode, product.getId());
+        return findContainerInDb(containerCode, resolveMainBranchId(product, branchIdByProductId));
     }
 
     private ContainerProduct resolveContainerAcrossProducts(String containerCode, Map<String, Product> productByCmdb,
-                                                            Map<String, ContainerProduct> containerByKey) {
+                                                            Map<String, ContainerProduct> containerByKey,
+                                                            Map<Integer, Integer> branchIdByProductId) {
         ContainerProduct found = null;
         for (Product product : productByCmdb.values()) {
             ContainerProduct candidate = resolveContainer(
-                    containerCode, normalizeKey(product.getAlias()), productByCmdb, containerByKey);
+                    containerCode, normalizeKey(product.getAlias()), productByCmdb, containerByKey, branchIdByProductId);
             if (candidate == null) {
-                candidate = findContainerInDb(containerCode, product.getId());
+                candidate = findContainerInDb(containerCode, resolveMainBranchId(product, branchIdByProductId));
             }
             if (candidate != null) {
                 if (found != null && !found.getId().equals(candidate.getId())) {
@@ -536,17 +554,17 @@ public class E2eService {
         return found;
     }
 
-    private ContainerProduct findContainerInDb(String containerCode, Integer productId) {
-        return containerRepository.findAllByProductIdAndCodeIgnoreCase(productId, containerCode)
+    private ContainerProduct findContainerInDb(String containerCode, Integer productBranchId) {
+        return containerRepository.findAllByProductBranchIdAndCodeIgnoreCase(productBranchId, containerCode)
                 .stream()
                 .filter(c -> c.getDeletedDate() == null)
                 .findFirst()
                 .orElse(null);
     }
 
-    private ContainerProduct findContainerInDb(String containerCode, String containerName, Integer productId) {
+    private ContainerProduct findContainerInDb(String containerCode, String containerName, Integer productBranchId) {
         ContainerProduct container = containerRepository
-                .findAllByProductIdAndCodeIgnoreCase(productId, containerCode)
+                .findAllByProductBranchIdAndCodeIgnoreCase(productBranchId, containerCode)
                 .stream()
                 .findFirst()
                 .orElse(null);
@@ -554,7 +572,7 @@ public class E2eService {
             return container;
         }
         return containerRepository
-                .findAllByProductIdAndCodeIsNullAndNameIgnoreCase(productId, containerName)
+                .findAllByProductBranchIdAndCodeIsNullAndNameIgnoreCase(productBranchId, containerName)
                 .stream()
                 .findFirst()
                 .orElse(null);
@@ -577,9 +595,9 @@ public class E2eService {
     }
 
     private void registerContainer(Map<String, ContainerProduct> containerByKey, Map<String, Product> productByCmdb,
-                                   ContainerProduct container) {
+                                   ContainerProduct container, Map<Integer, Integer> branchIdByProductId) {
         productByCmdb.values().stream()
-                .filter(product -> product.getId().equals(container.getProductId()))
+                .filter(product -> resolveMainBranchId(product, branchIdByProductId).equals(container.getProductBranchId()))
                 .findFirst()
                 .ifPresent(product -> containerByKey.putIfAbsent(
                         containerKey(normalizeKey(product.getAlias()), container.getCode()),

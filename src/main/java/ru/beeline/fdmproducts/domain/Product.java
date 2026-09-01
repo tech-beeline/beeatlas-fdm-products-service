@@ -9,6 +9,7 @@ import com.fasterxml.jackson.annotation.JsonManagedReference;
 import lombok.*;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -21,7 +22,7 @@ import java.util.List;
 @Entity
 @Table(name = "product")
 @ToString
-public class Product {
+public class Product implements Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "product_id_generator")
     @SequenceGenerator(name = "product_id_generator", sequenceName = "seq_product_id", allocationSize = 1)
@@ -31,7 +32,7 @@ public class Product {
     @Column(name = "name")
     private String name;
 
-    @Column(name = "alias")
+    @Column(name = "alias", unique = true)
     private String alias;
 
     @Column(name = "description")

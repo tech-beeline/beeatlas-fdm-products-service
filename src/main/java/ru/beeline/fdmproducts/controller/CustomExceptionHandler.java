@@ -51,7 +51,7 @@ public class CustomExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorMessageDTO> handleException(RuntimeException e) {
-        log.error(e.getMessage());
+        log.error(e.getMessage(), e);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)

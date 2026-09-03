@@ -109,7 +109,7 @@ public class E2eV2Service {
         if (request == null) {
             throw new IllegalArgumentException("Отсутствует тело запроса");
         }
-        E2e e2e = e2eRepository.findByCode(code)
+        E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new EntityNotFoundException("E2e с указанным кодом не найден"));
 
         List<E2eProductDTO> products = defaultList(request.getProducts());

@@ -130,7 +130,7 @@ public class E2eV2Service {
         }
         e2e = e2eRepository.save(e2e);
 
-        Map<String, Product> productByCmdb = upsertProducts(products);
+        Map<String, Product> productByCmdb = resolveExistingProducts(products);
         Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
         Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
 
@@ -227,33 +227,31 @@ public class E2eV2Service {
                 product = Product.builder()
                         .alias(dto.getCmdb())
                         .name(dto.getName())
-                        .description(dto.getDescription())
                         .build();
                 product = productRepository.save(product);
                 log.info("Создан product, id={}, cmdb={}", product.getId(), dto.getCmdb());
             } else {
                 log.info("Найден product, id={}, cmdb={}", product.getId(), dto.getCmdb());
-                updateProduct(product, dto);
             }
             byCmdb.put(cmdbKey, product);
         }
         return byCmdb;
     }
 
-    private void updateProduct(Product product, E2eProductDTO dto) {
-        boolean update = false;
-        if (dto.getName() != null && !Objects.equals(product.getName(), dto.getName())) {
-            product.setName(dto.getName());
-            update = true;
+    /**
+     * PATCH-путь (SFDM-4092): в отличие от {@link #upsertProducts}, не создаёт и не обновляет
+     * записи product — по актуальной спеке метод резолвит связи только на уже существующие
+     * продукты; upsert product в PATCH — отдельная доработка на будущее.
+     */
+    private Map<String, Product> resolveExistingProducts(List<E2eProductDTO> products) {
+        Map<String, Product> byCmdb = new HashMap<>();
+        for (E2eProductDTO dto : products) {
+            Product product = productRepository.findByAliasCaseInsensitive(dto.getCmdb());
+            if (product != null) {
+                byCmdb.put(normalizeKey(dto.getCmdb()), product);
+            }
         }
-        if (dto.getDescription() != null && !Objects.equals(product.getDescription(), dto.getDescription())) {
-            product.setDescription(dto.getDescription());
-            update = true;
-        }
-        if (update) {
-            log.info("Обновлён product, id={}", product.getId());
-            productRepository.save(product);
-        }
+        return byCmdb;
     }
 
     private Map<String, List<DiscoveredInterface>> upsertInterfaces(List<E2eV2InterfaceDTO> interfaces,

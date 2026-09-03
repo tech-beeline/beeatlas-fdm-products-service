@@ -52,7 +52,7 @@ public class E2eV2Controller {
                     + "если поле отсутствует — существующие operation_relations не меняются.")
     public ResponseEntity<E2eUpsertResponseDTO> patchE2e(
             @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code,
-            @RequestBody E2eV2PatchRequestDTO request) {
+            @RequestBody(required = false) E2eV2PatchRequestDTO request) {
         return ResponseEntity.ok(e2eV2Service.patch(code, request));
     }
 

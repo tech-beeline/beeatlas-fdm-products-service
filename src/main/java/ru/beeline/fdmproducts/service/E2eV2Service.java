@@ -227,15 +227,33 @@ public class E2eV2Service {
                 product = Product.builder()
                         .alias(dto.getCmdb())
                         .name(dto.getName())
+                        .description(dto.getDescription())
                         .build();
                 product = productRepository.save(product);
                 log.info("Создан product, id={}, cmdb={}", product.getId(), dto.getCmdb());
             } else {
                 log.info("Найден product, id={}, cmdb={}", product.getId(), dto.getCmdb());
+                updateProduct(product, dto);
             }
             byCmdb.put(cmdbKey, product);
         }
         return byCmdb;
+    }
+
+    private void updateProduct(Product product, E2eProductDTO dto) {
+        boolean update = false;
+        if (dto.getName() != null && !Objects.equals(product.getName(), dto.getName())) {
+            product.setName(dto.getName());
+            update = true;
+        }
+        if (dto.getDescription() != null && !Objects.equals(product.getDescription(), dto.getDescription())) {
+            product.setDescription(dto.getDescription());
+            update = true;
+        }
+        if (update) {
+            log.info("Обновлён product, id={}", product.getId());
+            productRepository.save(product);
+        }
     }
 
     private Map<String, List<DiscoveredInterface>> upsertInterfaces(List<E2eV2InterfaceDTO> interfaces,

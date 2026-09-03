@@ -17,5 +17,6 @@ public class E2eProductDTO {
 
     private String cmdb;
     private String name;
+    private String description;
     private Long productVersionId;
 }

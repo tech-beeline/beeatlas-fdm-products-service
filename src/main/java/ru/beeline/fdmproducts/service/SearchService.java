@@ -89,9 +89,11 @@ public class SearchService {
                 .findOperationsProjection(withConOperation.stream()
                         .map(DiscoveredOperation::getConnectionOperationId).toList());
         Map<Integer, ArchOperationProjection> projectionMap = disOperationWithConOperation.stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         ArchOperationProjection::getOpId,
-                        Function.identity()
+                        Function.identity(),
+                        (first, second) -> first
                 ));
         List<DiscoveredOperationDTO> doResult = withConOperation.stream()
                 .map(op -> discoveredOperationMapper.mapToOperationDTO(op, projectionMap.get(op.getConnectionOperationId())))

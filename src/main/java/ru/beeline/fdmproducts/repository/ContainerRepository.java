@@ -26,6 +26,10 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
 
     List<ContainerProduct> findAllByCodeInAndProductBranchId(List<String> codes, Integer productBranchId);
 
+    /** Global lookup by code, not scoped to a product — {@code codes} must already be lower-cased. */
+    @Query("SELECT c FROM ContainerProduct c WHERE LOWER(c.code) IN :codes AND c.deletedDate IS NULL")
+    List<ContainerProduct> findAllByCodeInIgnoreCaseAndDeletedDateIsNull(@Param("codes") List<String> codes);
+
     @Query("SELECT c FROM ContainerProduct c WHERE c.productBranchId = :productBranchId AND LOWER(c.code) = LOWER(:code)")
     List<ContainerProduct> findAllByProductBranchIdAndCodeIgnoreCase(@Param("productBranchId") Integer productBranchId,
                                                                      @Param("code") String code);

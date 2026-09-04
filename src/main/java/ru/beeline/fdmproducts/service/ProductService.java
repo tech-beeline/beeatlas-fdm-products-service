@@ -523,6 +523,32 @@ public class ProductService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Global container lookup by code — unlike {@link #getContainersFromStructurizr}, the caller
+     * does not need to already know which product the container belongs to.
+     */
+    public List<ContainerByCodeDTO> getContainersByCodes(List<String> codes) {
+        if (codes == null) {
+            throw new IllegalArgumentException("Не передан обязательный параметр codes");
+        }
+        List<String> normalizedCodes = normalizeAliases(codes);
+        if (normalizedCodes.isEmpty()) {
+            throw new IllegalArgumentException("Параметр codes не может быть пустым");
+        }
+        return containerRepository.findAllByCodeInIgnoreCaseAndDeletedDateIsNull(normalizedCodes).stream()
+                .map(cp -> {
+                    Product owner = cp.getProductBranch() != null ? cp.getProductBranch().getProduct() : null;
+                    return ContainerByCodeDTO.builder()
+                            .id(cp.getId())
+                            .name(cp.getName())
+                            .code(cp.getCode())
+                            .productAlias(owner != null ? owner.getAlias() : null)
+                            .productName(owner != null ? owner.getName() : null)
+                            .build();
+                })
+                .collect(Collectors.toList());
+    }
+
     private void apiKeyValidate(String apiKey) {
         if (apiKey == null) {
             throw new IllegalArgumentException("Параметр api-key не должен быть пустым.");

@@ -343,6 +343,16 @@ public class ProductController {
     }
 
     @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v1/container/by-codes")
+    @Operation(summary = "Краткие карточки контейнеров по списку кодов",
+            description = "Пакетное получение id, name, code контейнера и alias/name владеющего продукта по "
+                    + "CMDB-кодам контейнеров — глобальный поиск, продукт-владелец указывать не нужно.")
+    public List<ContainerByCodeDTO> getContainersByCodes(
+            @Parameter(description = "query-параметр codes") @RequestParam(required = false) List<String> codes) {
+        return productService.getContainersByCodes(codes);
+    }
+
+    @ApiErrorCodes({400, 404, 500})
     @PostMapping("/v1/product/{alias}/patterns/{source-type}")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Связать паттерны Techradar с продуктом",

@@ -49,13 +49,20 @@ public class CustomExceptionHandler {
                 .body(new ErrorMessageDTO(e.getMessage()));
     }
 
+    /**
+     * Catch-all for anything not covered by a more specific handler above — by construction that
+     * means an unanticipated bug (NPE, ClassCastException, a broken query, ...), not a deliberate
+     * business-rule signal (those all have their own handler with a purposeful message). The raw
+     * message can carry internal details (class/method names, SQL, URLs) — log it in full, but never
+     * forward it to the caller.
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorMessageDTO> handleException(RuntimeException e) {
         log.error(e.getMessage(), e);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
-                .body(new ErrorMessageDTO(e.getMessage()));
+                .body(new ErrorMessageDTO("Внутренняя ошибка сервера"));
     }
 
     @ExceptionHandler(AuthServiceUnavailableException.class)
@@ -129,5 +136,15 @@ public class CustomExceptionHandler {
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
                 .body(new ErrorMessageDTO("Метод не разрешён для данного ресурса."));
+    }
+
+    /** Last-resort net below {@link #handleException(RuntimeException)} — a checked exception. */
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorMessageDTO> handleException(Exception e) {
+        log.error(e.getMessage(), e);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO("Внутренняя ошибка сервера"));
     }
 }

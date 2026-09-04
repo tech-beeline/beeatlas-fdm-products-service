@@ -718,6 +718,7 @@ public class E2eService {
         Map<Integer, E2eOperationCatalogItemDTO> catalogById = operationRepository
                 .findOperationsProjection(operationIdList)
                 .stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         ArchOperationProjection::getOpId,
                         projection -> mapOperationCatalogItem(projection, slaByOperationId.get(projection.getOpId())),

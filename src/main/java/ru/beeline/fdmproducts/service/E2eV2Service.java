@@ -553,6 +553,7 @@ public class E2eV2Service {
         Map<Integer, E2eOperationCatalogItemDTO> catalogById = operationRepository
                 .findOperationsProjection(operationIdList)
                 .stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         ArchOperationProjection::getOpId,
                         projection -> mapOperationCatalogItem(projection, slaByOperationId.get(projection.getOpId())),
@@ -595,6 +596,7 @@ public class E2eV2Service {
         Map<Integer, E2eV2DiscoveredOperationCatalogItemDTO> catalogById = discoveredOperationRepository
                 .findDiscoveredOperationsProjection(idList)
                 .stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         DiscoveredOperationProjection::getOpId,
                         this::mapDiscoveredOperationCatalogItem,

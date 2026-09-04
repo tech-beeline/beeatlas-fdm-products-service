@@ -50,6 +50,20 @@ public class DiscoveredOperationMapper {
 
     public DiscoveredOperationDTO mapToOperationDTO(DiscoveredOperation discoveredOperation,
                                                     ArchOperationProjection projection) {
+        // projection is a Map#get() result upstream (SearchService) — null whenever the connected
+        // operation's id didn't resolve to a live arch operation (deleted, or a broken
+        // interface/container/product chain); that's an expected case here, not a bug
+        if (projection == null) {
+            return DiscoveredOperationDTO.builder()
+                    .id(discoveredOperation.getId())
+                    .name(discoveredOperation.getName())
+                    .type(discoveredOperation.getType())
+                    .connectionOperation(null)
+                    .interfaceObj(null)
+                    .container(null)
+                    .product(null)
+                    .build();
+        }
         return DiscoveredOperationDTO.builder()
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())

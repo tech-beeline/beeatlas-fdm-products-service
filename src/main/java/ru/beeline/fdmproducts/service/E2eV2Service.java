@@ -27,6 +27,7 @@ import ru.beeline.fdmproducts.dto.e2e.E2eV2GetResponseDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2InterfaceDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationRelationDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eV2PatchRequestDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2RelationTreeNodeDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2UpsertRequestDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
@@ -89,6 +90,62 @@ public class E2eV2Service {
         E2e e2e = upsertE2e(e2eInfo);
         rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
         log.info("E2E v2 upsert: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
+        return E2eUpsertResponseDTO.builder()
+                .id(e2e.getId())
+                .code(e2e.getCode())
+                .build();
+    }
+
+    /**
+     * Partial update (SFDM-4092): every field is applied only if present in the request — a field
+     * left out is left untouched. Unlike {@link #upsert}, this never creates a new e2e (404 if
+     * {@code code} doesn't exist) and only replaces operationsRelations when that field is
+     * explicitly sent (previously operationsRelations was always fully replaced on every upsert,
+     * silently wiping it out on e.g. a rename-only call that omitted the field).
+     */
+    @Transactional
+    public E2eUpsertResponseDTO patch(String code, E2eV2PatchRequestDTO request) {
+        log.info("E2E v2 patch: обработка, code={}", code);
+        if (request == null) {
+            throw new IllegalArgumentException("Отсутствует тело запроса");
+        }
+        E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
+                .orElseThrow(() -> new EntityNotFoundException("E2e с указанным кодом не найден"));
+
+        List<E2eProductDTO> products = defaultList(request.getProducts());
+        List<E2eV2InterfaceDTO> interfaces = defaultList(request.getInterfaces());
+        List<E2eV2OperationDTO> operations = defaultList(request.getOperations());
+        validateProducts(products);
+        validateInterfaces(interfaces);
+        validateOperations(operations);
+
+        if (request.getName() != null) {
+            e2e.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            e2e.setDescription(request.getDescription());
+        }
+        if (request.getBiStepCode() != null) {
+            e2e.setBiStepCode(request.getBiStepCode());
+        }
+        e2e = e2eRepository.save(e2e);
+
+        Map<String, Product> productByCmdb = resolveExistingProducts(products);
+        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
+        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
+
+        if (request.getOperationsRelations() != null) {
+            List<E2eV2OperationRelationDTO> relations = defaultList(request.getOperationsRelations());
+            validateRelationsStructure(relations);
+            validateRelations(relations, operationIdByUid);
+            operationRelationRepository.deleteAllByE2eId(e2e.getId());
+            rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
+        } else {
+            log.info("E2E v2 patch: operationsRelations не передан — существующие operation_relations не изменены, e2eId={}",
+                    e2e.getId());
+        }
+
+        log.info("E2E v2 patch: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
         return E2eUpsertResponseDTO.builder()
                 .id(e2e.getId())
                 .code(e2e.getCode())
@@ -177,6 +234,22 @@ public class E2eV2Service {
                 log.info("Найден product, id={}, cmdb={}", product.getId(), dto.getCmdb());
             }
             byCmdb.put(cmdbKey, product);
+        }
+        return byCmdb;
+    }
+
+    /**
+     * PATCH-путь (SFDM-4092): в отличие от {@link #upsertProducts}, не создаёт и не обновляет
+     * записи product — по актуальной спеке метод резолвит связи только на уже существующие
+     * продукты; upsert product в PATCH — отдельная доработка на будущее.
+     */
+    private Map<String, Product> resolveExistingProducts(List<E2eProductDTO> products) {
+        Map<String, Product> byCmdb = new HashMap<>();
+        for (E2eProductDTO dto : products) {
+            Product product = productRepository.findByAliasCaseInsensitive(dto.getCmdb());
+            if (product != null) {
+                byCmdb.put(normalizeKey(dto.getCmdb()), product);
+            }
         }
         return byCmdb;
     }

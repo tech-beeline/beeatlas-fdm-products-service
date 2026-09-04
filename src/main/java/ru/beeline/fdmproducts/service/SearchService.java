@@ -69,6 +69,7 @@ public class SearchService {
         }
         if (!archOperationProjections.isEmpty()) {
             List<ArchOperationDTO> archOperationDTOList = archOperationProjections.stream()
+                    .filter(Objects::nonNull)
                     .map(proj -> archOperationMapper.mapToArchOperationDTO(proj))
                     .toList();
             result.setArchOperations(archOperationDTOList);

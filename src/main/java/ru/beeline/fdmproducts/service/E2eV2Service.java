@@ -63,6 +63,16 @@ public class E2eV2Service {
     private static final String SOURCE_SPARX = "SPARX";
     private static final String ENTITY_TYPE_DISCOVERED_OPERATION = "discovered_operation";
 
+    // Границы колонок, которые принимают эти данные. Всё, что можно было расширить без потери
+    // смысла, расширено до text в V0049; здесь остались осмысленные ограничения каталога и
+    // точность numeric. Без этой проверки нарушение вылезало из Hibernate как DataException и
+    // отдавалось клиенту как 500 «Внутренняя ошибка сервера» — публикующая сторона не могла
+    // понять, какое поле чинить (дефект QA-3).
+    private static final int PRODUCT_ALIAS_MAX_LENGTH = 255;   // product.alias varchar(255)
+    private static final int PRODUCT_NAME_MAX_LENGTH  = 250;   // product.name  varchar(250)
+    /** discovered_operation.rps/latency/error_rate NUMERIC(15,5) — 10 знаков до запятой. */
+    private static final java.math.BigDecimal SLA_MAX_EXCLUSIVE = new java.math.BigDecimal("1E+10");
+
     private final ProductRepository productRepository;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
@@ -173,6 +183,8 @@ public class E2eV2Service {
         for (E2eProductDTO product : products) {
             requireNonBlank(product.getCmdb(), "products.cmdb");
             requireNonBlank(product.getName(), "products.name");
+            requireMaxLength(product.getCmdb(), "products.cmdb", PRODUCT_ALIAS_MAX_LENGTH);
+            requireMaxLength(product.getName(), "products.name", PRODUCT_NAME_MAX_LENGTH);
         }
     }
 
@@ -194,6 +206,31 @@ public class E2eV2Service {
             requireNonBlank(operation.getName(), "operations.name");
             requireNonBlank(operation.getType(), "operations.type");
             requireNonBlank(operation.getParentInterfaceCode(), "operations.parentInterfaceCode");
+            validateSla(operation);
+        }
+    }
+
+    private void validateSla(E2eV2OperationDTO operation) {
+        E2eOperationSlaDTO sla = operation.getSla();
+        if (sla == null) {
+            return;
+        }
+        requireFitsSlaColumn(sla.getRps(), "operations.sla.rps", operation.getUid());
+        requireFitsSlaColumn(sla.getLatency(), "operations.sla.latency", operation.getUid());
+        requireFitsSlaColumn(sla.getErrorRate(), "operations.sla.errorRate", operation.getUid());
+    }
+
+    private void requireFitsSlaColumn(Double value, String fieldName, String operationUid) {
+        if (value == null) {
+            return;
+        }
+        if (value.isNaN() || value.isInfinite()) {
+            throw new IllegalArgumentException("Поле " + fieldName + " не является конечным числом (операция "
+                    + operationUid + "): " + value);
+        }
+        if (java.math.BigDecimal.valueOf(value).abs().compareTo(SLA_MAX_EXCLUSIVE) >= 0) {
+            throw new IllegalArgumentException("Значение " + fieldName + " не помещается в колонку NUMERIC(15,5) "
+                    + "(операция " + operationUid + "): " + value);
         }
     }
 
@@ -628,6 +665,13 @@ public class E2eV2Service {
     private void requireNonBlank(String value, String fieldName) {
         if (!StringUtils.hasText(value)) {
             throw new IllegalArgumentException("Отсутствует обязательное поле " + fieldName);
+        }
+    }
+
+    private void requireMaxLength(String value, String fieldName, int maxLength) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException("Поле " + fieldName + " длиннее " + maxLength
+                    + " символов (получено " + value.length() + "): " + value);
         }
     }
 

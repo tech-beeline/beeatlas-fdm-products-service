@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.DiscoveredInterfaceOperationDTO;
+import ru.beeline.fdmproducts.dto.discovered.ProjectDiscoveredInterfaceDTO;
+import ru.beeline.fdmproducts.dto.discovered.ProjectDiscoveredInterfaceResultDTO;
 import ru.beeline.fdmproducts.service.DiscoveredInterfaceService;
+import ru.beeline.fdmproducts.service.ProjectDiscoveredInterfaceService;
 
 import java.util.List;
 
@@ -25,6 +28,26 @@ public class DiscoveredInterfaceController {
 
     @Autowired
     private DiscoveredInterfaceService discoveredInterfaceService;
+
+    @Autowired
+    private ProjectDiscoveredInterfaceService projectDiscoveredInterfaceService;
+
+    @ApiErrorCodes({400, 404, 500})
+    @PutMapping("/discovered-interface/project/{projectId}")
+    @Operation(summary = "Создать или обновить обнаруженные интерфейсы и операции проекта",
+            description = "Принимает массив интерфейсов, сгруппированных по паре (interfaceCode, product), "
+                    + "и возвращает по каждой операции её discovered_operation.id — вызывающий сервис "
+                    + "связывает их со своими сущностями по ключу (interfaceCode, product, name, type). "
+                    + "Идентичность интерфейса — (source, продукт, interfaceCode), операции — "
+                    + "(интерфейс, name, type): повторный вызов обновляет атрибуты, ничего не удаляя.")
+    public ResponseEntity<List<ProjectDiscoveredInterfaceResultDTO>> putProjectDiscoveredInterfaces(
+            @Parameter(description = "Идентификатор проекта") @PathVariable("projectId") Integer projectId,
+            @Parameter(description = "Происхождение данных, по умолчанию ProjectTask")
+            @RequestParam(name = "source", required = false) String source,
+            @RequestBody(required = false) List<ProjectDiscoveredInterfaceDTO> interfaces) {
+        return ResponseEntity.ok(
+                projectDiscoveredInterfaceService.upsertProjectInterfaces(projectId, source, interfaces));
+    }
 
     @ApiErrorCodes({400, 500})
     @PutMapping("/discovered-interfaces")

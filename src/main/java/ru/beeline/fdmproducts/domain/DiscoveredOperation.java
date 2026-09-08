@@ -47,6 +47,12 @@ public class DiscoveredOperation {
 
     private String description;
 
+    @Column(name = "tc_code")
+    private String tcCode;
+
+    @Column(name = "tc_description")
+    private String tcDescription;
+
     private String type;
 
     @Column(name = "return_type")

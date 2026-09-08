@@ -165,13 +165,28 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     @Query("SELECT o.id FROM Operation o WHERE o.interfaceId IN :interfaceIds")
     List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
 
-    @Modifying
-    @Query("DELETE FROM Operation o WHERE o.id IN :ids")
-    void deleteByIdIn(@Param("ids") List<Integer> ids);
-
-    Optional<Operation> findByNameAndTypeAndInterfaceIdAndDeletedDateIsNull(String name,
-                                                                              String type,
-                                                                              Integer interfaceId);
-
-    Optional<Operation> findByNameAndTypeAndInterfaceId(String name, String type, Integer interfaceId);
+    @Query(value = """
+            SELECT o.id
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            WHERE LOWER(pb.alias) = LOWER(CAST(:productAlias AS text))
+              AND LOWER(pb.branch_name) = LOWER(CAST(:branch AS text))
+              AND (CAST(:containerCode AS text) IS NULL OR LOWER(cp.code) = LOWER(CAST(:containerCode AS text)))
+              AND (CAST(:interfaceCode AS text) IS NULL OR LOWER(i.code) = LOWER(CAST(:interfaceCode AS text)))
+              AND LOWER(o.name) = LOWER(CAST(:name AS text))
+              AND LOWER(o.type) = LOWER(CAST(:type AS text))
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+            ORDER BY o.id
+            LIMIT 2
+            """, nativeQuery = true)
+    List<Integer> findIdsForSequenceStep(@Param("productAlias") String productAlias,
+                                         @Param("branch") String branch,
+                                         @Param("containerCode") String containerCode,
+                                         @Param("interfaceCode") String interfaceCode,
+                                         @Param("name") String name,
+                                         @Param("type") String type);
 }

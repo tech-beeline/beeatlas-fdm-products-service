@@ -165,6 +165,16 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     @Query("SELECT o.id FROM Operation o WHERE o.interfaceId IN :interfaceIds")
     List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
 
+    @Modifying
+    @Query("DELETE FROM Operation o WHERE o.id IN :ids")
+    void deleteByIdIn(@Param("ids") List<Integer> ids);
+
+    Optional<Operation> findByNameAndTypeAndInterfaceIdAndDeletedDateIsNull(String name,
+                                                                              String type,
+                                                                              Integer interfaceId);
+
+    Optional<Operation> findByNameAndTypeAndInterfaceId(String name, String type, Integer interfaceId);
+
     @Query(value = """
             SELECT o.id
             FROM product.operation o

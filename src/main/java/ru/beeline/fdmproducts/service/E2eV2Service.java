@@ -60,7 +60,8 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class E2eV2Service {
 
-    private static final String SOURCE_SPARX = "SPARX";
+    /** Источник discovered_interface по умолчанию — поведение метода до SFDM-4091. */
+    private static final String DEFAULT_SOURCE = "SPARX";
     private static final String ENTITY_TYPE_DISCOVERED_OPERATION = "discovered_operation";
 
     // Границы колонок, которые принимают эти данные. Всё, что можно было расширить без потери
@@ -81,10 +82,16 @@ public class E2eV2Service {
     private final OperationRepository operationRepository;
     private final SlaRepository slaRepository;
 
+    /**
+     * Full upsert of an e2e process. {@code source} (SFDM-4091) is the discovered_interface source
+     * for the whole request: null/absent keeps the pre-4091 behaviour (SPARX), a blank value is a
+     * 400. It never reaches discovered_operation — an operation's source is its interface's.
+     */
     @Transactional
-    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request) {
-        log.info("E2E v2 upsert: обработка, e2e.uid={}",
-                request != null && request.getE2e() != null ? request.getE2e().getUid() : null);
+    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request, String source) {
+        String requestSource = resolveRequestSource(source);
+        log.info("E2E v2 upsert: обработка, e2e.uid={}, source={}",
+                request != null && request.getE2e() != null ? request.getE2e().getUid() : null, requestSource);
         validateRequest(request);
         List<E2eProductDTO> products = defaultList(request.getProducts());
         List<E2eV2InterfaceDTO> interfaces = defaultList(request.getInterfaces());
@@ -93,8 +100,8 @@ public class E2eV2Service {
         log.info("входные данные, products={}, interfaces={}, operations={}, relations={}",
                 products.size(), interfaces.size(), operations.size(), relations.size());
         Map<String, Product> productByCmdb = upsertProducts(products);
-        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
-        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
+        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb, requestSource);
+        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, requestSource);
         validateRelations(relations, operationIdByUid);
         E2eInfoDTO e2eInfo = request.getE2e();
         E2e e2e = upsertE2e(e2eInfo);
@@ -141,8 +148,8 @@ public class E2eV2Service {
         e2e = e2eRepository.save(e2e);
 
         Map<String, Product> productByCmdb = resolveExistingProducts(products);
-        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
-        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
+        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb, DEFAULT_SOURCE);
+        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, DEFAULT_SOURCE);
 
         if (request.getOperationsRelations() != null) {
             List<E2eV2OperationRelationDTO> relations = defaultList(request.getOperationsRelations());
@@ -160,6 +167,21 @@ public class E2eV2Service {
                 .id(e2e.getId())
                 .code(e2e.getCode())
                 .build();
+    }
+
+    /**
+     * Query-параметр source (SFDM-4091): не передан — SPARX; передан и пуст после trim — 400,
+     * иначе значение как есть, без нормализации регистра: в колонку пишем ровно то, что прислали.
+     */
+    private String resolveRequestSource(String source) {
+        if (source == null) {
+            return DEFAULT_SOURCE;
+        }
+        String trimmed = source.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Параметр source не может быть пустым");
+        }
+        return trimmed;
     }
 
     private void validateRequest(E2eV2UpsertRequestDTO request) {
@@ -292,7 +314,8 @@ public class E2eV2Service {
     }
 
     private Map<String, List<DiscoveredInterface>> upsertInterfaces(List<E2eV2InterfaceDTO> interfaces,
-                                                                      Map<String, Product> productByCmdb) {
+                                                                      Map<String, Product> productByCmdb,
+                                                                      String requestSource) {
         Map<String, List<DiscoveredInterface>> byCode = new HashMap<>();
         for (E2eV2InterfaceDTO dto : interfaces) {
             Product product = resolveProduct(dto.getParentProductCmdb(), productByCmdb);
@@ -300,7 +323,7 @@ public class E2eV2Service {
                 throw new IllegalArgumentException("Не найден parentProductCmdb для интерфейса: " + dto.getCode());
             }
             DiscoveredInterface iface = discoveredInterfaceRepository
-                    .findBySourceAndProductIdAndExternalIdIgnoreCase(SOURCE_SPARX, product.getId(), dto.getCode())
+                    .findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(requestSource, product.getId(), dto.getCode())
                     .orElse(null);
             if (iface == null) {
                 iface = DiscoveredInterface.builder()
@@ -309,13 +332,13 @@ public class E2eV2Service {
                         .product(product)
                         .apiLink(dto.getSpecLink())
                         .version(dto.getVersion())
-                        .source(SOURCE_SPARX)
+                        .source(requestSource)
                         .context(null)
                         .createdDate(LocalDateTime.now())
                         .build();
                 iface = discoveredInterfaceRepository.save(iface);
-                log.info("Создан discovered_interface, id={}, code={}, productId={}",
-                        iface.getId(), dto.getCode(), product.getId());
+                log.info("Создан discovered_interface, id={}, code={}, productId={}, source={}",
+                        iface.getId(), dto.getCode(), product.getId(), requestSource);
             } else {
                 updateInterface(iface, dto);
             }
@@ -358,10 +381,11 @@ public class E2eV2Service {
     }
 
     private Map<String, Integer> upsertOperations(List<E2eV2OperationDTO> operations,
-                                                    Map<String, List<DiscoveredInterface>> interfacesByCode) {
+                                                    Map<String, List<DiscoveredInterface>> interfacesByCode,
+                                                    String requestSource) {
         Map<String, Integer> operationIdByUid = new HashMap<>();
         for (E2eV2OperationDTO dto : operations) {
-            DiscoveredInterface iface = resolveInterface(dto.getParentInterfaceCode(), interfacesByCode);
+            DiscoveredInterface iface = resolveInterface(dto.getParentInterfaceCode(), interfacesByCode, requestSource);
             DiscoveredOperation operation = discoveredOperationRepository
                     .findByInterfaceIdAndNameAndTypeAllIgnoreCase(iface.getId(), dto.getName(), dto.getType())
                     .orElse(null);
@@ -419,7 +443,8 @@ public class E2eV2Service {
                 && Objects.equals(operation.getErrorRate(), sla.getErrorRate());
     }
 
-    private DiscoveredInterface resolveInterface(String code, Map<String, List<DiscoveredInterface>> interfacesByCode) {
+    private DiscoveredInterface resolveInterface(String code, Map<String, List<DiscoveredInterface>> interfacesByCode,
+                                                  String requestSource) {
         List<DiscoveredInterface> inRequest = interfacesByCode.get(normalizeKey(code));
         if (inRequest != null) {
             if (inRequest.size() == 1) {
@@ -429,7 +454,7 @@ public class E2eV2Service {
                     + ". Интерфейс с таким code передан для нескольких продуктов");
         }
         List<DiscoveredInterface> dbMatches = discoveredInterfaceRepository
-                .findAllBySourceAndExternalIdIgnoreCase(SOURCE_SPARX, code)
+                .findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(requestSource, code)
                 .stream()
                 .filter(candidate -> candidate.getDeletedDate() == null)
                 .toList();

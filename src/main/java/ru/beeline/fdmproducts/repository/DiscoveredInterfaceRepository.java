@@ -77,6 +77,17 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllBySourceAndExternalIdIgnoreCase(String source, String externalId);
 
+    /**
+     * Как {@link #findBySourceAndProductIdAndExternalIdIgnoreCase}, но и source сравнивается без
+     * учёта регистра: source приходит query-параметром (SFDM-4091), и «MAPIC» из одного вызова
+     * не должен заводить второй интерфейс рядом с «mapic» из другого.
+     */
+    Optional<DiscoveredInterface> findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(String source,
+                                                                                            Integer productId,
+                                                                                            String externalId);
+
+    List<DiscoveredInterface> findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(String source, String externalId);
+
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 

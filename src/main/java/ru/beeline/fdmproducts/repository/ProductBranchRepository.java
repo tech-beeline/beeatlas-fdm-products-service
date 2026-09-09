@@ -11,12 +11,16 @@ import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.ProductBranch;
 
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface ProductBranchRepository extends JpaRepository<ProductBranch, Integer> {
 
-    Optional<ProductBranch> findByAliasAndBranchName(String alias, String branchName);
+    /**
+     * Ветки продукта с указанным именем без учёта регистра. Список, а не Optional: уникальный индекс
+     * uq_product_branch_alias_branch_name регистрозависимый, поэтому пара main / Main в таблице
+     * возможна — на данных, заведённых мимо API. Выбор из нескольких — за вызывающим кодом.
+     */
+    List<ProductBranch> findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(String alias, String branchName);
 
     List<ProductBranch> findAllByAlias(String alias);
 

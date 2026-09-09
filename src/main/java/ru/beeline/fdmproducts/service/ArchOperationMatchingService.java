@@ -13,7 +13,6 @@ import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
-import ru.beeline.fdmproducts.repository.ProductBranchRepository;
 
 import java.util.Collections;
 import java.util.List;
@@ -35,10 +34,7 @@ import java.util.Optional;
 @Transactional(readOnly = true)
 public class ArchOperationMatchingService {
 
-    /** Сопоставление всегда идёт по основной ветке архитектуры продукта. */
-    private static final String MAIN_BRANCH = "main";
-
-    private final ProductBranchRepository productBranchRepository;
+    private final ProductBranchService productBranchService;
     private final ContainerRepository containerRepository;
     private final InterfaceRepository interfaceRepository;
     private final OperationRepository operationRepository;
@@ -53,7 +49,8 @@ public class ArchOperationMatchingService {
         if (productAlias == null) {
             return Collections.emptyList();
         }
-        List<Integer> containerIds = productBranchRepository.findByAliasAndBranchName(productAlias, MAIN_BRANCH)
+        // null вместо имени ветки — сопоставление всегда идёт по основной ветке архитектуры продукта.
+        List<Integer> containerIds = productBranchService.find(productAlias, null)
                 .map(branch -> containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(branch.getId()))
                 .orElse(Collections.emptyList());
         if (containerIds.isEmpty()) {

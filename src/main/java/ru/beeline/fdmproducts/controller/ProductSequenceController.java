@@ -40,7 +40,7 @@ public class ProductSequenceController {
                     + "или пустом результате остаётся не заполненной, это не ошибка.")
     public ResponseEntity<SequenceUpsertResponseDTO> upsertSequence(
             @Parameter(description = "Alias (cmdb) продукта, без учёта регистра") @PathVariable String alias,
-            @Parameter(description = "Ветка архитектуры продукта, по умолчанию main")
+            @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.")
             @RequestParam(required = false) String branch,
             @RequestBody(required = false) SequenceUpsertRequestDTO request) {
         return ResponseEntity.ok(productSequenceService.upsert(alias, branch, request));

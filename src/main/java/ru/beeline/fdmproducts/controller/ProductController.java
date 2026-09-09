@@ -122,7 +122,7 @@ public class ProductController {
     @GetMapping("/v1/product/{id}/tc-implementation")
     @Operation(summary = "Идентификаторы технологических возможностей (ТС), реализованных в продукте")
     public List<Integer> getTCIdsByProductId(@Parameter(description = "Числовой id продукта") @PathVariable Integer id,
-                                             @Parameter(description = "Ветка архитектуры продукта, по умолчанию main") @RequestParam(required = false) String branch) {
+                                             @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
         return productService.getTCIdsByProductId(id, branch);
     }
 
@@ -221,7 +221,7 @@ public class ProductController {
     @GetMapping("/v1/product/{cmdb}/interface/arch")
     @Operation(summary = "Интерфейсы из модели архитектуры (Structurizr)")
     public List<ProductInterfaceDTO> getProductsFromStructurizr(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
-                                                                @Parameter(description = "Ветка архитектуры продукта, по умолчанию main") @RequestParam(required = false) String branch) {
+                                                                @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
         return productService.getProductsFromStructurizr(cmdb, branch);
     }
 
@@ -262,7 +262,7 @@ public class ProductController {
     @GetMapping("/v1/product/{cmdb}/container")
     @Operation(summary = "Контейнеры продукта с интерфейсами и методами (Structurizr)")
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb,
-                                                                     @Parameter(description = "Ветка архитектуры продукта, по умолчанию main") @RequestParam(required = false) String branch,
+                                                                     @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch,
                                                                      @Parameter(description = "Показывать скрытые элементы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
         return productService.getContainersFromStructurizr(cmdb, branch, showHidden);
     }
@@ -294,7 +294,7 @@ public class ProductController {
             description = "Фильтр по alias продукта и/или списку имён контейнеров.")
     public List<TcDTO> getTcByContainerProduct(@Parameter(description = "Alias продукта") @RequestParam(value = "alias", required = false) String alias,
                                                @Parameter(description = "Имена контейнеров (повторяющийся параметр)") @RequestParam(value = "containers", required = false) List<String> containers,
-                                               @Parameter(description = "Ветка архитектуры продукта, по умолчанию main") @RequestParam(required = false) String branch) {
+                                               @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
         return productService.getTcByContainerProduct(alias, containers, branch);
     }
 
@@ -381,7 +381,7 @@ public class ProductController {
             description = "При ошибках валидации ответ может быть 207 Multi-Status с телом errorEntity.")
     public ResponseEntity<?> putProductRelations(@Parameter(description = "Alias продукта") @PathVariable String code,
                                                  @RequestBody List<ContainerDTO> containerDTO,
-                                                 @Parameter(description = "Ветка архитектуры продукта, по умолчанию main; создаётся, если ещё не существует") @RequestParam(required = false) String branch,
+                                                 @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра, имя хранится в нижнем регистре. Отсутствующая ветка создаётся.") @RequestParam(required = false) String branch,
                                                  @Parameter(description = "Происхождение данных (интеграция)") @RequestParam(name = "source", required = false) String source) {
         ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code, branch, source);
         if (errorEntity.hasErrors()) {

@@ -25,8 +25,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class E2eService {
 
-    private static final String MAIN_BRANCH = "main";
-
     private final ProductRepository productRepository;
     private final ContainerRepository containerRepository;
     private final InterfaceRepository interfaceRepository;
@@ -34,7 +32,7 @@ public class E2eService {
     private final SlaRepository slaRepository;
     private final E2eRepository e2eRepository;
     private final OperationRelationRepository operationRelationRepository;
-    private final ProductBranchRepository productBranchRepository;
+    private final ProductBranchService productBranchService;
 
     @Transactional
     public E2eUpsertResponseDTO upsert(E2eUpsertRequestDTO request) {
@@ -226,7 +224,7 @@ public class E2eService {
 
     private Integer resolveMainBranchId(Product product, Map<Integer, Integer> branchIdByProductId) {
         return branchIdByProductId.computeIfAbsent(product.getId(),
-                id -> productBranchRepository.upsert(product.getAlias(), MAIN_BRANCH));
+                id -> productBranchService.getOrCreateId(product.getAlias(), null));
     }
 
     private Product resolveProductForContainer(E2eContainerDTO dto, ProductIndex productIndex) {

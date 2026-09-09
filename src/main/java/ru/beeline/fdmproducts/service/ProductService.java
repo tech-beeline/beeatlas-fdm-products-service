@@ -73,8 +73,7 @@ public class ProductService {
     private final LocalAssessmentCheckRepository localAssessmentCheckRepository;
     private final OperationRelationRepository operationRelationRepository;
     private final ProductBranchRepository productBranchRepository;
-
-    private static final String DEFAULT_BRANCH = "main";
+    private final ProductBranchService productBranchService;
 
     public ProductService(ContainerMapper containerMapper,
                           OperationMapper operationMapper,
@@ -111,7 +110,8 @@ public class ProductService {
                           LocalAssessmentRepository localAssessmentRepository,
                           LocalAssessmentCheckRepository localAssessmentCheckRepository,
                           OperationRelationRepository operationRelationRepository,
-                          ProductBranchRepository productBranchRepository) {
+                          ProductBranchRepository productBranchRepository,
+                          ProductBranchService productBranchService) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -148,18 +148,15 @@ public class ProductService {
         this.localAssessmentCheckRepository = localAssessmentCheckRepository;
         this.operationRelationRepository = operationRelationRepository;
         this.productBranchRepository = productBranchRepository;
-    }
-
-    private String normalizeBranch(String branch) {
-        return (branch == null || branch.isBlank()) ? DEFAULT_BRANCH : branch.trim().toLowerCase(Locale.ROOT);
+        this.productBranchService = productBranchService;
     }
 
     private Optional<ProductBranch> findBranch(String alias, String branch) {
-        return productBranchRepository.findByAliasAndBranchName(alias, normalizeBranch(branch));
+        return productBranchService.find(alias, branch);
     }
 
     private Integer getOrCreateBranchId(String alias, String branch) {
-        return productBranchRepository.upsert(alias, normalizeBranch(branch));
+        return productBranchService.getOrCreateId(alias, branch);
     }
 
     public List<Product> getProductsByUser(Integer userId) {

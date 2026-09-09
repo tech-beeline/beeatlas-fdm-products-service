@@ -20,7 +20,6 @@ import ru.beeline.fdmproducts.dto.sequence.SequenceUpsertRequestDTO;
 import ru.beeline.fdmproducts.dto.sequence.SequenceUpsertResponseDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.OperationRepository;
-import ru.beeline.fdmproducts.repository.ProductBranchRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 import ru.beeline.fdmproducts.repository.ProductSequenceRepository;
 import ru.beeline.fdmproducts.repository.SeqProductStepRepository;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,11 +37,10 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ProductSequenceService {
 
-    private static final String DEFAULT_BRANCH = "main";
     private static final String UNKNOWN_GUID_MESSAGE = "sequenceCall ссылается на неизвестный guid операции";
 
     private final ProductRepository productRepository;
-    private final ProductBranchRepository productBranchRepository;
+    private final ProductBranchService productBranchService;
     private final ProductSequenceRepository productSequenceRepository;
     private final SeqProductStepRepository seqProductStepRepository;
     private final SequenceStepOperationRepository sequenceStepOperationRepository;
@@ -51,7 +48,7 @@ public class ProductSequenceService {
 
     @Transactional
     public SequenceUpsertResponseDTO upsert(String alias, String branch, SequenceUpsertRequestDTO request) {
-        String branchName = normalizeBranch(branch);
+        String branchName = productBranchService.resolveBranchName(branch);
         log.info("Sequence upsert: обработка, alias={}, branch={}, sequence.uid={}", alias, branchName,
                 request != null && request.getSequence() != null ? request.getSequence().getUid() : null);
 
@@ -77,10 +74,6 @@ public class ProductSequenceService {
                 .build();
     }
 
-    private String normalizeBranch(String branch) {
-        return (branch == null || branch.isBlank()) ? DEFAULT_BRANCH : branch.trim().toLowerCase(Locale.ROOT);
-    }
-
     private ProductBranch resolveBranch(String alias, String branchName) {
         if (alias == null || alias.isBlank()) {
             throw new IllegalArgumentException("Не указан alias продукта");
@@ -89,7 +82,7 @@ public class ProductSequenceService {
         if (product == null) {
             throw new EntityNotFoundException("Продукт с указанным alias не найден");
         }
-        return productBranchRepository.findByAliasAndBranchName(product.getAlias(), branchName)
+        return productBranchService.find(product.getAlias(), branchName)
                 .orElseThrow(() -> new EntityNotFoundException("Ветка продукта не найдена: " + branchName));
     }
 

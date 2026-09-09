@@ -4,10 +4,10 @@
 
 package ru.beeline.fdmproducts.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -51,12 +51,22 @@ class ArchOperationMatchingServiceTest {
     @Mock
     private OperationRepository operationRepository;
 
-    @InjectMocks
     private ArchOperationMatchingService service;
 
-    private void givenChain(List<Integer> containerIds, List<Integer> interfaceIds) {
+    @BeforeEach
+    void setUp() {
+        service = new ArchOperationMatchingService(new ProductBranchService(productBranchRepository),
+                containerRepository, interfaceRepository, operationRepository);
+    }
+
+    private void givenMainBranch() {
         ProductBranch branch = ProductBranch.builder().id(7).alias(ALIAS).branchName("main").build();
-        when(productBranchRepository.findByAliasAndBranchName(ALIAS, "main")).thenReturn(Optional.of(branch));
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "main"))
+                .thenReturn(List.of(branch));
+    }
+
+    private void givenChain(List<Integer> containerIds, List<Integer> interfaceIds) {
+        givenMainBranch();
         when(containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(7)).thenReturn(containerIds);
         when(interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(containerIds))
                 .thenReturn(interfaceIds.stream().map(id -> Interface.builder().id(id).build()).toList());
@@ -73,17 +83,30 @@ class ArchOperationMatchingServiceTest {
     @Test
     @DisplayName("Нет ветки main — искать негде, в БД за контейнерами не ходим")
     void returnsEmptyWhenNoMainBranch() {
-        when(productBranchRepository.findByAliasAndBranchName(ALIAS, "main")).thenReturn(Optional.empty());
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "main"))
+                .thenReturn(List.of());
 
         assertThat(service.resolveInterfaceIds(ALIAS)).isEmpty();
         verifyNoInteractions(containerRepository, interfaceRepository);
     }
 
     @Test
+    @DisplayName("Ветка main, записанная в другом регистре, всё равно находится")
+    void findsMainBranchRegardlessOfCase() {
+        ProductBranch branch = ProductBranch.builder().id(7).alias(ALIAS).branchName("Main").build();
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "main"))
+                .thenReturn(List.of(branch));
+        when(containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(7)).thenReturn(List.of(11));
+        when(interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(List.of(11)))
+                .thenReturn(List.of(Interface.builder().id(101).build()));
+
+        assertThat(service.resolveInterfaceIds(ALIAS)).containsExactly(101);
+    }
+
+    @Test
     @DisplayName("Нет живых контейнеров — за интерфейсами не ходим")
     void returnsEmptyWhenNoContainers() {
-        ProductBranch branch = ProductBranch.builder().id(7).alias(ALIAS).branchName("main").build();
-        when(productBranchRepository.findByAliasAndBranchName(ALIAS, "main")).thenReturn(Optional.of(branch));
+        givenMainBranch();
         when(containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(7)).thenReturn(List.of());
 
         assertThat(service.resolveInterfaceIds(ALIAS)).isEmpty();

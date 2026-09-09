@@ -72,7 +72,6 @@ class ProductSequenceServiceTest {
     @Mock
     private OperationRepository operationRepository;
 
-    @InjectMocks
     private ProductSequenceService service;
 
     /** Раздаёт снимкам методов предсказуемые id: 101, 102, ... — в порядке сохранения. */
@@ -80,10 +79,15 @@ class ProductSequenceServiceTest {
 
     @BeforeEach
     void setUp() {
+        // Разбор branch — настоящий, поверх мока репозитория: правила «нет параметра = main» и
+        // «пустая строка = 400» проверяются здесь же, а не на заглушке.
+        service = new ProductSequenceService(productRepository, new ProductBranchService(productBranchRepository),
+                productSequenceRepository, seqProductStepRepository, sequenceStepOperationRepository,
+                operationRepository);
         when(productRepository.findByAliasCaseInsensitive(anyString()))
                 .thenReturn(Product.builder().id(1).alias(ALIAS).build());
-        when(productBranchRepository.findByAliasAndBranchName(anyString(), anyString()))
-                .thenReturn(Optional.of(ProductBranch.builder().id(BRANCH_ID).alias(ALIAS).branchName("main").build()));
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(anyString(), anyString()))
+                .thenReturn(List.of(ProductBranch.builder().id(BRANCH_ID).alias(ALIAS).branchName("main").build()));
         when(productSequenceRepository.findByProductBranchIdAndCodeIgnoreCase(anyInt(), anyString()))
                 .thenReturn(Optional.empty());
         when(productSequenceRepository.save(any(ProductSequence.class))).thenAnswer(invocation -> {
@@ -158,13 +162,22 @@ class ProductSequenceServiceTest {
     }
 
     @Test
-    @DisplayName("Пустой branch — резолв и поиск ветки идут по main")
+    @DisplayName("Параметр не передан — резолв и поиск ветки идут по main")
     void fallsBackToMainBranch() {
-        service.upsert(ALIAS, "  ", request());
+        service.upsert(ALIAS, null, request());
 
-        verify(productBranchRepository).findByAliasAndBranchName(ALIAS, "main");
+        verify(productBranchRepository).findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "main");
         verify(operationRepository).findIdsForSequenceStep(anyString(), eq("main"), any(), any(),
                 eq("createOrder"), anyString());
+    }
+
+    @Test
+    @DisplayName("Пустой branch — 400, а не молчаливый переход на main")
+    void rejectsBlankBranch() {
+        assertThatThrownBy(() -> service.upsert(ALIAS, "  ", request()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Параметр branch не может быть пустым");
+        verifyNoInteractions(productSequenceRepository);
     }
 
     @Test
@@ -172,7 +185,7 @@ class ProductSequenceServiceTest {
     void normalizesBranchName() {
         service.upsert(ALIAS, " Design ", request());
 
-        verify(productBranchRepository).findByAliasAndBranchName(ALIAS, "design");
+        verify(productBranchRepository).findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "design");
         verify(operationRepository, org.mockito.Mockito.times(2)).findIdsForSequenceStep(anyString(), eq("design"),
                 any(), any(), anyString(), anyString());
     }
@@ -254,7 +267,8 @@ class ProductSequenceServiceTest {
     @Test
     @DisplayName("Ветка не найдена — 404")
     void failsWhenBranchNotFound() {
-        when(productBranchRepository.findByAliasAndBranchName(anyString(), anyString())).thenReturn(Optional.empty());
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(anyString(), anyString()))
+                .thenReturn(List.of());
 
         assertThatThrownBy(() -> service.upsert(ALIAS, "develop", request()))
                 .isInstanceOf(EntityNotFoundException.class)

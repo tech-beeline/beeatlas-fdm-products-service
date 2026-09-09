@@ -18,7 +18,7 @@ import lombok.NoArgsConstructor;
 public class ProjectDiscoveredOperationResultDTO {
 
     @Schema(description = "Идентификатор product.discovered_operation")
-    private Integer id;
+    private Integer discoveredOperationId;
 
     @Schema(description = "Имя операции — как в запросе")
     private String name;

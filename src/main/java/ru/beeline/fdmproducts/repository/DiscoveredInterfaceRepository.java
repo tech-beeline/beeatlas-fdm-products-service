@@ -88,6 +88,12 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(String source, String externalId);
 
+    /**
+     * Весь состав интерфейсов проекта из одного источника, включая soft-deleted: синхронизация
+     * (SFDM-4095) одним проходом и оживляет помеченные удалёнными, и помечает выбывшие из тела.
+     */
+    List<DiscoveredInterface> findAllByProjectIdAndSourceIgnoreCase(Integer projectId, String source);
+
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 

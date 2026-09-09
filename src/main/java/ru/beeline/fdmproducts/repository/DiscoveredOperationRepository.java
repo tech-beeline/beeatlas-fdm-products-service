@@ -51,6 +51,9 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
 
     List<DiscoveredOperation> findAllByInterfaceIdAndDeletedDateIsNull(Integer interfaceId);
 
+    /** Включая soft-deleted: синхронизация состава операций интерфейса оживляет удалённые ранее. */
+    List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
+
     @Modifying
     @Transactional
     @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +

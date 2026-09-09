@@ -16,11 +16,8 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Результат upsert интерфейса: ключ (interfaceCode, product) и id сохранённых операций")
+@Schema(description = "Результат синхронизации интерфейса: ключ (interfaceCode, product) и id сохранённых операций")
 public class ProjectDiscoveredInterfaceResultDTO {
-
-    @Schema(description = "Идентификатор product.discovered_interface")
-    private Integer id;
 
     @Schema(description = "Код интерфейса — как в запросе")
     private String interfaceCode;

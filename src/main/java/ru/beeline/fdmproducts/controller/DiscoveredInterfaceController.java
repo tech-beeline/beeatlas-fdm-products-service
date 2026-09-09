@@ -34,19 +34,24 @@ public class DiscoveredInterfaceController {
 
     @ApiErrorCodes({400, 404, 500})
     @PutMapping("/discovered-interface/project/{projectId}")
-    @Operation(summary = "Создать или обновить обнаруженные интерфейсы и операции проекта",
-            description = "Принимает массив интерфейсов, сгруппированных по паре (interfaceCode, product), "
-                    + "и возвращает по каждой операции её discovered_operation.id — вызывающий сервис "
-                    + "связывает их со своими сущностями по ключу (interfaceCode, product, name, type). "
-                    + "Идентичность интерфейса — (source, продукт, interfaceCode), операции — "
-                    + "(интерфейс, name, type): повторный вызов обновляет атрибуты, ничего не удаляя.")
+    @Operation(summary = "Синхронизировать обнаруженные интерфейсы и операции проекта",
+            description = "Тело — полный состав интерфейсов проекта для указанного source, а не приращение "
+                    + "к нему: интерфейсы проекта с этим source, которых в теле нет, помечаются удалёнными "
+                    + "(deleted_date), и так же трактуется состав operations внутри каждого интерфейса. "
+                    + "Пустой массив помечает удалёнными все интерфейсы проекта с этим source. Идентичность "
+                    + "интерфейса — (проект, source, продукт, interfaceCode), операции — (интерфейс, name, "
+                    + "type); сравнение без учёта регистра. Возвращает по каждой операции тела её "
+                    + "discovered_operation.id: вызывающий сервис связывает их со своими сущностями по ключу "
+                    + "(interfaceCode, product, name, type). Всё выполняется в одной транзакции.")
     public ResponseEntity<List<ProjectDiscoveredInterfaceResultDTO>> putProjectDiscoveredInterfaces(
             @Parameter(description = "Идентификатор проекта") @PathVariable("projectId") Integer projectId,
-            @Parameter(description = "Происхождение данных, по умолчанию ProjectTask")
+            // required = false и проверка в сервисе: иначе Spring отдал бы на отсутствующий параметр
+            // ServletException, которую CustomExceptionHandler превращает в 500 вместо ожидаемого 400.
+            @Parameter(description = "Источник интерфейсов на весь запрос, например ProjectTask", required = true)
             @RequestParam(name = "source", required = false) String source,
             @RequestBody(required = false) List<ProjectDiscoveredInterfaceDTO> interfaces) {
         return ResponseEntity.ok(
-                projectDiscoveredInterfaceService.upsertProjectInterfaces(projectId, source, interfaces));
+                projectDiscoveredInterfaceService.syncProjectInterfaces(projectId, source, interfaces));
     }
 
     @ApiErrorCodes({400, 500})

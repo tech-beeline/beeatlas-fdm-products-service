@@ -20,12 +20,13 @@ import java.util.List;
 public class ProjectDiscoveredInterfaceDTO {
 
     @Schema(description = "Код интерфейса (обязательное); сохраняется в discovered_interface.external_id "
-            + "и вместе с product образует ключ upsert")
+            + "и вместе с product образует ключ синхронизации")
     private String interfaceCode;
 
     @Schema(description = "Alias (cmdb) продукта, которому принадлежит интерфейс (обязательное)")
     private String product;
 
-    @Schema(description = "Операции интерфейса (обязательное, непустой список)")
+    @Schema(description = "Полный состав операций интерфейса (обязательное поле); пустой список "
+            + "помечает удалёнными все операции интерфейса")
     private List<ProjectDiscoveredOperationDTO> operations;
 }

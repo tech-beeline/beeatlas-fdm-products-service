@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import ru.beeline.fdmproducts.config.GlobalExceptionHandler;
 import ru.beeline.fdmproducts.service.InfraService;
 import ru.beeline.fdmproducts.service.ProductService;
 
@@ -45,8 +46,10 @@ class MissingRequestValueHandlingTest {
 
     @BeforeEach
     void setUp() {
+        // Оба advice сразу: MethodArgumentTypeMismatchException обрабатывает GlobalExceptionHandler,
+        // и CustomExceptionHandler не должен перехватывать её своим форматом тела.
         mockMvc = MockMvcBuilders.standaloneSetup(productController)
-                .setControllerAdvice(new CustomExceptionHandler())
+                .setControllerAdvice(new CustomExceptionHandler(), new GlobalExceptionHandler())
                 .build();
     }
 
@@ -81,16 +84,17 @@ class MissingRequestValueHandlingTest {
                         .value("Не передан обязательный заголовок запроса 'user-id'"));
     }
 
-    @ParameterizedTest(name = "{0} -> 400, неверный тип параметра {1}")
+    @ParameterizedTest(name = "{0} -> 400 в формате GlobalExceptionHandler")
     @CsvSource({
-            "/api/v1/product/parent?id=abc&type=arch_container, id",
-            "/api/v1/product/by-ids?ids=abc,                    ids"
+            "/api/v1/product/parent?id=abc&type=arch_container, abc",
+            "/api/v1/product/by-ids?ids=abc,                    abc"
     })
-    @DisplayName("Нечисловое значение числового параметра -> 400, а не 500")
-    void typeMismatchReturnsBadRequest(String url, String parameterName) throws Exception {
+    @DisplayName("Нечисловое значение остаётся за GlobalExceptionHandler: тело message/timestamp, не errorMessage")
+    void typeMismatchStaysWithGlobalHandler(String url, String rejectedValue) throws Exception {
         mockMvc.perform(get(url))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errorMessage")
-                        .value("Неверное значение параметра запроса '" + parameterName + "'"));
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString(rejectedValue)))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.errorMessage").doesNotExist());
     }
 }

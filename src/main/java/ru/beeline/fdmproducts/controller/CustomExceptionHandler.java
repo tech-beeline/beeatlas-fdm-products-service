@@ -16,7 +16,6 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
@@ -115,13 +114,6 @@ public class CustomExceptionHandler {
     public ResponseEntity<ErrorMessageDTO> handleRequestBinding(ServletRequestBindingException e) {
         log.warn(e.getMessage());
         return badRequest("Некорректные параметры запроса: " + e.getMessage());
-    }
-
-    /** Параметр передан, но не приводится к типу аргумента ({@code ?id=abc} для Integer). */
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorMessageDTO> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
-        log.warn(e.getMessage());
-        return badRequest("Неверное значение параметра запроса '" + e.getName() + "'");
     }
 
     private ResponseEntity<ErrorMessageDTO> badRequest(String message) {

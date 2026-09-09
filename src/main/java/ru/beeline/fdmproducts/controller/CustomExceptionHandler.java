@@ -11,8 +11,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
@@ -86,6 +90,45 @@ public class CustomExceptionHandler {
         log.error(e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessageDTO(e.getMessage()));
+    }
+
+    /**
+     * Отсутствует обязательный query-параметр. Без этого обработчика исключение — checked
+     * {@link javax.servlet.ServletException} — доходит до {@link #handleException(Exception)}
+     * и клиент получает 500 вместо 400.
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorMessageDTO> handleMissingRequestParameter(MissingServletRequestParameterException e) {
+        log.warn(e.getMessage());
+        return badRequest("Не передан обязательный параметр запроса '" + e.getParameterName() + "'");
+    }
+
+    /** Отсутствует обязательный заголовок запроса — см. комментарий к обработчику выше. */
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorMessageDTO> handleMissingRequestHeader(MissingRequestHeaderException e) {
+        log.warn(e.getMessage());
+        return badRequest("Не передан обязательный заголовок запроса '" + e.getHeaderName() + "'");
+    }
+
+    /** Прочие ошибки привязки запроса (отсутствующая cookie и т. п.) — тоже вина клиента, а не сервера. */
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public ResponseEntity<ErrorMessageDTO> handleRequestBinding(ServletRequestBindingException e) {
+        log.warn(e.getMessage());
+        return badRequest("Некорректные параметры запроса: " + e.getMessage());
+    }
+
+    /** Параметр передан, но не приводится к типу аргумента ({@code ?id=abc} для Integer). */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorMessageDTO> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.warn(e.getMessage());
+        return badRequest("Неверное значение параметра запроса '" + e.getName() + "'");
+    }
+
+    private ResponseEntity<ErrorMessageDTO> badRequest(String message) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO(message));
     }
 
     @ExceptionHandler(UnauthorizedException.class)

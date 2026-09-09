@@ -21,15 +21,53 @@ import java.util.Optional;
 public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
 
-    @Query(value = "SELECT * FROM product.operation o " +
-            "WHERE o.name ILIKE :name " +
-            "AND o.type ILIKE :type " +
-            "AND o.deleted_date IS NULL " +
-            "AND o.interface_id IN (:ids) " +
-            "LIMIT 1", nativeQuery = true)
-    Optional<Operation> findByNameAndTypeILikeNative(@Param("name") String name,
-                                                     @Param("type") String type,
-                                                     @Param("ids") List<Integer> ids);
+    /**
+     * Единственный предикат сопоставления «метод ↔ архитектурная операция» в сервисе: по нему и
+     * автоматическое сопоставление discovered-операций проставляет connection_operation_id
+     * (ComparisonOperationsService), и поиск кандидатов из UI (POST /api/v1/operation/search-matched).
+     * Разводить их нельзя — иначе UI покажет совпадения, которых автомат не сделает, и наоборот.
+     * <p>
+     * name и type сравниваются через ILIKE — регистронезависимое равенство целиком, не подстрока
+     * (шаблонные символы в аргументы не подставляются). {@code type} и {@code protocol} необязательны:
+     * null снимает соответствующий фильтр. Переданный protocol отбрасывает интерфейсы с
+     * {@code protocol IS NULL} — сравнение с NULL не истинно. Удалённые записи отсекаются на каждом
+     * уровне цепочки; product фильтровать не по чему — в таблице нет deleted_date, продукты удаляются
+     * физически. Порядок по o.id — чтобы «первое совпадение» у автомата было воспроизводимым.
+     * <p>
+     * {@code interfaceIds} не должен быть пустым: {@code IN ()} — синтаксическая ошибка в SQL.
+     */
+    @Query(value = """
+            SELECT
+                o.id as opId,
+                o.name as opName,
+                o.type as opType,
+                i.id as interfaceId,
+                i.name as interfaceName,
+                i.code as interfaceCode,
+                cp.id as containerId,
+                cp.name as containerName,
+                cp.code as containerCode,
+                p.id as productId,
+                p.name as productName,
+                p.alias as productAlias
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
+            WHERE o.name ILIKE :name
+              AND (CAST(:type AS text) IS NULL OR o.type ILIKE CAST(:type AS text))
+              AND (CAST(:protocol AS text) IS NULL OR i.protocol ILIKE CAST(:protocol AS text))
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+              AND o.interface_id IN (:interfaceIds)
+            ORDER BY o.id
+            """, nativeQuery = true)
+    List<ArchOperationProjection> findMatchedArchOperations(@Param("name") String name,
+                                                            @Param("type") String type,
+                                                            @Param("protocol") String protocol,
+                                                            @Param("interfaceIds") List<Integer> interfaceIds);
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 

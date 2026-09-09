@@ -9,6 +9,8 @@ import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
+import ru.beeline.fdmproducts.dto.search.MatchedArchOperationDTO;
+import ru.beeline.fdmproducts.dto.search.OperationMatchCandidateDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.mapper.ArchOperationMapper;
 import ru.beeline.fdmproducts.mapper.DiscoveredOperationMapper;
@@ -16,6 +18,7 @@ import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
+import ru.beeline.fdmproducts.repository.ProductRepository;
 
 import java.util.*;
 import java.util.function.Function;
@@ -43,6 +46,12 @@ public class SearchService {
 
     @Autowired
     private DiscoveredInterfaceRepository discoveredInterfaceRepository;
+
+    @Autowired
+    private ProductRepository productRepository;
+
+    @Autowired
+    private ArchOperationMatchingService archOperationMatchingService;
 
     public OperationSearchDTO searchOperations(String path, String type) {
         OperationSearchDTO result = new OperationSearchDTO();
@@ -148,6 +157,63 @@ public class SearchService {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    /**
+     * Архитектурные операции, сопоставимые кандидатам. Ответ — плоский массив: результаты
+     * кандидатов идут подряд в порядке запроса, кандидат без совпадений просто ничего не добавляет.
+     * <p>
+     * Неизвестный productCode — не ошибка запроса, а состояние каталога: UI показывает его рядом с
+     * остальными строками, поэтому статус остаётся 200, а кандидат отдаётся элементом-признаком.
+     */
+    @Transactional(readOnly = true)
+    public List<MatchedArchOperationDTO> searchMatchedOperations(List<OperationMatchCandidateDTO> candidates) {
+        if (candidates == null || candidates.isEmpty()) {
+            throw new IllegalArgumentException("В теле запроса не передан обязательный атрибут");
+        }
+        // Тело проверяется целиком до первого запроса в БД: невалидный кандидат в середине списка
+        // не должен отдавать 400 после того, как часть работы уже сделана.
+        candidates.forEach(this::validateCandidate);
+
+        Map<String, Optional<Product>> productByCode = new HashMap<>();
+        List<MatchedArchOperationDTO> result = new ArrayList<>();
+        for (OperationMatchCandidateDTO candidate : candidates) {
+            String productCode = candidate.getProductCode().trim();
+            Optional<Product> product = productByCode.computeIfAbsent(productCode.toLowerCase(Locale.ROOT),
+                    code -> Optional.ofNullable(productRepository.findByAliasCaseInsensitive(productCode)));
+            if (product.isEmpty()) {
+                log.info("Продукт кандидата не найден: productCode={}", productCode);
+                result.add(MatchedArchOperationDTO.builder()
+                        .productCode(productCode)
+                        .error("Продукт с кодом " + productCode + " не найден")
+                        .notFound(true)
+                        .build());
+                continue;
+            }
+            List<Integer> interfaceIds = archOperationMatchingService.resolveInterfaceIds(product.get().getAlias());
+            archOperationMatchingService.findMatches(candidate.getMethodName().trim(),
+                            emptyToNull(candidate.getMethodType()), emptyToNull(candidate.getProtocol()), interfaceIds)
+                    .forEach(proj -> result.add(archOperationMapper.mapToMatchedArchOperationDTO(proj, productCode)));
+        }
+        log.info("Поиск сопоставимых операций: кандидатов={}, элементов в ответе={}", candidates.size(), result.size());
+        return result;
+    }
+
+    private void validateCandidate(OperationMatchCandidateDTO candidate) {
+        if (candidate == null) {
+            throw new IllegalArgumentException("Пустой элемент в теле запроса");
+        }
+        if (candidate.getMethodName() == null || candidate.getMethodName().isBlank()) {
+            throw new IllegalArgumentException("Отсутствует обязательное поле methodName");
+        }
+        if (candidate.getProductCode() == null || candidate.getProductCode().isBlank()) {
+            throw new IllegalArgumentException("Отсутствует обязательное поле productCode");
+        }
+    }
+
+    /** Незаполненный необязательный фильтр — это его отсутствие, а не поиск по пустой строке. */
+    private String emptyToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     public List<ArchOperationDTO> getOperationByTc(Integer tcId) {

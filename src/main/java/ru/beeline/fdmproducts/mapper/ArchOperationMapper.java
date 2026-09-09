@@ -7,6 +7,7 @@ import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.ContainerSearchDTO;
 import ru.beeline.fdmproducts.dto.InterfaceSearchDTO;
 import ru.beeline.fdmproducts.dto.ProductSearchDTO;
+import ru.beeline.fdmproducts.dto.search.MatchedArchOperationDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 
 @Component
@@ -17,6 +18,31 @@ public class ArchOperationMapper {
                 .id(proj.getOpId())
                 .name(proj.getOpName())
                 .type(proj.getOpType())
+                .interfaceObj(InterfaceSearchDTO.builder()
+                        .id(proj.getInterfaceId())
+                        .name(proj.getInterfaceName())
+                        .code(proj.getInterfaceCode())
+                        .build())
+                .container(ContainerSearchDTO.builder()
+                        .id(proj.getContainerId())
+                        .name(proj.getContainerName())
+                        .code(proj.getContainerCode())
+                        .build())
+                .product(ProductSearchDTO.builder()
+                        .id(proj.getProductId())
+                        .name(proj.getProductName())
+                        .alias(proj.getProductAlias())
+                        .build())
+                .build();
+    }
+
+    /** Та же проекция, но с кодом продукта, по которому кандидат искал совпадения. */
+    public MatchedArchOperationDTO mapToMatchedArchOperationDTO(ArchOperationProjection proj, String productCode) {
+        return MatchedArchOperationDTO.builder()
+                .id(proj.getOpId())
+                .name(proj.getOpName())
+                .type(proj.getOpType())
+                .productCode(productCode)
                 .interfaceObj(InterfaceSearchDTO.builder()
                         .id(proj.getInterfaceId())
                         .name(proj.getInterfaceName())

@@ -28,6 +28,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -949,7 +950,9 @@ public class ProductService {
         Map<String, Interface> existingInterfaces = interfaceRepository.findAllByContainerIdAndCodeIn(containerId,
                         codes)
                 .stream()
-                .collect(Collectors.toMap(Interface::getCode, i -> i));
+                .collect(Collectors.toMap(Interface::getCode,
+                        i -> i,
+                        preferAlive(Interface::getDeletedDate, Interface::getId, "interface")));
         List<Interface> toSave = new ArrayList<>();
         List<Interface> result = new ArrayList<>();
         for (InterfaceDTO dto : interfaces) {
@@ -1025,9 +1028,28 @@ public class ProductService {
         Map<String, Operation> operationMap = dbOperations.stream()
                 .filter(op -> keys.contains(op.getName() + "::" + (op.getType() != null ? op.getType() : "")))
                 .collect(Collectors.toMap(operation -> operation.getName() + "::" + (operation.getType() != null ? operation.getType() : ""),
-                        operation -> operation));
+                        operation -> operation,
+                        preferAlive(Operation::getDeletedDate, Operation::getId, "operation")));
         processMethods(methods, interfaceObj.getId(), interfaceObj.getTcId(), operationMap, methodCodesIdMap);
         markOperationsAsDeleted(interfaceObj.getId(), methods);
+    }
+
+    private static <T> BinaryOperator<T> preferAlive(Function<T, LocalDateTime> deletedDate,
+                                                     Function<T, Integer> id,
+                                                     String entity) {
+        return (a, b) -> {
+            boolean aAlive = deletedDate.apply(a) == null;
+            boolean bAlive = deletedDate.apply(b) == null;
+            T winner;
+            if (aAlive != bAlive) {
+                winner = aAlive ? a : b;
+            } else {
+                winner = id.apply(a) <= id.apply(b) ? a : b;
+            }
+            log.warn("Дубль {} в БД: id={} и id={}, для публикации взят id={}. Требуется чистка данных",
+                    entity, id.apply(a), id.apply(b), id.apply(winner));
+            return winner;
+        };
     }
 
     private void markOperationsAsDeleted(Integer interfaceId, List<MethodDTO> newMethods) {

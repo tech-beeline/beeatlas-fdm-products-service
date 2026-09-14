@@ -87,6 +87,7 @@ public class DiscoveredOperationMapper {
                         .id(projection.getProductId())
                         .name(projection.getProductName())
                         .alias(projection.getProductAlias())
+                        .branchName(projection.getProductBranchName())
                         .build())
                 .build();
     }

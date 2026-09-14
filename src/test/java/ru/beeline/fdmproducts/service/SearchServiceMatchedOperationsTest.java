@@ -91,6 +91,7 @@ class SearchServiceMatchedOperationsTest {
         assertThat(operation.getInterfaceObj().getCode()).isEqualTo("orders-api");
         assertThat(operation.getContainer().getId()).isEqualTo(11);
         assertThat(operation.getProduct().getAlias()).isEqualTo(CODE);
+        assertThat(operation.getProduct().getBranchName()).isEqualTo("main");
         assertThat(operation.getError()).isNull();
         assertThat(operation.getNotFound()).isNull();
     }
@@ -208,6 +209,7 @@ class SearchServiceMatchedOperationsTest {
         when(projection.getProductId()).thenReturn(1);
         when(projection.getProductName()).thenReturn("Заказы");
         when(projection.getProductAlias()).thenReturn(CODE);
+        when(projection.getProductBranchName()).thenReturn("main");
         return projection;
     }
 }

@@ -16,4 +16,5 @@ public class ProductSearchDTO {
     private Integer id;
     private String name;
     private String alias;
+    private String branchName;
 }

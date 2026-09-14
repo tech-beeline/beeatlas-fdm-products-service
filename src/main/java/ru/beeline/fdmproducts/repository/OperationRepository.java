@@ -49,7 +49,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code as containerCode,
                 p.id as productId,
                 p.name as productName,
-                p.alias as productAlias
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
@@ -101,7 +102,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code as containerCode,
                 p.id as productId,
                 p.name as productName,
-                p.alias as productAlias
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
@@ -130,7 +132,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code as containerCode,
                 p.id as productId,
                 p.name as productName,
-                p.alias as productAlias
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
@@ -158,7 +161,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code AS containerCode,
                 p.id AS productId,
                 p.name AS productName,
-                p.alias AS productAlias
+                p.alias AS productAlias,
+                pb.branchName AS productBranchName
             FROM Operation o
             JOIN o.interfaceObj i
             JOIN i.containerProduct cp

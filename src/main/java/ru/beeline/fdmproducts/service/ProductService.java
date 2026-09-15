@@ -38,6 +38,8 @@ import java.util.stream.Stream;
 @Slf4j
 public class ProductService {
 
+    private static final String BRANCH_MAIN = "main";
+
     private final ContainerMapper containerMapper;
     private final OperationMapper operationMapper;
     private final DiscoveredOperationMapper discoveredOperationMapper;
@@ -307,6 +309,10 @@ public class ProductService {
                     .ownerID(putUpdateProductDTO.getOwnerId())
                     .build();
             productRepository.save(product);
+            productBranchRepository.save(ProductBranch.builder()
+                    .alias(putUpdateProductDTO.getAlias())
+                    .branchName(BRANCH_MAIN)
+                    .build());
             List<Integer> employeesIds = prepareEmployeesIds(putUpdateProductDTO);
             synchronizeUserProducts(product, employeesIds);
         } else {

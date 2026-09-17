@@ -1152,11 +1152,11 @@ public class ProductService {
                                                     String method) {
         validateField(dto.getName(), method, "name");
         validateField(dto.getCode(), method, "code");
-        if (dto.getCapabilityCode() == null) {
-            throw new IllegalArgumentException("Capability code is empty");
-        }
-        Integer tcId = codesIdMap.get(dto.getCapabilityCode()) != null ? codesIdMap.get(dto.getCapabilityCode())
-                .intValue() : null;
+        String capabilityCode = dto.getCapabilityCode();
+        Long codeId = (capabilityCode != null && !capabilityCode.isEmpty())
+                ? codesIdMap.get(capabilityCode)
+                : null;
+        Integer tcId = codeId != null ? codeId.intValue() : null;
         log.info("TC save interface: code={}, capabilityCode={}, tcId={}, containerId={}",
                 dto.getCode(), dto.getCapabilityCode(), tcId, containerId);
         Interface interfaceObj = existingInterfaces.get(dto.getCode());

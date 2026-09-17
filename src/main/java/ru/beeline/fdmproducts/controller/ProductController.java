@@ -20,6 +20,7 @@ import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.InfraService;
+import ru.beeline.fdmproducts.service.ProductPatternsService;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import java.util.List;
@@ -40,6 +41,9 @@ public class ProductController {
 
     @Autowired
     private InfraService infraService;
+
+    @Autowired
+    private ProductPatternsService productPatternsService;
 
 
     @ApiErrorCodes({400, 404, 500})
@@ -353,7 +357,7 @@ public class ProductController {
         return productService.getContainersByCodes(codes);
     }
 
-    @ApiErrorCodes({400, 404, 500})
+    @ApiErrorCodes({400, 404, 409, 500})
     @PostMapping("/v1/product/{alias}/patterns/{source-type}")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Связать паттерны Techradar с продуктом",
@@ -363,6 +367,26 @@ public class ProductController {
                                                    @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
                                                    @Parameter(description = "Идентификатор источника") @RequestParam(name = "source-id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
+        return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @ApiErrorCodes({400, 404, 409, 500})
+    @PostMapping("/v2/product/{alias}/patterns/{source-type}")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Сохранить результат проверки паттернов продукта (v2)",
+            description = "Версионируемая запись в product.product_patterns с is_actual. "
+                    + "Тело как у v1. Query branch (default main) и source-id — как в постановке; "
+                    + "patterns_assessment / patterns_check не затрагиваются. Успех — 201 без тела.")
+    public ResponseEntity<Void> postPatternProductV2(
+            @Parameter(description = "Alias продукта") @PathVariable String alias,
+            @Parameter(description = "Тип источника (enum_source_type), например pipeline, nfr")
+            @PathVariable("source-type") String sourceType,
+            @RequestBody(required = false) List<PostPatternProductDTO> postPatternProductDTOS,
+            @Parameter(description = "Ветка продукта; не передан или пустой — main")
+            @RequestParam(required = false) String branch,
+            @Parameter(description = "Идентификатор источника; обязателен при identifySource = true")
+            @RequestParam(name = "source-id", required = false) Integer sourceId) {
+        productPatternsService.postPatternProductV2(alias, sourceType, branch, sourceId, postPatternProductDTOS);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 

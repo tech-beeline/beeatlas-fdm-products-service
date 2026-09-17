@@ -104,7 +104,7 @@ public class E2eV2Service {
         Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, requestSource);
         validateRelations(relations, operationIdByUid);
         E2eInfoDTO e2eInfo = request.getE2e();
-        E2e e2e = upsertE2e(e2eInfo);
+        E2e e2e = upsertE2e(e2eInfo, requestSource);
         rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
         log.info("E2E v2 upsert: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
         return E2eUpsertResponseDTO.builder()
@@ -113,13 +113,6 @@ public class E2eV2Service {
                 .build();
     }
 
-    /**
-     * Partial update (SFDM-4092): every field is applied only if present in the request — a field
-     * left out is left untouched. Unlike {@link #upsert}, this never creates a new e2e (404 if
-     * {@code code} doesn't exist) and only replaces operationsRelations when that field is
-     * explicitly sent (previously operationsRelations was always fully replaced on every upsert,
-     * silently wiping it out on e.g. a rename-only call that omitted the field).
-     */
     @Transactional
     public E2eUpsertResponseDTO patch(String code, E2eV2PatchRequestDTO request) {
         log.info("E2E v2 patch: обработка, code={}", code);
@@ -169,10 +162,6 @@ public class E2eV2Service {
                 .build();
     }
 
-    /**
-     * Query-параметр source (SFDM-4091): не передан — SPARX; передан и пуст после trim — 400,
-     * иначе значение как есть, без нормализации регистра: в колонку пишем ровно то, что прислали.
-     */
     private String resolveRequestSource(String source) {
         if (source == null) {
             return DEFAULT_SOURCE;
@@ -467,7 +456,7 @@ public class E2eV2Service {
         throw new IllegalArgumentException("Не найден parentInterfaceCode для операции: " + code);
     }
 
-    private E2e upsertE2e(E2eInfoDTO e2eInfo) {
+    private E2e upsertE2e(E2eInfoDTO e2eInfo,  String source) {
         E2e e2e = e2eRepository.findByCode(e2eInfo.getUid()).orElse(null);
         if (e2e == null) {
             e2e = E2e.builder()
@@ -475,6 +464,7 @@ public class E2eV2Service {
                     .name(e2eInfo.getName())
                     .description(e2eInfo.getDescription())
                     .biStepCode(e2eInfo.getBiStepCode())
+                    .source(source)
                     .build();
             e2e = e2eRepository.save(e2e);
             log.info("Создан e2e, id={}, code={}", e2e.getId(), e2e.getCode());

@@ -540,6 +540,7 @@ public class E2eV2Service {
                 .name(e2e.getName())
                 .description(e2e.getDescription())
                 .biStepCode(e2e.getBiStepCode())
+                .source(e2e.getSource())
                 .build();
     }
 

@@ -20,4 +20,5 @@ public class E2eCardResponseDTO {
     private String name;
     private String description;
     private String biStepCode;
+    private String source;
 }

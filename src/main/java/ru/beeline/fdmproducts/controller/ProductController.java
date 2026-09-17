@@ -196,8 +196,9 @@ public class ProductController {
     @Operation(summary = "Паттерны Techradar, связанные с продуктом")
     public List<PatternDTO> getProductPatterns(@Parameter(description = "Alias продукта") @PathVariable(value = "alias", required = false) String alias,
                                                @Parameter(description = "Идентификатор источника") @RequestParam(value = "source-id", required = false) Integer sourceId,
-                                               @Parameter(description = "Тип источника") @RequestParam(value = "source-type", required = false) String sourceType) {
-        return productService.getProductPatterns(alias, sourceId, sourceType);
+                                               @Parameter(description = "Тип источника") @RequestParam(value = "source-type", required = false) String sourceType,
+                                               @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра. Оценки паттернов есть только у main, для других веток — пустой список.") @RequestParam(required = false) String branch) {
+        return productService.getProductPatterns(alias, sourceId, sourceType, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})

@@ -26,8 +26,8 @@ public class NonFunctionalRequirement {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "product_id")
-    private Product product;
+    @JoinColumn(name = "product_branch_id")
+    private ProductBranch productBranch;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "nfr_id")

@@ -26,8 +26,10 @@ public class PatternProductService {
     private NonFunctionalRequirementRepository nonFunctionalRequirementRepository;
     @Autowired
     private PatternRequirementRepository patternRequirementRepository;
+    @Autowired
+    private ProductBranchService productBranchService;
 
-    public ResponseEntity<?> getPatternIdsByProduct(Integer id, String alias, String apiKey) {
+    public ResponseEntity<?> getPatternIdsByProduct(Integer id, String alias, String apiKey, String branch) {
         boolean hasId = id != null;
         boolean hasAlias = StringUtils.hasText(alias);
         boolean hasApiKey = StringUtils.hasText(apiKey);
@@ -45,7 +47,9 @@ public class PatternProductService {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorMessageDTO("Продукт с указанным идентификатором не найден"));
         }
 
-        List<Integer> nfrIds = nonFunctionalRequirementRepository.findDistinctNfrEnumIdsByProductId(productOpt.get().getId());
+        List<Integer> nfrIds = productBranchService.findId(productOpt.get().getAlias(), branch)
+                .map(nonFunctionalRequirementRepository::findDistinctNfrEnumIdsByProductBranchId)
+                .orElse(List.of());
         if (nfrIds.isEmpty()) {
             return ResponseEntity.ok(List.of());
         }

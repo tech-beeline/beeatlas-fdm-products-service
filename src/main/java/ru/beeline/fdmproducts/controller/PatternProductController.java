@@ -42,9 +42,10 @@ public class PatternProductController {
     public ResponseEntity<?> getPatternIdsByProduct(
             @Parameter(description = "Числовой id продукта") @RequestParam(required = false) Integer id,
             @Parameter(description = "Alias (код) продукта") @RequestParam(required = false) String alias,
-            @Parameter(description = "API-ключ продукта для идентификации") @RequestParam(name = "api-key", required = false) String apiKey
+            @Parameter(description = "API-ключ продукта для идентификации") @RequestParam(name = "api-key", required = false) String apiKey,
+            @Parameter(description = "Ветка архитектуры продукта, по NFR которой считается покрытие. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch
     ) {
-        return patternProductService.getPatternIdsByProduct(id, alias, apiKey);
+        return patternProductService.getPatternIdsByProduct(id, alias, apiKey, branch);
     }
 }
 

@@ -25,39 +25,58 @@ public class ArchContainerRelationsService {
     private final OperationRepository operationRepository;
     private final InterfaceRepository interfaceRepository;
     private final ContainerRepository containerRepository;
+    private final ProductBranchService productBranchService;
 
     public ArchContainerRelationsService(DiscoveredOperationRepository discoveredOperationRepository,
                                          DiscoveredInterfaceRepository discoveredInterfaceRepository,
                                          OperationRepository operationRepository,
                                          InterfaceRepository interfaceRepository,
-                                         ContainerRepository containerRepository) {
+                                         ContainerRepository containerRepository,
+                                         ProductBranchService productBranchService) {
         this.discoveredOperationRepository = discoveredOperationRepository;
         this.discoveredInterfaceRepository = discoveredInterfaceRepository;
         this.operationRepository = operationRepository;
         this.interfaceRepository = interfaceRepository;
         this.containerRepository = containerRepository;
+        this.productBranchService = productBranchService;
     }
 
     public void processContainerDelete(Integer entityId) {
         log.info("[СТАРТ] Начало обработки processContainerDelete entityId={}", entityId);
+        if (!productBranchService.isContainerInDefaultBranch(entityId)) {
+            log.info("Container entityId={} не из ветки main, связи discovered не сбрасываются", entityId);
+            return;
+        }
         discoveredInterfaceRepository.clearConnectionInterfaceIdByEntityId(entityId);
         discoveredOperationRepository.clearConnectionOperationIdByEntityId(entityId);
     }
 
     public void processInterfaceDelete(int entityId) {
         log.info("[СТАРТ] Начало обработки processInterfaceDelete entityId={}", entityId);
+        if (!productBranchService.isInterfaceInDefaultBranch(entityId)) {
+            log.info("Interface entityId={} не из ветки main, связи discovered не сбрасываются", entityId);
+            return;
+        }
         discoveredInterfaceRepository.clearConnectionInterfaceIdByInterfaceId(entityId);
         discoveredOperationRepository.clearConnectionOperationIdByInterfaceId(entityId);
     }
 
     public void processOperationDelete(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationDelete entityId={}", entityId);
+        if (!productBranchService.isOperationInDefaultBranch(entityId)) {
+            log.info("Operation entityId={} не из ветки main, связи discovered не сбрасываются", entityId);
+            return;
+        }
         discoveredInterfaceRepository.clearConnectionInterfaceIdByOperationId(entityId);
         discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
     }
 
     public void processOperationComparison(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationComparison entityId={}", entityId);
+        if (!productBranchService.isOperationInDefaultBranch(entityId)) {
+            log.info("Operation entityId={} не из ветки main, сопоставление не выполняется", entityId);
+            return;
+        }
         Optional<Operation> operation = operationRepository.findById(entityId);
         if (operation.isPresent()) {
             Interface interfaceEntity = interfaceRepository.findById(operation.get().getInterfaceId()).get();

@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import ru.beeline.fdmproducts.domain.ProductBranch;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ProductBranchRepository;
 
 import java.util.List;
@@ -69,6 +70,36 @@ public class ProductBranchService {
                     log.info("Создана ветка продукта: alias={}, branch={}, id={}", alias, branchName, id);
                     return id;
                 });
+    }
+
+    public Integer getExistingOrMainId(String alias, String branch) {
+        String branchName = resolveBranchName(branch);
+        if (isDefaultBranch(branchName)) {
+            return getOrCreateId(alias, branchName);
+        }
+        return findByName(alias, branchName)
+                .map(ProductBranch::getId)
+                .orElseThrow(() -> new EntityNotFoundException("Ветка " + branchName + " продукта не найдена"));
+    }
+
+    public Optional<Integer> findId(String alias, String branch) {
+        return find(alias, branch).map(ProductBranch::getId);
+    }
+
+    public boolean isDefaultBranch(String branchName) {
+        return DEFAULT_BRANCH.equalsIgnoreCase(branchName);
+    }
+
+    public boolean isContainerInDefaultBranch(Integer containerId) {
+        return productBranchRepository.findBranchNameByContainerId(containerId).filter(this::isDefaultBranch).isPresent();
+    }
+
+    public boolean isInterfaceInDefaultBranch(Integer interfaceId) {
+        return productBranchRepository.findBranchNameByInterfaceId(interfaceId).filter(this::isDefaultBranch).isPresent();
+    }
+
+    public boolean isOperationInDefaultBranch(Integer operationId) {
+        return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
     }
 
     private Optional<ProductBranch> findByName(String alias, String branchName) {

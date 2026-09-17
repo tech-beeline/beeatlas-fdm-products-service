@@ -13,9 +13,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.domain.ProductBranch;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ProductBranchRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -128,5 +130,49 @@ class ProductBranchServiceTest {
                 .isInstanceOf(IllegalArgumentException.class);
 
         verify(productBranchRepository, never()).upsert(any(), any());
+    }
+
+    @Test
+    @DisplayName("SFDM-4098: назначение без ветки создаёт отсутствующую main")
+    void assignmentCreatesMissingMain() {
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "main"))
+                .thenReturn(List.of());
+        when(productBranchRepository.upsert(ALIAS, "main")).thenReturn(5);
+
+        assertThat(service.getExistingOrMainId(ALIAS, null)).isEqualTo(5);
+    }
+
+    @Test
+    @DisplayName("SFDM-4098: назначение на существующую ветку не создаёт новую")
+    void assignmentUsesExistingBranch() {
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "design"))
+                .thenReturn(List.of(branch(8, "design")));
+
+        assertThat(service.getExistingOrMainId(ALIAS, "Design")).isEqualTo(8);
+        verify(productBranchRepository, never()).upsert(any(), any());
+    }
+
+    @Test
+    @DisplayName("SFDM-4098: назначение на отсутствующую ветку, отличную от main, — 404")
+    void assignmentToMissingBranchRejected() {
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "design"))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.getExistingOrMainId(ALIAS, "design"))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Ветка design продукта не найдена");
+        verify(productBranchRepository, never()).upsert(any(), any());
+    }
+
+    @Test
+    @DisplayName("SFDM-4098: принадлежность arch-объекта ветке main — без учёта регистра")
+    void archObjectBranchCheck() {
+        when(productBranchRepository.findBranchNameByContainerId(1)).thenReturn(Optional.of("Main"));
+        when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("design"));
+        when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.empty());
+
+        assertThat(service.isContainerInDefaultBranch(1)).isTrue();
+        assertThat(service.isInterfaceInDefaultBranch(2)).isFalse();
+        assertThat(service.isOperationInDefaultBranch(3)).isFalse();
     }
 }

@@ -1586,9 +1586,12 @@ public class ProductService {
         return patternsAssessmentRepository.save(assessment);
     }
 
-    public List<PatternDTO> getProductPatterns(String alias, Integer sourceId, String sourceType) {
+    public List<PatternDTO> getProductPatterns(String alias, Integer sourceId, String sourceType, String branch) {
         Product product = getProductByCode(alias);
         validateSourceParams(sourceId, sourceType);
+        if (!productBranchService.isDefaultBranch(productBranchService.resolveBranchName(branch))) {
+            return Collections.emptyList();
+        }
         List<PatternDTO> patternDTOList = techradarClient.getPatternsAutoCheck();
         log.info("patternDTOList from techradarClient size: " + patternDTOList.size());
         if (patternDTOList.isEmpty()) {

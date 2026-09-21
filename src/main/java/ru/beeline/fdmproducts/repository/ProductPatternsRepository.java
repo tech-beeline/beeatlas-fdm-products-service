@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.ProductPatterns;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -29,4 +30,7 @@ public interface ProductPatternsRepository extends JpaRepository<ProductPatterns
                                          @Param("sourceTypeId") Integer sourceTypeId,
                                          @Param("sourceId") Integer sourceId,
                                          @Param("patternCode") String patternCode);
+
+    List<ProductPatterns> findAllByProductAliasAndProductBranchAndIsActualTrue(String productAlias,
+                                                                              String productBranch);
 }

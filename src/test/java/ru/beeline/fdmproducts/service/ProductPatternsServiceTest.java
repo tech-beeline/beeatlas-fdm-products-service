@@ -11,10 +11,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.domain.EnumSourceType;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.ProductPatterns;
+import ru.beeline.fdmproducts.dto.PatternDTO;
 import ru.beeline.fdmproducts.dto.PostPatternProductDTO;
+import ru.beeline.fdmproducts.dto.ProductPatternV2DTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ValidationException;
 import ru.beeline.fdmproducts.repository.EnumSourceTypeRepository;
@@ -47,6 +50,8 @@ class ProductPatternsServiceTest {
     private EnumSourceTypeRepository enumSourceTypeRepository;
     @Mock
     private ProductPatternsRepository productPatternsRepository;
+    @Mock
+    private TechradarClient techradarClient;
 
     @InjectMocks
     private ProductPatternsService service;
@@ -167,6 +172,81 @@ class ProductPatternsServiceTest {
                 .hasMessageContaining("code")
                 .hasMessageContaining("isCheck");
         verify(productRepository, never()).findByAliasCaseInsensitive(any());
+    }
+
+    @Test
+    @DisplayName("GET v2: актуальные записи с обогащением из Techradar и без него")
+    void getReturnsActualWithAndWithoutTechradarCard() {
+        givenProduct();
+        when(productPatternsRepository.findAllByProductAliasAndProductBranchAndIsActualTrue(ALIAS, "main"))
+                .thenReturn(List.of(
+                        ProductPatterns.builder()
+                                .patternCode("PAT-001")
+                                .isCheck(true)
+                                .resultDetails("ok")
+                                .build(),
+                        ProductPatterns.builder()
+                                .patternCode("PAT-002")
+                                .isCheck(false)
+                                .resultDetails(null)
+                                .build()));
+        when(techradarClient.getPatternsAutoCheck()).thenReturn(List.of(
+                PatternDTO.builder().id(11).code("PAT-001").name("Pattern One").rule("r1").isAntiPattern(false).build()));
+
+        List<ProductPatternV2DTO> result = service.getProductPatternsV2(ALIAS, null);
+
+        assertThat(result).hasSize(2);
+        ProductPatternV2DTO enriched = result.get(0);
+        assertThat(enriched.getCode()).isEqualTo("PAT-001");
+        assertThat(enriched.getIsCheck()).isTrue();
+        assertThat(enriched.getResultDetails()).isEqualTo("ok");
+        assertThat(enriched.getId()).isEqualTo(11);
+        assertThat(enriched.getName()).isEqualTo("Pattern One");
+        ProductPatternV2DTO onlyDb = result.get(1);
+        assertThat(onlyDb.getCode()).isEqualTo("PAT-002");
+        assertThat(onlyDb.getIsCheck()).isFalse();
+        assertThat(onlyDb.getId()).isNull();
+        assertThat(onlyDb.getName()).isNull();
+    }
+
+    @Test
+    @DisplayName("GET v2: нет актуальных — 200, []")
+    void getEmptyWhenNoActual() {
+        givenProduct();
+        when(productPatternsRepository.findAllByProductAliasAndProductBranchAndIsActualTrue(ALIAS, "feature"))
+                .thenReturn(List.of());
+
+        assertThat(service.getProductPatternsV2(ALIAS, "FEATURE")).isEmpty();
+        verify(techradarClient, never()).getPatternsAutoCheck();
+    }
+
+    @Test
+    @DisplayName("GET v2: неизвестный alias — 404")
+    void getUnknownProduct404() {
+        when(productRepository.findByAliasCaseInsensitive(ALIAS)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getProductPatternsV2(ALIAS, null))
+                .isInstanceOf(EntityNotFoundException.class)
+                .hasMessage("Продукт c alias 'fdmshowcaseapp' не найден");
+    }
+
+    @Test
+    @DisplayName("GET v2: Techradar null — ответ всё равно из БД")
+    void getWorksWhenTechradarNull() {
+        givenProduct();
+        when(productPatternsRepository.findAllByProductAliasAndProductBranchAndIsActualTrue(ALIAS, "main"))
+                .thenReturn(List.of(ProductPatterns.builder()
+                        .patternCode("PAT-001")
+                        .isCheck(true)
+                        .build()));
+        when(techradarClient.getPatternsAutoCheck()).thenReturn(null);
+
+        List<ProductPatternV2DTO> result = service.getProductPatternsV2(ALIAS, " ");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getCode()).isEqualTo("PAT-001");
+        assertThat(result.get(0).getIsCheck()).isTrue();
+        assertThat(result.get(0).getId()).isNull();
     }
 
     private void givenProduct() {

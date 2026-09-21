@@ -206,6 +206,18 @@ public class ProductController {
     }
 
     @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v2/product/{alias}/patterns")
+    @Operation(summary = "Актуальные паттерны продукта на ветке (v2)",
+            description = "Актуальные записи product_patterns по alias и branch (без branch — main). "
+                    + "Поля паттерна подставляются из Techradar, если code найден.")
+    public List<ProductPatternV2DTO> getProductPatternsV2(
+            @Parameter(description = "Alias продукта") @PathVariable String alias,
+            @Parameter(description = "Ветка продукта; не передан или пустой — main")
+            @RequestParam(required = false) String branch) {
+        return productPatternsService.getProductPatternsV2(alias, branch);
+    }
+
+    @ApiErrorCodes({400, 404, 500})
     @GetMapping("/v1/product/parent")
     @Operation(summary = "Родительский продукт для дочерней сущности",
             description = "По id и типу дочернего объекта возвращает краткую информацию о продукте-владельце.")

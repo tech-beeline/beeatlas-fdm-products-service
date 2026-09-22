@@ -12,12 +12,23 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import ru.beeline.fdmproducts.domain.ContainerProduct;
+import ru.beeline.fdmproducts.domain.DiscoveredInterface;
+import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.domain.Interface;
+import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 
+import java.util.List;
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -104,6 +115,50 @@ class ArchContainerRelationsServiceTest {
         service.processOperationDelete(30);
 
         verifyNoInteractions(discoveredInterfaceRepository, discoveredOperationRepository);
+    }
+
+    @Test
+    @DisplayName("Разные имена path-параметров сопоставляются общим правилом")
+    void matchesDiscoveredOperationWithADifferentParameterName() {
+        Operation archOperation = new Operation();
+        archOperation.setId(77);
+        archOperation.setName("/api/v1/product/{code}");
+        archOperation.setType("GET");
+        archOperation.setInterfaceId(5);
+
+        DiscoveredOperation discoveredOperation = new DiscoveredOperation();
+        discoveredOperation.setId(9);
+        discoveredOperation.setName("/api/v1/product/{cmdb}");
+        discoveredOperation.setType("get");
+
+        DiscoveredInterface discoveredInterface = new DiscoveredInterface();
+        discoveredInterface.setId(3);
+        discoveredInterface.setName("product-api");
+        discoveredInterface.setOperations(List.of(discoveredOperation));
+
+        Interface archInterface = new Interface();
+        archInterface.setId(5);
+        archInterface.setContainerId(4);
+
+        Product product = new Product();
+        product.setId(41);
+        ProductBranch branch = new ProductBranch();
+        branch.setProduct(product);
+        ContainerProduct container = new ContainerProduct();
+        container.setId(4);
+        container.setProductBranch(branch);
+
+        when(productBranchService.isOperationInDefaultBranch(anyInt())).thenReturn(true);
+        when(operationRepository.findById(77)).thenReturn(Optional.of(archOperation));
+        when(interfaceRepository.findById(5)).thenReturn(Optional.of(archInterface));
+        when(containerRepository.findById(4)).thenReturn(Optional.of(container));
+        when(discoveredInterfaceRepository.findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(41, 5))
+                .thenReturn(List.of(discoveredInterface));
+        when(operationRepository.findAllByIdIn(List.of(77))).thenReturn(List.of(archOperation));
+
+        service.processOperationComparison(77);
+
+        assertThat(discoveredOperation.getConnectionOperationId()).isEqualTo(77);
     }
 
     @Test

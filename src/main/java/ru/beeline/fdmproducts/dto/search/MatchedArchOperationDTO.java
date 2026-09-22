@@ -41,6 +41,9 @@ public class MatchedArchOperationDTO {
     @Schema(description = "Код продукта, по которому выполнялся поиск — как в запросе")
     private String productCode;
 
+    @Schema(description = "Имя метода из запроса, для которого найдено совпадение")
+    private String requestedMethodName;
+
     @JsonProperty("interface")
     @Schema(description = "Интерфейс, которому принадлежит операция")
     private InterfaceSearchDTO interfaceObj;

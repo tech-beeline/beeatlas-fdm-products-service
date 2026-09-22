@@ -193,7 +193,8 @@ public class SearchService {
             List<Integer> interfaceIds = archOperationMatchingService.resolveInterfaceIds(product.get().getAlias());
             archOperationMatchingService.findMatches(candidate.getMethodName().trim(),
                             emptyToNull(candidate.getMethodType()), emptyToNull(candidate.getProtocol()), interfaceIds)
-                    .forEach(proj -> result.add(archOperationMapper.mapToMatchedArchOperationDTO(proj, productCode)));
+                    .forEach(proj -> result.add(archOperationMapper.mapToMatchedArchOperationDTO(proj, productCode,
+                            candidate.getMethodName().trim())));
         }
         log.info("Поиск сопоставимых операций: кандидатов={}, элементов в ответе={}", candidates.size(), result.size());
         return result;

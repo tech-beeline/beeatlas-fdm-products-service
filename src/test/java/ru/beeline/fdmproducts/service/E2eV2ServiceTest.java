@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.e2e.E2eInfoDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eProductDTO;
@@ -89,6 +90,8 @@ class E2eV2ServiceTest {
                 anyString(), anyInt(), anyString())).thenReturn(Optional.empty());
         when(discoveredInterfaceRepository.findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(anyString(), anyString()))
                 .thenReturn(List.of());
+        when(discoveredInterfaceRepository.findAllBySourceAndExternalIdInIgnoreCase(anyString(), any()))
+                .thenReturn(List.of());
         when(discoveredInterfaceRepository.save(any(DiscoveredInterface.class))).thenAnswer(invocation -> {
             DiscoveredInterface saved = invocation.getArgument(0);
             if (saved.getId() == null) {
@@ -96,8 +99,7 @@ class E2eV2ServiceTest {
             }
             return saved;
         });
-        when(discoveredOperationRepository.findByInterfaceIdAndNameAndTypeAllIgnoreCase(anyInt(), anyString(), anyString()))
-                .thenReturn(Optional.empty());
+        when(discoveredOperationRepository.findAllByInterfaceIdIn(any())).thenReturn(List.of());
         when(discoveredOperationRepository.save(any(DiscoveredOperation.class))).thenAnswer(invocation -> {
             DiscoveredOperation saved = invocation.getArgument(0);
             if (saved.getId() == null) {
@@ -219,7 +221,7 @@ class E2eV2ServiceTest {
                 .externalId(INTERFACE_CODE)
                 .source("MAPIC")
                 .build();
-        when(discoveredInterfaceRepository.findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(eq("MAPIC"), eq(INTERFACE_CODE)))
+        when(discoveredInterfaceRepository.findAllBySourceAndExternalIdInIgnoreCase(eq("MAPIC"), any()))
                 .thenReturn(List.of(fromDb));
 
         E2eV2UpsertRequestDTO request = request();
@@ -228,7 +230,7 @@ class E2eV2ServiceTest {
         service.upsert(request, "MAPIC");
 
         verify(discoveredInterfaceRepository)
-                .findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(eq("MAPIC"), eq(INTERFACE_CODE));
+                .findAllBySourceAndExternalIdInIgnoreCase(eq("MAPIC"), any());
         verify(discoveredInterfaceRepository, never()).save(any(DiscoveredInterface.class));
     }
 
@@ -252,6 +254,100 @@ class E2eV2ServiceTest {
         assertThatThrownBy(() -> service.upsert(request(), "   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Параметр source не может быть пустым");
+        verify(e2eRepository, never()).save(any(E2e.class));
+    }
+
+    @Test
+    @DisplayName("create: connectionOperationId пишется в discovered_operation.connection_operation_id")
+    void createWritesConnectionOperationId() {
+        Integer archOpId = 123;
+        when(operationRepository.findAllById(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
+
+        E2eV2UpsertRequestDTO request = request();
+        request.getOperations().get(0).setConnectionOperationId(archOpId);
+
+        service.upsert(request, null);
+
+        ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
+        verify(discoveredOperationRepository).save(captor.capture());
+        assertThat(captor.getValue().getConnectionOperationId()).isEqualTo(archOpId);
+    }
+
+    @Test
+    @DisplayName("create без connectionOperationId — connection_operation_id = NULL")
+    void createWithoutConnectionOperationIdLeavesNull() {
+        service.upsert(request(), null);
+
+        ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
+        verify(discoveredOperationRepository).save(captor.capture());
+        assertThat(captor.getValue().getConnectionOperationId()).isNull();
+        verify(operationRepository, never()).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("update: connectionOperationId обновляет связь и updated_date")
+    void updateWritesConnectionOperationIdWhenProvided() {
+        Integer archOpId = 456;
+        when(operationRepository.findAllById(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
+        DiscoveredOperation existing = DiscoveredOperation.builder()
+                .id(901)
+                .interfaceId(INTERFACE_ID)
+                .name("getSomething")
+                .type("REST")
+                .connectionOperationId(111)
+                .createdDate(LocalDateTime.now())
+                .build();
+        when(discoveredOperationRepository.findAllByInterfaceIdIn(any()))
+                .thenReturn(List.of(existing));
+
+        E2eV2UpsertRequestDTO request = request();
+        request.getOperations().get(0).setConnectionOperationId(archOpId);
+
+        service.upsert(request, null);
+
+        assertThat(existing.getConnectionOperationId()).isEqualTo(archOpId);
+        assertThat(existing.getUpdatedDate()).isNotNull();
+        verify(discoveredOperationRepository).save(existing);
+    }
+
+    @Test
+    @DisplayName("update без connectionOperationId — ранее проставленная связь не затирается")
+    void updateOmittingConnectionOperationIdDoesNotClearExisting() {
+        Integer previousLink = 789;
+        DiscoveredOperation existing = DiscoveredOperation.builder()
+                .id(901)
+                .interfaceId(INTERFACE_ID)
+                .name("getSomething")
+                .type("REST")
+                .connectionOperationId(previousLink)
+                .description("old")
+                .createdDate(LocalDateTime.now())
+                .build();
+        when(discoveredOperationRepository.findAllByInterfaceIdIn(any()))
+                .thenReturn(List.of(existing));
+
+        E2eV2UpsertRequestDTO request = request();
+        request.getOperations().get(0).setDescription("new description");
+
+        service.upsert(request, null);
+
+        assertThat(existing.getConnectionOperationId()).isEqualTo(previousLink);
+        assertThat(existing.getDescription()).isEqualTo("new description");
+        verify(operationRepository, never()).findAllById(any());
+    }
+
+    @Test
+    @DisplayName("несуществующий connectionOperationId — 400, операция не сохраняется")
+    void rejectsUnknownConnectionOperationId() {
+        when(operationRepository.findAllById(any())).thenReturn(List.of());
+
+        E2eV2UpsertRequestDTO request = request();
+        request.getOperations().get(0).setConnectionOperationId(999_999);
+
+        assertThatThrownBy(() -> service.upsert(request, null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Для одной из операцией не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
+        verify(discoveredOperationRepository, never()).save(any(DiscoveredOperation.class));
         verify(e2eRepository, never()).save(any(E2e.class));
     }
 

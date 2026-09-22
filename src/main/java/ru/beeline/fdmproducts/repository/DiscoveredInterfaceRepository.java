@@ -14,6 +14,7 @@ import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.Product;
 
 import javax.transaction.Transactional;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -77,21 +78,21 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllBySourceAndExternalIdIgnoreCase(String source, String externalId);
 
-    /**
-     * Как {@link #findBySourceAndProductIdAndExternalIdIgnoreCase}, но и source сравнивается без
-     * учёта регистра: source приходит query-параметром (SFDM-4091), и «MAPIC» из одного вызова
-     * не должен заводить второй интерфейс рядом с «mapic» из другого.
-     */
     Optional<DiscoveredInterface> findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(String source,
                                                                                             Integer productId,
                                                                                             String externalId);
 
     List<DiscoveredInterface> findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(String source, String externalId);
 
-    /**
-     * Весь состав интерфейсов проекта из одного источника, включая soft-deleted: синхронизация
-     * (SFDM-4095) одним проходом и оживляет помеченные удалёнными, и помечает выбывшие из тела.
-     */
+    @Query("""
+            SELECT di FROM DiscoveredInterface di
+            WHERE LOWER(di.source) = LOWER(:source)
+              AND LOWER(di.externalId) IN :codes
+            """)
+    List<DiscoveredInterface> findAllBySourceAndExternalIdInIgnoreCase(@Param("source") String source,
+                                                                       @Param("codes") Collection<String> codes);
+
+
     List<DiscoveredInterface> findAllByProjectIdAndSourceIgnoreCase(Integer projectId, String source);
 
     @EntityGraph(attributePaths = {"product"})

@@ -12,33 +12,14 @@ import org.springframework.web.client.HttpStatusCodeException;
 import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
-import ru.beeline.fdmproducts.domain.Chapter;
-import ru.beeline.fdmproducts.domain.ChapterNfr;
-import ru.beeline.fdmproducts.domain.LocalFitnessFunction;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirement;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnumCore;
-import ru.beeline.fdmproducts.domain.PatternRequirement;
-import ru.beeline.fdmproducts.domain.Product;
-import ru.beeline.fdmproducts.domain.ProductBranch;
+import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.chapter.ChapterNfrDTO;
 import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrDetailsV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrPatternDTO;
-import ru.beeline.fdmproducts.dto.nfr.RequirementProductDTO;
+import ru.beeline.fdmproducts.dto.nfr.*;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.repository.ChapterNfrRepository;
-import ru.beeline.fdmproducts.repository.LocalFitnessFunctionRepository;
-import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumRepository;
-import ru.beeline.fdmproducts.repository.NonFunctionalRequirementRepository;
-import ru.beeline.fdmproducts.repository.PatternRequirementRepository;
-import ru.beeline.fdmproducts.repository.ProductBranchRepository;
-import ru.beeline.fdmproducts.repository.ProductRepository;
+import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -647,6 +628,9 @@ public class NonFunctionalRequirementService {
                 .distinct()
                 .toList();
         List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
+        List<NfrPatternDTO> notDeleted = patterns.stream()
+                .filter(pattern -> pattern.getDeleteDate() == null)
+                .collect(Collectors.toList());
         return NfrDetailsDTO.builder()
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
@@ -655,7 +639,7 @@ public class NonFunctionalRequirementService {
                 .description(nfr.getDescription())
                 .fitnessFunctions(fitnessFunctions)
                 .chapters(chapterDtos)
-                .patterns(patterns)
+                .patterns(notDeleted)
                 .build();
     }
 
@@ -676,6 +660,9 @@ public class NonFunctionalRequirementService {
                 .distinct()
                 .toList();
         List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
+        List<NfrPatternDTO> notDeleted = patterns.stream()
+                .filter(pattern -> pattern.getDeleteDate() == null)
+                .collect(Collectors.toList());
         return NfrDetailsV2DTO.builder()
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
@@ -684,7 +671,7 @@ public class NonFunctionalRequirementService {
                 .description(nfr.getDescription())
                 .fitnessFunctions(fitnessFunctions)
                 .chapters(chapterDtos)
-                .patterns(patterns)
+                .patterns(notDeleted)
                 .build();
     }
 }

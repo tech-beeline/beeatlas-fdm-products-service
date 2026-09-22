@@ -52,13 +52,6 @@ public class CustomExceptionHandler {
                 .body(new ErrorMessageDTO(e.getMessage()));
     }
 
-    /**
-     * Catch-all for anything not covered by a more specific handler above — by construction that
-     * means an unanticipated bug (NPE, ClassCastException, a broken query, ...), not a deliberate
-     * business-rule signal (those all have their own handler with a purposeful message). The raw
-     * message can carry internal details (class/method names, SQL, URLs) — log it in full, but never
-     * forward it to the caller.
-     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorMessageDTO> handleException(RuntimeException e) {
         log.error(e.getMessage(), e);
@@ -91,25 +84,18 @@ public class CustomExceptionHandler {
                 .body(new ErrorMessageDTO(e.getMessage()));
     }
 
-    /**
-     * Отсутствует обязательный query-параметр. Без этого обработчика исключение — checked
-     * {@link javax.servlet.ServletException} — доходит до {@link #handleException(Exception)}
-     * и клиент получает 500 вместо 400.
-     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorMessageDTO> handleMissingRequestParameter(MissingServletRequestParameterException e) {
         log.warn(e.getMessage());
         return badRequest("Не передан обязательный параметр запроса '" + e.getParameterName() + "'");
     }
 
-    /** Отсутствует обязательный заголовок запроса — см. комментарий к обработчику выше. */
     @ExceptionHandler(MissingRequestHeaderException.class)
     public ResponseEntity<ErrorMessageDTO> handleMissingRequestHeader(MissingRequestHeaderException e) {
         log.warn(e.getMessage());
         return badRequest("Не передан обязательный заголовок запроса '" + e.getHeaderName() + "'");
     }
 
-    /** Прочие ошибки привязки запроса (отсутствующая cookie и т. п.) — тоже вина клиента, а не сервера. */
     @ExceptionHandler(ServletRequestBindingException.class)
     public ResponseEntity<ErrorMessageDTO> handleRequestBinding(ServletRequestBindingException e) {
         log.warn(e.getMessage());
@@ -173,7 +159,6 @@ public class CustomExceptionHandler {
                 .body(new ErrorMessageDTO("Метод не разрешён для данного ресурса."));
     }
 
-    /** Last-resort net below {@link #handleException(RuntimeException)} — a checked exception. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorMessageDTO> handleException(Exception e) {
         log.error(e.getMessage(), e);

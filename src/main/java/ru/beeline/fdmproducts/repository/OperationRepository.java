@@ -42,8 +42,7 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             JOIN product.containers_product cp ON i.container_id = cp.id
             JOIN product.product_branch pb ON cp.product_branch_id = pb.id
             JOIN product.product p ON p.alias = pb.alias
-            WHERE o.name ILIKE :name
-              AND (CAST(:type AS text) IS NULL OR o.type ILIKE CAST(:type AS text))
+            WHERE (CAST(:type AS text) IS NULL OR lower(o.type) = lower(CAST(:type AS text)))
               AND (CAST(:protocol AS text) IS NULL OR i.protocol ILIKE CAST(:protocol AS text))
               AND o.deleted_date IS NULL
               AND i.deleted_date IS NULL
@@ -51,10 +50,9 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
               AND o.interface_id IN (:interfaceIds)
             ORDER BY o.id
             """, nativeQuery = true)
-    List<ArchOperationProjection> findMatchedArchOperations(@Param("name") String name,
-                                                            @Param("type") String type,
-                                                            @Param("protocol") String protocol,
-                                                            @Param("interfaceIds") List<Integer> interfaceIds);
+    List<ArchOperationProjection> findArchOperationsForMatching(@Param("type") String type,
+                                                                 @Param("protocol") String protocol,
+                                                                 @Param("interfaceIds") List<Integer> interfaceIds);
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 

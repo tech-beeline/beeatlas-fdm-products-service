@@ -13,6 +13,7 @@ import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
+import ru.beeline.fdmproducts.utils.OperationPathMatcher;
 
 import java.util.Collections;
 import java.util.List;
@@ -70,7 +71,9 @@ public class ArchOperationMatchingService {
         if (name == null || name.isBlank() || interfaceIds.isEmpty()) {
             return Collections.emptyList();
         }
-        return operationRepository.findMatchedArchOperations(name, type, protocol, interfaceIds);
+        return operationRepository.findArchOperationsForMatching(type, protocol, interfaceIds).stream()
+                .filter(candidate -> OperationPathMatcher.matches(candidate.getOpName(), name))
+                .toList();
     }
 
     /**

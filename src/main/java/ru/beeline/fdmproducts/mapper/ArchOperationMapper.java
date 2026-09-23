@@ -40,8 +40,10 @@ public class ArchOperationMapper {
                 .build();
     }
 
-    public MatchedArchOperationDTO mapToMatchedArchOperationDTO(ArchOperationProjection proj, String productCode) {
+    public MatchedArchOperationDTO mapToMatchedArchOperationDTO(ArchOperationProjection proj, String productCode,
+                                                                String requestedMethodName) {
         return MatchedArchOperationDTO.builder()
+                .requestedMethodName(requestedMethodName)
                 .id(proj.getOpId())
                 .name(proj.getOpName())
                 .type(proj.getOpType())

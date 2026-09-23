@@ -130,19 +130,20 @@ class ArchOperationMatchingServiceTest {
     @Test
     @DisplayName("Совпадения отдаются как есть, фильтры передаются в запрос без изменений")
     void passesFiltersToQuery() {
-        ArchOperationProjection projection = projection(5);
-        when(operationRepository.findMatchedArchOperations("/api/v1/orders", "GET", "REST", List.of(101)))
-                .thenReturn(List.of(projection));
+        ArchOperationProjection matching = projection(5, "/api/v1/orders/{id}");
+        ArchOperationProjection other = projection(6, "/api/v1/clients");
+        when(operationRepository.findArchOperationsForMatching("GET", "REST", List.of(101)))
+                .thenReturn(List.of(matching, other));
 
-        assertThat(service.findMatches("/api/v1/orders", "GET", "REST", List.of(101)))
-                .containsExactly(projection);
+        assertThat(service.findMatches("/api/v1/orders/42", "GET", "REST", List.of(101)))
+                .containsExactly(matching);
     }
 
     @Test
     @DisplayName("Автомат берёт первое совпадение и не фильтрует по протоколу")
     void firstMatchIgnoresProtocol() {
-        List<ArchOperationProjection> matches = List.of(projection(5), projection(6));
-        when(operationRepository.findMatchedArchOperations(eq("createOrder"), eq("SOAP"), eq(null), anyList()))
+        List<ArchOperationProjection> matches = List.of(projection(5, "createOrder"), projection(6, "createOrder"));
+        when(operationRepository.findArchOperationsForMatching(eq("SOAP"), eq(null), anyList()))
                 .thenReturn(matches);
 
         Optional<ArchOperationProjection> match = service.findFirstMatch("createOrder", "SOAP", List.of(101));
@@ -156,12 +157,13 @@ class ArchOperationMatchingServiceTest {
     void firstMatchRequiresType() {
         assertThat(service.findFirstMatch("createOrder", null, List.of(101))).isEmpty();
         assertThat(service.findFirstMatch("createOrder", " ", List.of(101))).isEmpty();
-        verify(operationRepository, never()).findMatchedArchOperations(any(), any(), any(), anyList());
+        verify(operationRepository, never()).findArchOperationsForMatching(any(), any(), anyList());
     }
 
-    private ArchOperationProjection projection(int opId) {
+    private ArchOperationProjection projection(int opId, String name) {
         ArchOperationProjection projection = org.mockito.Mockito.mock(ArchOperationProjection.class);
         when(projection.getOpId()).thenReturn(opId);
+        when(projection.getOpName()).thenReturn(name);
         return projection;
     }
 }

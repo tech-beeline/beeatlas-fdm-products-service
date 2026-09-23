@@ -16,29 +16,12 @@ import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
 
-    /**
-     * Единственный предикат сопоставления «метод ↔ архитектурная операция» в сервисе: по нему и
-     * автоматическое сопоставление discovered-операций проставляет connection_operation_id
-     * (ComparisonOperationsService), и поиск кандидатов из UI (POST /api/v1/operation/search-matched).
-     * Разводить их нельзя — иначе UI покажет совпадения, которых автомат не сделает, и наоборот.
-     * <p>
-     * Выборка отбирает кандидатов области поиска, а имя метода сравнивает уже Java —
-     * {@link ru.beeline.fdmproducts.utils.OperationPathMatcher}: имена path-параметров не важны,
-     * query отбрасывается, «_» и «%» — обычные символы, конкретное значение совпадает с шаблоном
-     * каталога, но не наоборот. type сравнивается здесь через lower() — регистронезависимое
-     * равенство целиком. {@code type} и {@code protocol} необязательны:
-     * null снимает соответствующий фильтр. Переданный protocol отбрасывает интерфейсы с
-     * {@code protocol IS NULL} — сравнение с NULL не истинно. Удалённые записи отсекаются на каждом
-     * уровне цепочки; product фильтровать не по чему — в таблице нет deleted_date, продукты удаляются
-     * физически. Порядок по o.id — чтобы «первое совпадение» у автомата было воспроизводимым.
-     * <p>
-     * {@code interfaceIds} не должен быть пустым: {@code IN ()} — синтаксическая ошибка в SQL.
-     */
     @Query(value = """
             SELECT
                 o.id as opId,
@@ -213,8 +196,8 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     void deleteByIdIn(@Param("ids") List<Integer> ids);
 
     Optional<Operation> findByNameAndTypeAndInterfaceIdAndDeletedDateIsNull(String name,
-                                                                              String type,
-                                                                              Integer interfaceId);
+                                                                            String type,
+                                                                            Integer interfaceId);
 
     Optional<Operation> findByNameAndTypeAndInterfaceId(String name, String type, Integer interfaceId);
 
@@ -242,4 +225,6 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                                          @Param("interfaceCode") String interfaceCode,
                                          @Param("name") String name,
                                          @Param("type") String type);
+
+    List<Operation> findAllByIdInAndDeletedDateIsNull(Set<Integer> ids);
 }

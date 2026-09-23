@@ -219,12 +219,12 @@ public class E2eV2Service {
         if (connectionOperationIds.isEmpty()) {
             return;
         }
-        Set<Integer> existingIds = operationRepository.findAllById(connectionOperationIds).stream()
+        Set<Integer> existingIds = operationRepository.findAllByIdInAndDeletedDateIsNull(connectionOperationIds).stream()
                 .map(Operation::getId)
                 .collect(Collectors.toSet());
         if (!existingIds.containsAll(connectionOperationIds)) {
             throw new IllegalArgumentException(
-                    "Для одной из операцией не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
+                    "Для одной из операций не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
         }
     }
 

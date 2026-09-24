@@ -14,4 +14,5 @@ public interface ArchOperationProjection {
     Integer getProductId();
     String getProductName();
     String getProductAlias();
+    String getProductBranchName();
 }

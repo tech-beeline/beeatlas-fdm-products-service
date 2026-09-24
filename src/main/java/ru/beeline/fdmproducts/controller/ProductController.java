@@ -20,6 +20,7 @@ import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.InfraService;
+import ru.beeline.fdmproducts.service.ProductPatternsService;
 import ru.beeline.fdmproducts.service.ProductService;
 
 import java.util.List;
@@ -40,6 +41,9 @@ public class ProductController {
 
     @Autowired
     private InfraService infraService;
+
+    @Autowired
+    private ProductPatternsService productPatternsService;
 
 
     @ApiErrorCodes({400, 404, 500})
@@ -121,8 +125,9 @@ public class ProductController {
     @ApiErrorCodes({400, 404, 500})
     @GetMapping("/v1/product/{id}/tc-implementation")
     @Operation(summary = "Идентификаторы технологических возможностей (ТС), реализованных в продукте")
-    public List<Integer> getTCIdsByProductId(@Parameter(description = "Числовой id продукта") @PathVariable Integer id) {
-        return productService.getTCIdsByProductId(id);
+    public List<Integer> getTCIdsByProductId(@Parameter(description = "Числовой id продукта") @PathVariable Integer id,
+                                             @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
+        return productService.getTCIdsByProductId(id, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -195,8 +200,21 @@ public class ProductController {
     @Operation(summary = "Паттерны Techradar, связанные с продуктом")
     public List<PatternDTO> getProductPatterns(@Parameter(description = "Alias продукта") @PathVariable(value = "alias", required = false) String alias,
                                                @Parameter(description = "Идентификатор источника") @RequestParam(value = "source-id", required = false) Integer sourceId,
-                                               @Parameter(description = "Тип источника") @RequestParam(value = "source-type", required = false) String sourceType) {
-        return productService.getProductPatterns(alias, sourceId, sourceType);
+                                               @Parameter(description = "Тип источника") @RequestParam(value = "source-type", required = false) String sourceType,
+                                               @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра. Оценки паттернов есть только у main, для других веток — пустой список.") @RequestParam(required = false) String branch) {
+        return productService.getProductPatterns(alias, sourceId, sourceType, branch);
+    }
+
+    @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v2/product/{alias}/patterns")
+    @Operation(summary = "Актуальные паттерны продукта на ветке (v2)",
+            description = "Актуальные записи product_patterns по alias и branch (без branch — main). "
+                    + "Поля паттерна подставляются из Techradar, если code найден.")
+    public List<ProductPatternV2DTO> getProductPatternsV2(
+            @Parameter(description = "Alias продукта") @PathVariable String alias,
+            @Parameter(description = "Ветка продукта; не передан или пустой — main")
+            @RequestParam(required = false) String branch) {
+        return productPatternsService.getProductPatternsV2(alias, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -219,8 +237,9 @@ public class ProductController {
     @ApiErrorCodes({400, 404, 500})
     @GetMapping("/v1/product/{cmdb}/interface/arch")
     @Operation(summary = "Интерфейсы из модели архитектуры (Structurizr)")
-    public List<ProductInterfaceDTO> getProductsFromStructurizr(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb) {
-        return productService.getProductsFromStructurizr(cmdb);
+    public List<ProductInterfaceDTO> getProductsFromStructurizr(@Parameter(description = "CMDB-мнемоника продукта") @PathVariable String cmdb,
+                                                                @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
+        return productService.getProductsFromStructurizr(cmdb, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -260,8 +279,9 @@ public class ProductController {
     @GetMapping("/v1/product/{cmdb}/container")
     @Operation(summary = "Контейнеры продукта с интерфейсами и методами (Structurizr)")
     public List<ContainerInterfacesDTO> getContainersFromStructurizr(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb,
+                                                                     @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch,
                                                                      @Parameter(description = "Показывать скрытые элементы") @RequestParam(value = "show-hidden", required = false, defaultValue = "false") Boolean showHidden) {
-        return productService.getContainersFromStructurizr(cmdb, showHidden);
+        return productService.getContainersFromStructurizr(cmdb, branch, showHidden);
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -290,8 +310,9 @@ public class ProductController {
     @Operation(summary = "ТС в контейнерах продукта",
             description = "Фильтр по alias продукта и/или списку имён контейнеров.")
     public List<TcDTO> getTcByContainerProduct(@Parameter(description = "Alias продукта") @RequestParam(value = "alias", required = false) String alias,
-                                               @Parameter(description = "Имена контейнеров (повторяющийся параметр)") @RequestParam(value = "containers", required = false) List<String> containers) {
-        return productService.getTcByContainerProduct(alias, containers);
+                                               @Parameter(description = "Имена контейнеров (повторяющийся параметр)") @RequestParam(value = "containers", required = false) List<String> containers,
+                                               @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
+        return productService.getTcByContainerProduct(alias, containers, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -339,6 +360,16 @@ public class ProductController {
     }
 
     @ApiErrorCodes({400, 404, 500})
+    @GetMapping("/v1/container/by-codes")
+    @Operation(summary = "Краткие карточки контейнеров по списку кодов",
+            description = "Пакетное получение id, name, code контейнера и alias/name владеющего продукта по "
+                    + "CMDB-кодам контейнеров — глобальный поиск, продукт-владелец указывать не нужно.")
+    public List<ContainerByCodeDTO> getContainersByCodes(
+            @Parameter(description = "query-параметр codes") @RequestParam(required = false) List<String> codes) {
+        return productService.getContainersByCodes(codes);
+    }
+
+    @ApiErrorCodes({400, 404, 409, 500})
     @PostMapping("/v1/product/{alias}/patterns/{source-type}")
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Связать паттерны Techradar с продуктом",
@@ -348,6 +379,26 @@ public class ProductController {
                                                    @RequestBody List<PostPatternProductDTO> postPatternProductDTOS,
                                                    @Parameter(description = "Идентификатор источника") @RequestParam(name = "source-id", required = false) Integer sourceId) {
         productService.postPatternProduct(alias, sourceType, postPatternProductDTOS, sourceId);
+        return new ResponseEntity<>(HttpStatus.CREATED);
+    }
+
+    @ApiErrorCodes({400, 404, 409, 500})
+    @PostMapping("/v2/product/{alias}/patterns/{source-type}")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Сохранить результат проверки паттернов продукта (v2)",
+            description = "Версионируемая запись в product.product_patterns с is_actual. "
+                    + "Тело как у v1. Query branch (default main) и source-id — как в постановке; "
+                    + "patterns_assessment / patterns_check не затрагиваются. Успех — 201 без тела.")
+    public ResponseEntity<Void> postPatternProductV2(
+            @Parameter(description = "Alias продукта") @PathVariable String alias,
+            @Parameter(description = "Тип источника (enum_source_type), например pipeline, nfr")
+            @PathVariable("source-type") String sourceType,
+            @RequestBody(required = false) List<PostPatternProductDTO> postPatternProductDTOS,
+            @Parameter(description = "Ветка продукта; не передан или пустой — main")
+            @RequestParam(required = false) String branch,
+            @Parameter(description = "Идентификатор источника; обязателен при identifySource = true")
+            @RequestParam(name = "source-id", required = false) Integer sourceId) {
+        productPatternsService.postPatternProductV2(alias, sourceType, branch, sourceId, postPatternProductDTOS);
         return new ResponseEntity<>(HttpStatus.CREATED);
     }
 
@@ -367,8 +418,9 @@ public class ProductController {
             description = "При ошибках валидации ответ может быть 207 Multi-Status с телом errorEntity.")
     public ResponseEntity<?> putProductRelations(@Parameter(description = "Alias продукта") @PathVariable String code,
                                                  @RequestBody List<ContainerDTO> containerDTO,
+                                                 @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра, имя хранится в нижнем регистре. Отсутствующая ветка создаётся.") @RequestParam(required = false) String branch,
                                                  @Parameter(description = "Происхождение данных (интеграция)") @RequestParam(name = "source", required = false) String source) {
-        ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code, source);
+        ValidationErrorResponse errorEntity = productService.createOrUpdateProductRelations(containerDTO, code, branch, source);
         if (errorEntity.hasErrors()) {
             return ResponseEntity.status(207).body(Map.of("errorEntity", errorEntity));
         }

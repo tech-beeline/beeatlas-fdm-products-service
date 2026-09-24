@@ -36,4 +36,7 @@ public class E2e {
 
     @Column(name = "bi_step_code")
     private String biStepCode;
+
+    @Column(name = "source")
+    private String source;
 }

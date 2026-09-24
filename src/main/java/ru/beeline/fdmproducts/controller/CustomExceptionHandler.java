@@ -11,6 +11,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.ServletRequestBindingException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
@@ -51,11 +54,11 @@ public class CustomExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorMessageDTO> handleException(RuntimeException e) {
-        log.error(e.getMessage());
+        log.error(e.getMessage(), e);
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
-                .body(new ErrorMessageDTO(e.getMessage()));
+                .body(new ErrorMessageDTO("Внутренняя ошибка сервера"));
     }
 
     @ExceptionHandler(AuthServiceUnavailableException.class)
@@ -79,6 +82,31 @@ public class CustomExceptionHandler {
         log.error(e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessageDTO(e.getMessage()));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorMessageDTO> handleMissingRequestParameter(MissingServletRequestParameterException e) {
+        log.warn(e.getMessage());
+        return badRequest("Не передан обязательный параметр запроса '" + e.getParameterName() + "'");
+    }
+
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ErrorMessageDTO> handleMissingRequestHeader(MissingRequestHeaderException e) {
+        log.warn(e.getMessage());
+        return badRequest("Не передан обязательный заголовок запроса '" + e.getHeaderName() + "'");
+    }
+
+    @ExceptionHandler(ServletRequestBindingException.class)
+    public ResponseEntity<ErrorMessageDTO> handleRequestBinding(ServletRequestBindingException e) {
+        log.warn(e.getMessage());
+        return badRequest("Некорректные параметры запроса: " + e.getMessage());
+    }
+
+    private ResponseEntity<ErrorMessageDTO> badRequest(String message) {
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO(message));
     }
 
     @ExceptionHandler(UnauthorizedException.class)
@@ -129,5 +157,14 @@ public class CustomExceptionHandler {
                 .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
                 .body(new ErrorMessageDTO("Метод не разрешён для данного ресурса."));
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorMessageDTO> handleException(Exception e) {
+        log.error(e.getMessage(), e);
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO("Внутренняя ошибка сервера"));
     }
 }

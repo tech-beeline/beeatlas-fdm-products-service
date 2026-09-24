@@ -42,20 +42,23 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
 
     @Query(value = "SELECT p.*"
             + "FROM product.product p "
-            + "JOIN product.containers_product cp ON cp.product_id = p.id "
+            + "JOIN product.product_branch pb ON pb.alias = p.alias "
+            + "JOIN product.containers_product cp ON cp.product_branch_id = pb.id "
             + "WHERE cp.id = :id", nativeQuery = true)
     Optional<Product> findProductByContainerProductID(@Param("id") Integer id);
 
     @Query(value = "SELECT p.*"
             + "FROM product.product p "
-            + "JOIN product.containers_product cp ON cp.product_id = p.id "
+            + "JOIN product.product_branch pb ON pb.alias = p.alias "
+            + "JOIN product.containers_product cp ON cp.product_branch_id = pb.id "
             + "JOIN product.interface i ON cp.id = i.container_id "
             + "WHERE i.id = :id", nativeQuery = true)
     Optional<Product> findProductByInterfaceId(@Param("id") Integer id);
 
     @Query(value = "SELECT p.*"
             + "FROM product.product p "
-            + "JOIN product.containers_product cp ON cp.product_id = p.id "
+            + "JOIN product.product_branch pb ON pb.alias = p.alias "
+            + "JOIN product.containers_product cp ON cp.product_branch_id = pb.id "
             + "JOIN product.interface i ON cp.id = i.container_id "
             + "JOIN product.operation o ON o.interface_id = i.id "
             + "WHERE o.id = :id", nativeQuery = true)

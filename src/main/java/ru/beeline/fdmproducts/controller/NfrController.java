@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -32,6 +33,8 @@ import java.util.List;
 @Tag(name = "nfr", description = "Product API")
 public class NfrController {
 
+    private static final String BRANCH_DESCRIPTION = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.";
+
     @Autowired
     private NonFunctionalRequirementService nonFunctionalRequirementService;
 
@@ -53,10 +56,9 @@ public class NfrController {
     @Operation(summary = "Получить все актуальные версии требований NFR, связанные с продуктом")
     public ResponseEntity<List<NfrItemProductDTO>> getProductNfr(@RequestParam(value = "id", required = false) Integer id,
                                                                  @RequestParam(value = "alias", required = false) String alias,
-                                                                 @RequestParam(value = "api-key", required = false) String apiKey) {
-        Integer productId = nonFunctionalRequirementService.resolveProductId(id, alias, apiKey);
-        List<NfrItemProductDTO> nfrList = nonFunctionalRequirementService.getProductNfr(productId);
-        return ResponseEntity.ok(nfrList);
+                                                                 @RequestParam(value = "api-key", required = false) String apiKey,
+                                                                 @Parameter(description = BRANCH_DESCRIPTION) @RequestParam(required = false) String branch) {
+        return ResponseEntity.ok(nonFunctionalRequirementService.getProductNfr(id, alias, apiKey, branch));
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -64,9 +66,9 @@ public class NfrController {
     @Operation(summary = "Получить NFR продукта (v2): справочник FF из FF Manager")
     public ResponseEntity<List<NfrItemProductV2DTO>> getProductNfrV2(@RequestParam(value = "id", required = false) Integer id,
                                                                      @RequestParam(value = "alias", required = false) String alias,
-                                                                     @RequestParam(value = "api-key", required = false) String apiKey) {
-        Integer productId = nonFunctionalRequirementService.resolveProductId(id, alias, apiKey);
-        return ResponseEntity.ok(nonFunctionalRequirementService.getProductNfrV2(productId));
+                                                                     @RequestParam(value = "api-key", required = false) String apiKey,
+                                                                     @Parameter(description = BRANCH_DESCRIPTION) @RequestParam(required = false) String branch) {
+        return ResponseEntity.ok(nonFunctionalRequirementService.getProductNfrV2(id, alias, apiKey, branch));
     }
 
     @ApiErrorCodes({400, 404, 500})
@@ -75,8 +77,9 @@ public class NfrController {
     public ResponseEntity<Void> deleteBeeatlasProductNfrRelations(@RequestParam(value = "id", required = false) Integer id,
                                                                   @RequestParam(value = "alias", required = false) String alias,
                                                                   @RequestParam(value = "api-key", required = false) String apiKey,
+                                                                  @Parameter(description = BRANCH_DESCRIPTION) @RequestParam(required = false) String branch,
                                                                   @RequestBody(required = false) List<Integer> relationIds) {
-        nonFunctionalRequirementService.deleteBeeatlasProductNfrRelations(id, alias, apiKey, relationIds);
+        nonFunctionalRequirementService.deleteBeeatlasProductNfrRelations(id, alias, apiKey, branch, relationIds);
         return ResponseEntity.ok().build();
     }
 
@@ -86,8 +89,9 @@ public class NfrController {
     public ResponseEntity<Void> deleteProductNfr(@PathVariable("req-id") Integer reqId,
                                                  @RequestParam(value = "id", required = false) Integer id,
                                                  @RequestParam(value = "alias", required = false) String alias,
-                                                 @RequestParam(value = "api-key", required = false) String apiKey) {
-        nonFunctionalRequirementService.deleteProductNfr(reqId, id, alias, apiKey);
+                                                 @RequestParam(value = "api-key", required = false) String apiKey,
+                                                 @Parameter(description = BRANCH_DESCRIPTION) @RequestParam(required = false) String branch) {
+        nonFunctionalRequirementService.deleteProductNfr(reqId, id, alias, apiKey, branch);
         return ResponseEntity.ok().build();
     }
 
@@ -111,9 +115,10 @@ public class NfrController {
     public ResponseEntity<Void> addProductNfr(@RequestParam(value = "id", required = false) Integer id,
                                               @RequestParam(value = "alias", required = false) String alias,
                                               @RequestParam(value = "api-key", required = false) String apiKey,
+                                              @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра. Отсутствующая main создаётся, отсутствующая другая ветка — 404.") @RequestParam(required = false) String branch,
                                               @RequestHeader(value = "USER-ID", required = false) String userIdHeader,
                                               @RequestBody(required = false) List<Integer> nfrIds) {
-        nonFunctionalRequirementService.addProductNfr(id, alias, apiKey, userIdHeader, nfrIds);
+        nonFunctionalRequirementService.addProductNfr(id, alias, apiKey, branch, userIdHeader, nfrIds);
         return new ResponseEntity<>(HttpStatus.OK);
     }
 
@@ -126,8 +131,9 @@ public class NfrController {
             @PathVariable String id,
             @RequestParam(value = "id", required = false) Integer productId,
             @RequestParam(required = false) String alias,
-            @RequestParam(value = "api-key", required = false) String apiKey) {
-        nonFunctionalRequirementService.actualizeRequirementOnProduct(id, productId, alias, apiKey);
+            @RequestParam(value = "api-key", required = false) String apiKey,
+            @Parameter(description = BRANCH_DESCRIPTION) @RequestParam(required = false) String branch) {
+        nonFunctionalRequirementService.actualizeRequirementOnProduct(id, productId, alias, apiKey, branch);
         return ResponseEntity.ok().build();
     }
 

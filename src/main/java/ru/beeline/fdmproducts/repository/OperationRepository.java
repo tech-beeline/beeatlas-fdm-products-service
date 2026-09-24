@@ -16,20 +16,43 @@ import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Repository
 public interface OperationRepository extends JpaRepository<Operation, Integer> {
 
 
-    @Query(value = "SELECT * FROM product.operation o " +
-            "WHERE o.name ILIKE :name " +
-            "AND o.type ILIKE :type " +
-            "AND o.deleted_date IS NULL " +
-            "AND o.interface_id IN (:ids) " +
-            "LIMIT 1", nativeQuery = true)
-    Optional<Operation> findByNameAndTypeILikeNative(@Param("name") String name,
-                                                     @Param("type") String type,
-                                                     @Param("ids") List<Integer> ids);
+    @Query(value = """
+            SELECT
+                o.id as opId,
+                o.name as opName,
+                o.type as opType,
+                i.id as interfaceId,
+                i.name as interfaceName,
+                i.code as interfaceCode,
+                cp.id as containerId,
+                cp.name as containerName,
+                cp.code as containerCode,
+                p.id as productId,
+                p.name as productName,
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
+            WHERE (CAST(:type AS text) IS NULL OR lower(o.type) = lower(CAST(:type AS text)))
+              AND (CAST(:protocol AS text) IS NULL OR i.protocol ILIKE CAST(:protocol AS text))
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+              AND o.interface_id IN (:interfaceIds)
+            ORDER BY o.id
+            """, nativeQuery = true)
+    List<ArchOperationProjection> findArchOperationsForMatching(@Param("type") String type,
+                                                                 @Param("protocol") String protocol,
+                                                                 @Param("interfaceIds") List<Integer> interfaceIds);
 
     List<Operation> findAllByInterfaceId(Integer interfaceId);
 
@@ -63,11 +86,13 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code as containerCode,
                 p.id as productId,
                 p.name as productName,
-                p.alias as productAlias
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
-            JOIN product.product p ON cp.product_id = p.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
             WHERE o.name ILIKE CONCAT('%', ?1, '%')
               AND (?2 IS NULL OR o.type ILIKE ?2)
               AND o.deleted_date IS NULL
@@ -91,11 +116,13 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code as containerCode,
                 p.id as productId,
                 p.name as productName,
-                p.alias as productAlias
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
             FROM product.operation o
             JOIN product.interface i ON o.interface_id = i.id
             JOIN product.containers_product cp ON i.container_id = cp.id
-            JOIN product.product p ON cp.product_id = p.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
             WHERE o.name ILIKE CONCAT('%', ?1, '%')
               AND o.deleted_date IS NULL
               AND i.deleted_date IS NULL
@@ -118,11 +145,13 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
                 cp.code AS containerCode,
                 p.id AS productId,
                 p.name AS productName,
-                p.alias AS productAlias
+                p.alias AS productAlias,
+                pb.branchName AS productBranchName
             FROM Operation o
             JOIN o.interfaceObj i
             JOIN i.containerProduct cp
-            JOIN cp.product p
+            JOIN cp.productBranch pb
+            JOIN pb.product p
             WHERE o.id IN :connectionOperationIds
               AND o.deletedDate IS NULL
               AND i.deletedDate IS NULL
@@ -135,12 +164,14 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     @EntityGraph(attributePaths = {
             "interfaceObj",
             "interfaceObj.containerProduct",
-            "interfaceObj.containerProduct.product"
+            "interfaceObj.containerProduct.productBranch",
+            "interfaceObj.containerProduct.productBranch.product"
     })
     @Query("SELECT o FROM Operation o " +
             "LEFT JOIN o.interfaceObj i " +
             "LEFT JOIN i.containerProduct c " +
-            "LEFT JOIN c.product p " +
+            "LEFT JOIN c.productBranch pb " +
+            "LEFT JOIN pb.product p " +
             "WHERE o.tcId = :tcId " +
             "AND o.deletedDate IS NULL " +
             "AND (i IS NULL OR i.deletedDate IS NULL) " +
@@ -165,8 +196,35 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
     void deleteByIdIn(@Param("ids") List<Integer> ids);
 
     Optional<Operation> findByNameAndTypeAndInterfaceIdAndDeletedDateIsNull(String name,
-                                                                              String type,
-                                                                              Integer interfaceId);
+                                                                            String type,
+                                                                            Integer interfaceId);
 
     Optional<Operation> findByNameAndTypeAndInterfaceId(String name, String type, Integer interfaceId);
+
+    @Query(value = """
+            SELECT o.id
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            WHERE LOWER(pb.alias) = LOWER(CAST(:productAlias AS text))
+              AND LOWER(pb.branch_name) = LOWER(CAST(:branch AS text))
+              AND (CAST(:containerCode AS text) IS NULL OR LOWER(cp.code) = LOWER(CAST(:containerCode AS text)))
+              AND (CAST(:interfaceCode AS text) IS NULL OR LOWER(i.code) = LOWER(CAST(:interfaceCode AS text)))
+              AND LOWER(o.name) = LOWER(CAST(:name AS text))
+              AND LOWER(o.type) = LOWER(CAST(:type AS text))
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+            ORDER BY o.id
+            LIMIT 2
+            """, nativeQuery = true)
+    List<Integer> findIdsForSequenceStep(@Param("productAlias") String productAlias,
+                                         @Param("branch") String branch,
+                                         @Param("containerCode") String containerCode,
+                                         @Param("interfaceCode") String interfaceCode,
+                                         @Param("name") String name,
+                                         @Param("type") String type);
+
+    List<Operation> findAllByIdInAndDeletedDateIsNull(Set<Integer> ids);
 }

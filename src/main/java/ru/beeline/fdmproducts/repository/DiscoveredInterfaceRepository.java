@@ -14,6 +14,7 @@ import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.Product;
 
 import javax.transaction.Transactional;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -76,6 +77,23 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     Optional<DiscoveredInterface> findBySourceAndProductIdAndExternalIdIgnoreCase(String source, Integer productId, String externalId);
 
     List<DiscoveredInterface> findAllBySourceAndExternalIdIgnoreCase(String source, String externalId);
+
+    Optional<DiscoveredInterface> findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(String source,
+                                                                                            Integer productId,
+                                                                                            String externalId);
+
+    List<DiscoveredInterface> findAllBySourceIgnoreCaseAndExternalIdIgnoreCase(String source, String externalId);
+
+    @Query("""
+            SELECT di FROM DiscoveredInterface di
+            WHERE LOWER(di.source) = LOWER(:source)
+              AND LOWER(di.externalId) IN :codes
+            """)
+    List<DiscoveredInterface> findAllBySourceAndExternalIdInIgnoreCase(@Param("source") String source,
+                                                                       @Param("codes") Collection<String> codes);
+
+
+    List<DiscoveredInterface> findAllByProjectIdAndSourceIgnoreCase(Integer projectId, String source);
 
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);

@@ -15,5 +15,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class RequirementProductDTO {
     private String alias;
+    private String branch;
     private String source;
 }

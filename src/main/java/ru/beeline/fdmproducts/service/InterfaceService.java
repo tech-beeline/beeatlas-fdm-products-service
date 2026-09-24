@@ -26,6 +26,8 @@ public class InterfaceService {
     private InterfaceRepository interfaceRepository;
     @Autowired
     private DiscoveredOperationRepository discoveredOperationRepository;
+    @Autowired
+    private ProductBranchService productBranchService;
 
 
     public void handConnection(ConnectionRequestDTO request) {
@@ -40,14 +42,19 @@ public class InterfaceService {
         DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(mapicInterfaceId)
                 .orElseThrow(() -> new IllegalArgumentException("DiscoveredInterface отсутствует в БД"));
 
+        if (archInterfaceId != null) {
+            interfaceRepository.findById(archInterfaceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Interface отсутствует в БД"));
+            if (!productBranchService.isInterfaceInDefaultBranch(archInterfaceId)) {
+                throw new IllegalArgumentException("Сопоставление возможно только с интерфейсом ветки main");
+            }
+        }
+
         LocalDateTime now = LocalDateTime.now();
         discoveredInterface.setConnectionInterfaceId(archInterfaceId);
         discoveredInterface.setUpdatedDate(now);
 
         if (archInterfaceId != null) {
-            interfaceRepository.findById(archInterfaceId)
-                    .orElseThrow(() -> new IllegalArgumentException("Interface отсутствует в БД"));
-
             discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(archInterfaceId, mapicInterfaceId);
 
         } else {

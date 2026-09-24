@@ -18,27 +18,27 @@ import java.util.Optional;
 public interface NonFunctionalRequirementRepository extends JpaRepository<NonFunctionalRequirement, Integer> {
 
     @EntityGraph(attributePaths = {"nfr", "nfr.core"})
-    @Query("SELECT nfr FROM NonFunctionalRequirement nfr WHERE nfr.product.id = :productId")
-    List<NonFunctionalRequirement> findByProductIdWithNfrAndCore(@Param("productId") Integer productId);
+    @Query("SELECT nfr FROM NonFunctionalRequirement nfr WHERE nfr.productBranch.id = :productBranchId")
+    List<NonFunctionalRequirement> findByProductBranchIdWithNfrAndCore(@Param("productBranchId") Integer productBranchId);
 
-    List<NonFunctionalRequirement> findByProductId(Integer productId);
+    List<NonFunctionalRequirement> findByProductBranch_Id(Integer productBranchId);
 
     List<NonFunctionalRequirement> findByNfrId(Integer nfrId);
 
-    @Query("SELECT DISTINCT nfr.nfr.id FROM NonFunctionalRequirement nfr WHERE nfr.product.id = :productId")
-    List<Integer> findDistinctNfrEnumIdsByProductId(@Param("productId") Integer productId);
+    @Query("SELECT DISTINCT nfr.nfr.id FROM NonFunctionalRequirement nfr WHERE nfr.productBranch.id = :productBranchId")
+    List<Integer> findDistinctNfrEnumIdsByProductBranchId(@Param("productBranchId") Integer productBranchId);
 
-    Optional<NonFunctionalRequirement> findByProduct_IdAndNfr_Id(Integer productId, Integer nfrId);
+    Optional<NonFunctionalRequirement> findByProductBranch_IdAndNfr_Id(Integer productBranchId, Integer nfrId);
 
-    @Query("SELECT nfr FROM NonFunctionalRequirement nfr WHERE nfr.product.id = :productId AND nfr.nfr.id IN :nfrIds")
-    List<NonFunctionalRequirement> findByProductIdAndNfrIds(@Param("productId") Integer productId,
-                                                            @Param("nfrIds") List<Integer> nfrIds);
+    @Query("SELECT nfr FROM NonFunctionalRequirement nfr WHERE nfr.productBranch.id = :productBranchId AND nfr.nfr.id IN :nfrIds")
+    List<NonFunctionalRequirement> findByProductBranchIdAndNfrIds(@Param("productBranchId") Integer productBranchId,
+                                                                  @Param("nfrIds") List<Integer> nfrIds);
 
-    @EntityGraph(attributePaths = {"product"})
+    @EntityGraph(attributePaths = {"productBranch"})
     @Query("SELECT rel FROM NonFunctionalRequirement rel WHERE rel.id IN :ids")
-    List<NonFunctionalRequirement> findAllByIdInWithProduct(@Param("ids") List<Integer> ids);
+    List<NonFunctionalRequirement> findAllByIdInWithProductBranch(@Param("ids") List<Integer> ids);
 
-    @EntityGraph(attributePaths = {"product"})
+    @EntityGraph(attributePaths = {"productBranch", "productBranch.product"})
     @Query("SELECT r FROM NonFunctionalRequirement r WHERE r.nfr.id = :nfrId")
-    List<NonFunctionalRequirement> findByNfrIdWithProduct(@Param("nfrId") Integer nfrId);
+    List<NonFunctionalRequirement> findByNfrIdWithProductBranch(@Param("nfrId") Integer nfrId);
 }

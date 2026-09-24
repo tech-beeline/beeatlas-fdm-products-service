@@ -62,6 +62,10 @@ public class DiscoveredInterface {
     @JoinColumn(name = "product_id")
     private Product product;
 
+    /** Проект, из задачи которого пришёл интерфейс (source = ProjectTask); NULL для остальных источников. */
+    @Column(name = "project_id")
+    private Integer projectId;
+
     @Column(name = "created_date")
     private LocalDateTime createdDate;
 

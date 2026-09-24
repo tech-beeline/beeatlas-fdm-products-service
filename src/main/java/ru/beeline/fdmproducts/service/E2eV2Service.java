@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.Sla;
@@ -60,8 +61,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class E2eV2Service {
 
-    private static final String SOURCE_SPARX = "SPARX";
+    private static final String DEFAULT_SOURCE = "SPARX";
     private static final String ENTITY_TYPE_DISCOVERED_OPERATION = "discovered_operation";
+    private static final int PRODUCT_ALIAS_MAX_LENGTH = 255;   // product.alias varchar(255)
+    private static final int PRODUCT_NAME_MAX_LENGTH = 250;   // product.name  varchar(250)
+    /** discovered_operation.rps/latency/error_rate NUMERIC(15,5) — 10 знаков до запятой. */
+    private static final java.math.BigDecimal SLA_MAX_EXCLUSIVE = new java.math.BigDecimal("1E+10");
 
     private final ProductRepository productRepository;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
@@ -72,9 +77,10 @@ public class E2eV2Service {
     private final SlaRepository slaRepository;
 
     @Transactional
-    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request) {
-        log.info("E2E v2 upsert: обработка, e2e.uid={}",
-                request != null && request.getE2e() != null ? request.getE2e().getUid() : null);
+    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request, String source) {
+        String requestSource = resolveRequestSource(source);
+        log.info("E2E v2 upsert: обработка, e2e.uid={}, source={}",
+                request != null && request.getE2e() != null ? request.getE2e().getUid() : null, requestSource);
         validateRequest(request);
         List<E2eProductDTO> products = defaultList(request.getProducts());
         List<E2eV2InterfaceDTO> interfaces = defaultList(request.getInterfaces());
@@ -83,11 +89,11 @@ public class E2eV2Service {
         log.info("входные данные, products={}, interfaces={}, operations={}, relations={}",
                 products.size(), interfaces.size(), operations.size(), relations.size());
         Map<String, Product> productByCmdb = upsertProducts(products);
-        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
-        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
+        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb, requestSource);
+        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, requestSource);
         validateRelations(relations, operationIdByUid);
         E2eInfoDTO e2eInfo = request.getE2e();
-        E2e e2e = upsertE2e(e2eInfo);
+        E2e e2e = upsertE2e(e2eInfo, requestSource);
         rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
         log.info("E2E v2 upsert: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
         return E2eUpsertResponseDTO.builder()
@@ -96,13 +102,6 @@ public class E2eV2Service {
                 .build();
     }
 
-    /**
-     * Partial update (SFDM-4092): every field is applied only if present in the request — a field
-     * left out is left untouched. Unlike {@link #upsert}, this never creates a new e2e (404 if
-     * {@code code} doesn't exist) and only replaces operationsRelations when that field is
-     * explicitly sent (previously operationsRelations was always fully replaced on every upsert,
-     * silently wiping it out on e.g. a rename-only call that omitted the field).
-     */
     @Transactional
     public E2eUpsertResponseDTO patch(String code, E2eV2PatchRequestDTO request) {
         log.info("E2E v2 patch: обработка, code={}", code);
@@ -131,8 +130,8 @@ public class E2eV2Service {
         e2e = e2eRepository.save(e2e);
 
         Map<String, Product> productByCmdb = resolveExistingProducts(products);
-        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb);
-        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode);
+        Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb, DEFAULT_SOURCE);
+        Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, DEFAULT_SOURCE);
 
         if (request.getOperationsRelations() != null) {
             List<E2eV2OperationRelationDTO> relations = defaultList(request.getOperationsRelations());
@@ -150,6 +149,17 @@ public class E2eV2Service {
                 .id(e2e.getId())
                 .code(e2e.getCode())
                 .build();
+    }
+
+    private String resolveRequestSource(String source) {
+        if (source == null) {
+            return DEFAULT_SOURCE;
+        }
+        String trimmed = source.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Параметр source не может быть пустым");
+        }
+        return trimmed;
     }
 
     private void validateRequest(E2eV2UpsertRequestDTO request) {
@@ -173,6 +183,8 @@ public class E2eV2Service {
         for (E2eProductDTO product : products) {
             requireNonBlank(product.getCmdb(), "products.cmdb");
             requireNonBlank(product.getName(), "products.name");
+            requireMaxLength(product.getCmdb(), "products.cmdb", PRODUCT_ALIAS_MAX_LENGTH);
+            requireMaxLength(product.getName(), "products.name", PRODUCT_NAME_MAX_LENGTH);
         }
     }
 
@@ -186,6 +198,7 @@ public class E2eV2Service {
 
     private void validateOperations(List<E2eV2OperationDTO> operations) {
         Set<String> uids = new HashSet<>();
+        Set<Integer> connectionOperationIds = new HashSet<>();
         for (E2eV2OperationDTO operation : operations) {
             requireNonBlank(operation.getUid(), "operations.uid");
             if (!uids.add(operation.getUid())) {
@@ -194,6 +207,51 @@ public class E2eV2Service {
             requireNonBlank(operation.getName(), "operations.name");
             requireNonBlank(operation.getType(), "operations.type");
             requireNonBlank(operation.getParentInterfaceCode(), "operations.parentInterfaceCode");
+            validateSla(operation);
+            if (operation.getConnectionOperationId() != null) {
+                connectionOperationIds.add(operation.getConnectionOperationId());
+            }
+        }
+        validateConnectionOperationIds(connectionOperationIds);
+    }
+
+    private void validateConnectionOperationIds(Set<Integer> connectionOperationIds) {
+        if (connectionOperationIds.isEmpty()) {
+            return;
+        }
+        Set<Integer> existingIds = operationRepository.findAllByIdInAndDeletedDateIsNull(connectionOperationIds).stream()
+                .map(Operation::getId)
+                .collect(Collectors.toSet());
+        if (!existingIds.containsAll(connectionOperationIds)) {
+            Set<Integer> missingIds = new HashSet<>(connectionOperationIds);
+            missingIds.removeAll(existingIds);
+            throw new IllegalArgumentException(
+                    "Для одной из операций не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре. "
+                            + "Отсутствующие id: " + missingIds);
+        }
+    }
+
+    private void validateSla(E2eV2OperationDTO operation) {
+        E2eOperationSlaDTO sla = operation.getSla();
+        if (sla == null) {
+            return;
+        }
+        requireFitsSlaColumn(sla.getRps(), "operations.sla.rps", operation.getUid());
+        requireFitsSlaColumn(sla.getLatency(), "operations.sla.latency", operation.getUid());
+        requireFitsSlaColumn(sla.getErrorRate(), "operations.sla.errorRate", operation.getUid());
+    }
+
+    private void requireFitsSlaColumn(Double value, String fieldName, String operationUid) {
+        if (value == null) {
+            return;
+        }
+        if (value.isNaN() || value.isInfinite()) {
+            throw new IllegalArgumentException("Поле " + fieldName + " не является конечным числом (операция "
+                    + operationUid + "): " + value);
+        }
+        if (java.math.BigDecimal.valueOf(value).abs().compareTo(SLA_MAX_EXCLUSIVE) >= 0) {
+            throw new IllegalArgumentException("Значение " + fieldName + " не помещается в колонку NUMERIC(15,5) "
+                    + "(операция " + operationUid + "): " + value);
         }
     }
 
@@ -255,7 +313,8 @@ public class E2eV2Service {
     }
 
     private Map<String, List<DiscoveredInterface>> upsertInterfaces(List<E2eV2InterfaceDTO> interfaces,
-                                                                      Map<String, Product> productByCmdb) {
+                                                                    Map<String, Product> productByCmdb,
+                                                                    String requestSource) {
         Map<String, List<DiscoveredInterface>> byCode = new HashMap<>();
         for (E2eV2InterfaceDTO dto : interfaces) {
             Product product = resolveProduct(dto.getParentProductCmdb(), productByCmdb);
@@ -263,7 +322,7 @@ public class E2eV2Service {
                 throw new IllegalArgumentException("Не найден parentProductCmdb для интерфейса: " + dto.getCode());
             }
             DiscoveredInterface iface = discoveredInterfaceRepository
-                    .findBySourceAndProductIdAndExternalIdIgnoreCase(SOURCE_SPARX, product.getId(), dto.getCode())
+                    .findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(requestSource, product.getId(), dto.getCode())
                     .orElse(null);
             if (iface == null) {
                 iface = DiscoveredInterface.builder()
@@ -272,13 +331,13 @@ public class E2eV2Service {
                         .product(product)
                         .apiLink(dto.getSpecLink())
                         .version(dto.getVersion())
-                        .source(SOURCE_SPARX)
+                        .source(requestSource)
                         .context(null)
                         .createdDate(LocalDateTime.now())
                         .build();
                 iface = discoveredInterfaceRepository.save(iface);
-                log.info("Создан discovered_interface, id={}, code={}, productId={}",
-                        iface.getId(), dto.getCode(), product.getId());
+                log.info("Создан discovered_interface, id={}, code={}, productId={}, source={}",
+                        iface.getId(), dto.getCode(), product.getId(), requestSource);
             } else {
                 updateInterface(iface, dto);
             }
@@ -320,53 +379,140 @@ public class E2eV2Service {
         return productRepository.findByAliasCaseInsensitive(cmdb);
     }
 
-    private Map<String, Integer> upsertOperations(List<E2eV2OperationDTO> operations,
-                                                    Map<String, List<DiscoveredInterface>> interfacesByCode) {
+    private Map<String, Integer> upsertOperations(List<E2eV2OperationDTO> disOperations,
+                                                  Map<String, List<DiscoveredInterface>> interfacesByCode,
+                                                  String requestSource) {
+        if (disOperations.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, DiscoveredInterface> interfaceByCodeKey =
+                resolveInterfacesForOperations(disOperations, interfacesByCode, requestSource);
+
+        Set<Integer> interfaceIds = interfaceByCodeKey.values().stream()
+                .map(DiscoveredInterface::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Map<String, DiscoveredOperation> existingByMatchKey = loadExistingOperationsByMatchKey(interfaceIds);
+
         Map<String, Integer> operationIdByUid = new HashMap<>();
-        for (E2eV2OperationDTO dto : operations) {
-            DiscoveredInterface iface = resolveInterface(dto.getParentInterfaceCode(), interfacesByCode);
-            DiscoveredOperation operation = discoveredOperationRepository
-                    .findByInterfaceIdAndNameAndTypeAllIgnoreCase(iface.getId(), dto.getName(), dto.getType())
-                    .orElse(null);
-            if (operation == null) {
+        for (E2eV2OperationDTO dto : disOperations) {
+            DiscoveredInterface iface = interfaceByCodeKey.get(normalizeKey(dto.getParentInterfaceCode()));
+            String matchKey = operationMatchKey(iface.getId(), dto.getName(), dto.getType());
+            DiscoveredOperation disOperation = existingByMatchKey.get(matchKey);
+            if (disOperation == null) {
                 DiscoveredOperation.DiscoveredOperationBuilder builder = DiscoveredOperation.builder()
                         .name(dto.getName())
                         .type(dto.getType())
                         .description(dto.getDescription())
                         .discoveredInterface(iface)
                         .context(null)
-                        .createdDate(LocalDateTime.now());
+                        .createdDate(LocalDateTime.now())
+                        .connectionOperationId(dto.getConnectionOperationId());
                 applySla(builder, dto.getSla());
-                operation = discoveredOperationRepository.save(builder.build());
+                disOperation = discoveredOperationRepository.save(builder.build());
+                existingByMatchKey.put(matchKey, disOperation);
                 log.info("Создана discovered_operation, id={}, uid={}, name={}, type={}",
-                        operation.getId(), dto.getUid(), dto.getName(), dto.getType());
+                        disOperation.getId(), dto.getUid(), dto.getName(), dto.getType());
             } else {
                 boolean update = false;
-                if (dto.getDescription() != null && !Objects.equals(operation.getDescription(), dto.getDescription())) {
-                    operation.setDescription(dto.getDescription());
+                if (dto.getDescription() != null && !Objects.equals(disOperation.getDescription(), dto.getDescription())) {
+                    disOperation.setDescription(dto.getDescription());
                     update = true;
                 }
-                if (dto.getSla() != null && !slaValuesEqual(operation, dto.getSla())) {
-                    operation.setRps(dto.getSla().getRps());
-                    operation.setLatency(dto.getSla().getLatency());
-                    operation.setErrorRate(dto.getSla().getErrorRate());
+                if (dto.getSla() != null && !slaValuesEqual(disOperation, dto.getSla())) {
+                    disOperation.setRps(dto.getSla().getRps());
+                    disOperation.setLatency(dto.getSla().getLatency());
+                    disOperation.setErrorRate(dto.getSla().getErrorRate());
                     update = true;
                 }
-                if (operation.getDeletedDate() != null) {
-                    operation.setDeletedDate(null);
+                if (dto.getConnectionOperationId() != null
+                        && !Objects.equals(disOperation.getConnectionOperationId(), dto.getConnectionOperationId())) {
+                    disOperation.setConnectionOperationId(dto.getConnectionOperationId());
+                    update = true;
+                }
+                if (disOperation.getDeletedDate() != null) {
+                    disOperation.setDeletedDate(null);
                     update = true;
                 }
                 if (update) {
-                    operation.setUpdatedDate(LocalDateTime.now());
-                    operation = discoveredOperationRepository.save(operation);
-                    log.info("Обновлена discovered_operation, id={}, uid={}", operation.getId(), dto.getUid());
+                    disOperation.setUpdatedDate(LocalDateTime.now());
+                    disOperation = discoveredOperationRepository.save(disOperation);
+                    log.info("Обновлена discovered_operation, id={}, uid={}", disOperation.getId(), dto.getUid());
                 } else {
-                    log.info("Найдена discovered_operation, id={}, uid={}", operation.getId(), dto.getUid());
+                    log.info("Найдена discovered_operation, id={}, uid={}", disOperation.getId(), dto.getUid());
                 }
             }
-            operationIdByUid.put(dto.getUid(), operation.getId());
+            operationIdByUid.put(dto.getUid(), disOperation.getId());
         }
         return operationIdByUid;
+    }
+
+    private Map<String, DiscoveredInterface> resolveInterfacesForOperations(
+            List<E2eV2OperationDTO> operations,
+            Map<String, List<DiscoveredInterface>> interfacesByCode,
+            String requestSource) {
+        Map<String, DiscoveredInterface> resolved = new HashMap<>();
+        Map<String, String> originalCodeByKey = new LinkedHashMap<>();
+
+        for (E2eV2OperationDTO dto : operations) {
+            String originalCode = dto.getParentInterfaceCode();
+            String key = normalizeKey(originalCode);
+            if (resolved.containsKey(key) || originalCodeByKey.containsKey(key)) {
+                continue;
+            }
+            List<DiscoveredInterface> inRequest = interfacesByCode.get(key);
+            if (inRequest != null) {
+                if (inRequest.size() == 1) {
+                    resolved.put(key, inRequest.get(0));
+                } else {
+                    throw new IllegalArgumentException("Неоднозначный parentInterfaceCode: " + originalCode
+                            + ". Интерфейс с таким code передан для нескольких продуктов");
+                }
+            } else {
+                originalCodeByKey.put(key, originalCode);
+            }
+        }
+
+        if (!originalCodeByKey.isEmpty()) {
+            List<DiscoveredInterface> dbRows = discoveredInterfaceRepository
+                    .findAllBySourceAndExternalIdInIgnoreCase(requestSource, originalCodeByKey.keySet());
+            Map<String, List<DiscoveredInterface>> byCodeKey = new HashMap<>();
+            for (DiscoveredInterface candidate : dbRows) {
+                if (candidate.getDeletedDate() != null) {
+                    continue;
+                }
+                byCodeKey.computeIfAbsent(normalizeKey(candidate.getExternalId()), k -> new ArrayList<>())
+                        .add(candidate);
+            }
+            for (Map.Entry<String, String> entry : originalCodeByKey.entrySet()) {
+                String key = entry.getKey();
+                String originalCode = entry.getValue();
+                List<DiscoveredInterface> matches = byCodeKey.getOrDefault(key, List.of());
+                if (matches.size() == 1) {
+                    resolved.put(key, matches.get(0));
+                } else if (matches.size() > 1) {
+                    throw new IllegalArgumentException("Неоднозначный parentInterfaceCode: " + originalCode);
+                } else {
+                    throw new IllegalArgumentException("Не найден parentInterfaceCode для операции: " + originalCode);
+                }
+            }
+        }
+        return resolved;
+    }
+
+    private Map<String, DiscoveredOperation> loadExistingOperationsByMatchKey(Set<Integer> interfaceIds) {
+        Map<String, DiscoveredOperation> byMatchKey = new HashMap<>();
+        if (interfaceIds.isEmpty()) {
+            return byMatchKey;
+        }
+        for (DiscoveredOperation op : discoveredOperationRepository.findAllByInterfaceIdIn(new ArrayList<>(interfaceIds))) {
+            byMatchKey.putIfAbsent(operationMatchKey(op.getInterfaceId(), op.getName(), op.getType()), op);
+        }
+        return byMatchKey;
+    }
+
+    private String operationMatchKey(Integer interfaceId, String name, String type) {
+        return interfaceId + "\0" + normalizeKey(name) + "\0" + normalizeKey(type);
     }
 
     private void applySla(DiscoveredOperation.DiscoveredOperationBuilder builder, E2eOperationSlaDTO sla) {
@@ -382,30 +528,7 @@ public class E2eV2Service {
                 && Objects.equals(operation.getErrorRate(), sla.getErrorRate());
     }
 
-    private DiscoveredInterface resolveInterface(String code, Map<String, List<DiscoveredInterface>> interfacesByCode) {
-        List<DiscoveredInterface> inRequest = interfacesByCode.get(normalizeKey(code));
-        if (inRequest != null) {
-            if (inRequest.size() == 1) {
-                return inRequest.get(0);
-            }
-            throw new IllegalArgumentException("Неоднозначный parentInterfaceCode: " + code
-                    + ". Интерфейс с таким code передан для нескольких продуктов");
-        }
-        List<DiscoveredInterface> dbMatches = discoveredInterfaceRepository
-                .findAllBySourceAndExternalIdIgnoreCase(SOURCE_SPARX, code)
-                .stream()
-                .filter(candidate -> candidate.getDeletedDate() == null)
-                .toList();
-        if (dbMatches.size() == 1) {
-            return dbMatches.get(0);
-        }
-        if (dbMatches.size() > 1) {
-            throw new IllegalArgumentException("Неоднозначный parentInterfaceCode: " + code);
-        }
-        throw new IllegalArgumentException("Не найден parentInterfaceCode для операции: " + code);
-    }
-
-    private E2e upsertE2e(E2eInfoDTO e2eInfo) {
+    private E2e upsertE2e(E2eInfoDTO e2eInfo, String source) {
         E2e e2e = e2eRepository.findByCode(e2eInfo.getUid()).orElse(null);
         if (e2e == null) {
             e2e = E2e.builder()
@@ -413,6 +536,7 @@ public class E2eV2Service {
                     .name(e2eInfo.getName())
                     .description(e2eInfo.getDescription())
                     .biStepCode(e2eInfo.getBiStepCode())
+                    .source(source)
                     .build();
             e2e = e2eRepository.save(e2e);
             log.info("Создан e2e, id={}, code={}", e2e.getId(), e2e.getCode());
@@ -435,7 +559,7 @@ public class E2eV2Service {
     }
 
     private void rebuildOperationRelations(Integer e2eId, List<E2eV2OperationRelationDTO> relations,
-                                            Map<String, Integer> operationIdByUid) {
+                                           Map<String, Integer> operationIdByUid) {
         List<OperationRelation> toSave = new ArrayList<>();
         for (E2eV2OperationRelationDTO relation : relations) {
             Integer operationId = StringUtils.hasText(relation.getOperationId())
@@ -488,16 +612,17 @@ public class E2eV2Service {
                 .name(e2e.getName())
                 .description(e2e.getDescription())
                 .biStepCode(e2e.getBiStepCode())
+                .source(e2e.getSource())
                 .build();
     }
 
     private List<E2eV2RelationTreeNodeDTO> buildBranch(List<OperationRelation> relations, Integer parentOperationId,
-                                                         String parentEntityType, Set<String> ancestry) {
+                                                       String parentEntityType, Set<String> ancestry) {
         return relations.stream()
                 .filter(relation -> parentOperationId == null
                         ? relation.getOperationId() == null
                         : Objects.equals(relation.getOperationId(), parentOperationId)
-                            && Objects.equals(relation.getEntityTypeOperation(), parentEntityType))
+                        && Objects.equals(relation.getEntityTypeOperation(), parentEntityType))
                 .sorted(Comparator.comparing(OperationRelation::getOrder))
                 .map(relation -> {
                     Integer relatedOperationId = relation.getRelatedOperationId();
@@ -527,7 +652,7 @@ public class E2eV2Service {
     }
 
     private void collectOperationIds(List<E2eV2RelationTreeNodeDTO> nodes, Set<Integer> operationIds,
-                                      Set<Integer> discoveredOperationIds) {
+                                     Set<Integer> discoveredOperationIds) {
         for (E2eV2RelationTreeNodeDTO node : nodes) {
             if (node.getRelatedOperationId() != null) {
                 if (ENTITY_TYPE_DISCOVERED_OPERATION.equals(node.getEntityTypeRelatedOperation())) {
@@ -553,6 +678,7 @@ public class E2eV2Service {
         Map<Integer, E2eOperationCatalogItemDTO> catalogById = operationRepository
                 .findOperationsProjection(operationIdList)
                 .stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         ArchOperationProjection::getOpId,
                         projection -> mapOperationCatalogItem(projection, slaByOperationId.get(projection.getOpId())),
@@ -595,6 +721,7 @@ public class E2eV2Service {
         Map<Integer, E2eV2DiscoveredOperationCatalogItemDTO> catalogById = discoveredOperationRepository
                 .findDiscoveredOperationsProjection(idList)
                 .stream()
+                .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         DiscoveredOperationProjection::getOpId,
                         this::mapDiscoveredOperationCatalogItem,
@@ -626,6 +753,13 @@ public class E2eV2Service {
     private void requireNonBlank(String value, String fieldName) {
         if (!StringUtils.hasText(value)) {
             throw new IllegalArgumentException("Отсутствует обязательное поле " + fieldName);
+        }
+    }
+
+    private void requireMaxLength(String value, String fieldName, int maxLength) {
+        if (value != null && value.length() > maxLength) {
+            throw new IllegalArgumentException("Поле " + fieldName + " длиннее " + maxLength
+                    + " символов (получено " + value.length() + "): " + value);
         }
     }
 

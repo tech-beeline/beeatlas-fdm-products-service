@@ -12,31 +12,14 @@ import org.springframework.web.client.HttpStatusCodeException;
 import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
-import ru.beeline.fdmproducts.domain.Chapter;
-import ru.beeline.fdmproducts.domain.ChapterNfr;
-import ru.beeline.fdmproducts.domain.LocalFitnessFunction;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirement;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
-import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnumCore;
-import ru.beeline.fdmproducts.domain.PatternRequirement;
-import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.*;
 import ru.beeline.fdmproducts.dto.chapter.ChapterNfrDTO;
 import ru.beeline.fdmproducts.dto.ffmanager.FfManagerFitnessFunctionDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionNfrV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrDetailsDTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrDetailsV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrItemProductDTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrItemProductV2DTO;
-import ru.beeline.fdmproducts.dto.nfr.NfrPatternDTO;
-import ru.beeline.fdmproducts.dto.nfr.RequirementProductDTO;
+import ru.beeline.fdmproducts.dto.nfr.*;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
-import ru.beeline.fdmproducts.repository.ChapterNfrRepository;
-import ru.beeline.fdmproducts.repository.LocalFitnessFunctionRepository;
-import ru.beeline.fdmproducts.repository.NonFunctionalRequirementEnumRepository;
-import ru.beeline.fdmproducts.repository.NonFunctionalRequirementRepository;
-import ru.beeline.fdmproducts.repository.PatternRequirementRepository;
-import ru.beeline.fdmproducts.repository.ProductRepository;
+import ru.beeline.fdmproducts.repository.*;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -66,15 +49,19 @@ public class NonFunctionalRequirementService {
     private UserClient userClient;
     @Autowired
     private PatternRequirementRepository patternRequirementRepository;
+    @Autowired
+    private ProductBranchRepository productBranchRepository;
+    @Autowired
+    private ProductBranchService productBranchService;
 
-    public NonFunctionalRequirement addRequirement(Integer productId, Integer nfrId, String source) {
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Продукт не найден"));
+    public NonFunctionalRequirement addRequirement(Integer productBranchId, Integer nfrId, String source) {
+        ProductBranch productBranch = productBranchRepository.findById(productBranchId)
+                .orElseThrow(() -> new EntityNotFoundException("Ветка продукта не найдена"));
         NonFunctionalRequirementEnum nfr = nonFunctionalRequirementEnumRepository.findById(nfrId)
                 .orElseThrow(() -> new EntityNotFoundException("NFR enum не найден"));
 
         NonFunctionalRequirement requirement = NonFunctionalRequirement.builder()
-                .product(product)
+                .productBranch(productBranch)
                 .nfr(nfr)
                 .source(source)
                 .createdDate(LocalDateTime.now())
@@ -83,13 +70,13 @@ public class NonFunctionalRequirementService {
         return nonFunctionalRequirementRepository.save(requirement);
     }
 
-    public void linkRequirementsToProduct(Integer productId, List<Integer> nfrIdsDistinct, String source, boolean userIdProvided) {
+    public void linkRequirementsToBranch(Integer productBranchId, List<Integer> nfrIdsDistinct, String source, boolean userIdProvided) {
         if (nfrIdsDistinct == null || nfrIdsDistinct.isEmpty()) {
             return;
         }
 
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Продукт не найден"));
+        ProductBranch productBranch = productBranchRepository.findById(productBranchId)
+                .orElseThrow(() -> new EntityNotFoundException("Ветка продукта не найдена"));
 
         List<NonFunctionalRequirementEnum> enums = nonFunctionalRequirementEnumRepository.findAllById(nfrIdsDistinct);
         if (enums.size() != nfrIdsDistinct.size()) {
@@ -99,7 +86,7 @@ public class NonFunctionalRequirementService {
                 .collect(Collectors.toMap(NonFunctionalRequirementEnum::getId, e -> e));
 
         List<NonFunctionalRequirement> existing = nonFunctionalRequirementRepository
-                .findByProductIdAndNfrIds(productId, nfrIdsDistinct);
+                .findByProductBranchIdAndNfrIds(productBranchId, nfrIdsDistinct);
         Map<Integer, NonFunctionalRequirement> existingByNfrId = existing.stream()
                 .filter(r -> r.getNfr() != null && r.getNfr().getId() != null)
                 .collect(Collectors.toMap(r -> r.getNfr().getId(), r -> r, (a, b) -> a));
@@ -110,7 +97,7 @@ public class NonFunctionalRequirementService {
             NonFunctionalRequirement current = existingByNfrId.get(nfrId);
             if (current == null) {
                 NonFunctionalRequirement toCreate = NonFunctionalRequirement.builder()
-                        .product(product)
+                        .productBranch(productBranch)
                         .nfr(enumById.get(nfrId))
                         .source(source)
                         .createdDate(now)
@@ -130,19 +117,9 @@ public class NonFunctionalRequirementService {
         }
     }
 
-    public void addProductNfr(Integer id, String alias, String apiKey, String userIdHeader, List<Integer> nfrIds) {
-        long providedCount = (id != null ? 1 : 0) + (alias != null && !alias.isBlank() ? 1 : 0) + (apiKey != null && !apiKey.isBlank() ? 1 : 0);
-        if (providedCount == 0) {
-            throw new IllegalArgumentException("Не передан один из идентификаторов приложения: id/alias/api-key");
-        }
-        if (providedCount > 1) {
-            throw new IllegalArgumentException("Передано несколько идентификаторов приложения");
-        }
-        var productOpt = findProductByIdOrAliasOrApiKey(id, alias, apiKey);
-        if (productOpt.isEmpty()) {
-            throw new EntityNotFoundException("Продукт с указанным идентификатором не найден");
-        }
-        Integer productId = productOpt.get().getId();
+    public void addProductNfr(Integer id, String alias, String apiKey, String branch, String userIdHeader, List<Integer> nfrIds) {
+        Product product = resolveProduct(id, alias, apiKey);
+        Integer productBranchId = productBranchService.getExistingOrMainId(product.getAlias(), branch);
         if (nfrIds == null || nfrIds.isEmpty()) {
             throw new IllegalArgumentException("Не передан ни один идентификатор требования");
         }
@@ -181,7 +158,7 @@ public class NonFunctionalRequirementService {
             }
         }
         try {
-            linkRequirementsToProduct(productId, nfrIdsDistinct, source, userIdProvided);
+            linkRequirementsToBranch(productBranchId, nfrIdsDistinct, source, userIdProvided);
         } catch (IllegalArgumentException ex) {
             if ("Передан несуществующий идентификатор требования".equals(ex.getMessage())) {
                 throw new IllegalArgumentException("Передан несуществующий идентификатор требования");
@@ -190,8 +167,8 @@ public class NonFunctionalRequirementService {
         }
     }
 
-    public List<NonFunctionalRequirement> findByProductId(Integer productId) {
-        return nonFunctionalRequirementRepository.findByProductId(productId);
+    public List<NonFunctionalRequirement> findByProductBranchId(Integer productBranchId) {
+        return nonFunctionalRequirementRepository.findByProductBranch_Id(productBranchId);
     }
 
     public List<NonFunctionalRequirement> findByNfrId(Integer nfrId) {
@@ -217,7 +194,7 @@ public class NonFunctionalRequirementService {
         return Optional.empty();
     }
 
-    public Integer resolveProductId(Integer id, String alias, String apiKey) {
+    public Product resolveProduct(Integer id, String alias, String apiKey) {
         long providedCount = (id != null ? 1 : 0)
                 + (alias != null && !alias.isBlank() ? 1 : 0)
                 + (apiKey != null && !apiKey.isBlank() ? 1 : 0);
@@ -227,18 +204,20 @@ public class NonFunctionalRequirementService {
         if (providedCount > 1) {
             throw new IllegalArgumentException("Передано несколько идентификаторов приложения");
         }
-        var productOpt = findProductByIdOrAliasOrApiKey(id, alias, apiKey);
-        if (productOpt.isEmpty()) {
-            throw new EntityNotFoundException("Продукт с указанным идентификатором не найден");
-        }
-        return productOpt.get().getId();
+        return findProductByIdOrAliasOrApiKey(id, alias, apiKey)
+                .orElseThrow(() -> new EntityNotFoundException("Продукт с указанным идентификатором не найден"));
     }
 
-    public void deleteProductNfr(Integer productId, Integer reqId) {
-        if (productId == null || reqId == null) {
+    public Optional<Integer> findProductBranchId(Integer id, String alias, String apiKey, String branch) {
+        Product product = resolveProduct(id, alias, apiKey);
+        return productBranchService.findId(product.getAlias(), branch);
+    }
+
+    public void deleteProductNfr(Integer productBranchId, Integer reqId) {
+        if (productBranchId == null || reqId == null) {
             return;
         }
-        var relOpt = nonFunctionalRequirementRepository.findByProduct_IdAndNfr_Id(productId, reqId);
+        var relOpt = nonFunctionalRequirementRepository.findByProductBranch_IdAndNfr_Id(productBranchId, reqId);
         if (relOpt.isEmpty()) {
             return;
         }
@@ -249,13 +228,13 @@ public class NonFunctionalRequirementService {
         nonFunctionalRequirementRepository.delete(rel);
     }
 
-    public void deleteProductNfr(Integer reqId, Integer id, String alias, String apiKey) {
-        Integer productId = resolveProductId(id, alias, apiKey);
-        deleteProductNfr(productId, reqId);
+    public void deleteProductNfr(Integer reqId, Integer id, String alias, String apiKey, String branch) {
+        findProductBranchId(id, alias, apiKey, branch)
+                .ifPresent(productBranchId -> deleteProductNfr(productBranchId, reqId));
     }
 
-    public void deleteBeeatlasProductNfrRelations(Integer id, String alias, String apiKey, List<Integer> relationIds) {
-        Integer productId = resolveProductId(id, alias, apiKey);
+    public void deleteBeeatlasProductNfrRelations(Integer id, String alias, String apiKey, String branch, List<Integer> relationIds) {
+        Integer productBranchId = findProductBranchId(id, alias, apiKey, branch).orElse(null);
         if (relationIds == null || relationIds.isEmpty()) {
             throw new IllegalArgumentException("Не передан ни один идентификатор связи");
         }
@@ -267,7 +246,7 @@ public class NonFunctionalRequirementService {
             throw new IllegalArgumentException("Не передан ни один идентификатор связи");
         }
 
-        List<NonFunctionalRequirement> rels = nonFunctionalRequirementRepository.findAllByIdInWithProduct(idsDistinct);
+        List<NonFunctionalRequirement> rels = nonFunctionalRequirementRepository.findAllByIdInWithProductBranch(idsDistinct);
         if (rels.size() != idsDistinct.size()) {
             Set<Integer> found = rels.stream()
                     .map(NonFunctionalRequirement::getId)
@@ -278,8 +257,8 @@ public class NonFunctionalRequirementService {
         }
 
         for (NonFunctionalRequirement rel : rels) {
-            Integer relProductId = (rel.getProduct() != null ? rel.getProduct().getId() : null);
-            if (!Objects.equals(relProductId, productId)) {
+            Integer relProductBranchId = (rel.getProductBranch() != null ? rel.getProductBranch().getId() : null);
+            if (productBranchId == null || !productBranchId.equals(relProductBranchId)) {
                 throw new IllegalArgumentException("Связь " + rel.getId() + " не принадлежит указанному продукту");
             }
             if (!"Beeatlas".equals(rel.getSource())) {
@@ -290,9 +269,21 @@ public class NonFunctionalRequirementService {
         nonFunctionalRequirementRepository.deleteAll(rels);
     }
 
-    public List<NfrItemProductDTO> getProductNfr(Integer productId) {
+    public List<NfrItemProductDTO> getProductNfr(Integer id, String alias, String apiKey, String branch) {
+        return findProductBranchId(id, alias, apiKey, branch)
+                .map(this::getProductNfr)
+                .orElse(List.of());
+    }
+
+    public List<NfrItemProductV2DTO> getProductNfrV2(Integer id, String alias, String apiKey, String branch) {
+        return findProductBranchId(id, alias, apiKey, branch)
+                .map(this::getProductNfrV2)
+                .orElse(List.of());
+    }
+
+    private List<NfrItemProductDTO> getProductNfr(Integer productBranchId) {
         List<NonFunctionalRequirement> requirements = nonFunctionalRequirementRepository
-                .findByProductIdWithNfrAndCore(productId);
+                .findByProductBranchIdWithNfrAndCore(productBranchId);
         if (requirements.isEmpty()) {
             return List.of();
         }
@@ -306,9 +297,9 @@ public class NonFunctionalRequirementService {
                 .toList();
     }
 
-    public List<NfrItemProductV2DTO> getProductNfrV2(Integer productId) {
+    private List<NfrItemProductV2DTO> getProductNfrV2(Integer productBranchId) {
         List<NonFunctionalRequirement> requirements = nonFunctionalRequirementRepository
-                .findByProductIdWithNfrAndCore(productId);
+                .findByProductBranchIdWithNfrAndCore(productBranchId);
         if (requirements.isEmpty()) {
             return List.of();
         }
@@ -544,17 +535,17 @@ public class NonFunctionalRequirementService {
     }
 
     @Transactional
-    public void actualizeRequirementOnProduct(String nfrIdStr, Integer productQueryId, String alias, String apiKey) {
+    public void actualizeRequirementOnProduct(String nfrIdStr, Integer productQueryId, String alias, String apiKey, String branch) {
         Integer nfrId;
         try {
             nfrId = Integer.parseInt(nfrIdStr);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Некорректный идентификатор id");
         }
-        Integer productId = resolveProductId(productQueryId, alias, apiKey);
+        Optional<Integer> productBranchId = findProductBranchId(productQueryId, alias, apiKey, branch);
 
-        NonFunctionalRequirement relation = nonFunctionalRequirementRepository
-                .findByProduct_IdAndNfr_Id(productId, nfrId)
+        NonFunctionalRequirement relation = productBranchId
+                .flatMap(branchId -> nonFunctionalRequirementRepository.findByProductBranch_IdAndNfr_Id(branchId, nfrId))
                 .orElseThrow(() -> new EntityNotFoundException("Связь требования с продуктом не найдена"));
 
         if ("Beeatlas".equals(relation.getSource())) {
@@ -572,12 +563,12 @@ public class NonFunctionalRequirementService {
             return;
         }
 
-        if (nonFunctionalRequirementRepository.findByProduct_IdAndNfr_Id(productId, maxVersion.getId()).isPresent()) {
+        if (nonFunctionalRequirementRepository.findByProductBranch_IdAndNfr_Id(productBranchId.get(), maxVersion.getId()).isPresent()) {
             return;
         }
 
         nonFunctionalRequirementRepository.save(NonFunctionalRequirement.builder()
-                .product(relation.getProduct())
+                .productBranch(relation.getProductBranch())
                 .nfr(maxVersion)
                 .source(relation.getSource())
                 .createdDate(LocalDateTime.now())
@@ -585,7 +576,7 @@ public class NonFunctionalRequirementService {
     }
 
     @Transactional(readOnly = true)
-    public List<RequirementProductDTO> getProductsByRequirementId(String nfrIdStr, String filterRaw) {
+    public List<RequirementProductDTO> getProductsByRequirementId(String nfrIdStr, String filterRaw, String branch) {
         Integer nfrId;
         try {
             nfrId = Integer.parseInt(nfrIdStr);
@@ -599,18 +590,21 @@ public class NonFunctionalRequirementService {
             throw new IllegalArgumentException(
                     "Недопустимое значение filter. Допустимые значения: all, auto, hand");
         }
+        String branchName = productBranchService.resolveBranchName(branch);
         if (!nonFunctionalRequirementEnumRepository.existsById(nfrId)) {
             throw new EntityNotFoundException("Требование не найдено");
         }
-        return nonFunctionalRequirementRepository.findByNfrIdWithProduct(nfrId).stream()
-                .filter(r -> r.getProduct() != null)
+        return nonFunctionalRequirementRepository.findByNfrIdWithProductBranch(nfrId).stream()
+                .filter(r -> r.getProductBranch() != null)
+                .filter(r -> branchName.equalsIgnoreCase(r.getProductBranch().getBranchName()))
                 .filter(r -> {
                     if ("auto".equals(filter)) return "Beeatlas".equals(r.getSource());
                     if ("hand".equals(filter)) return r.getSource() == null || !"Beeatlas".equals(r.getSource());
                     return true;
                 })
                 .map(r -> RequirementProductDTO.builder()
-                        .alias(r.getProduct().getAlias())
+                        .alias(r.getProductBranch().getAlias())
+                        .branch(r.getProductBranch().getBranchName())
                         .source(r.getSource())
                         .build())
                 .sorted(Comparator.comparing(
@@ -634,6 +628,9 @@ public class NonFunctionalRequirementService {
                 .distinct()
                 .toList();
         List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
+        List<NfrPatternDTO> notDeleted = patterns.stream()
+                .filter(pattern -> pattern.getDeleteDate() == null)
+                .collect(Collectors.toList());
         return NfrDetailsDTO.builder()
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
@@ -642,7 +639,7 @@ public class NonFunctionalRequirementService {
                 .description(nfr.getDescription())
                 .fitnessFunctions(fitnessFunctions)
                 .chapters(chapterDtos)
-                .patterns(patterns)
+                .patterns(notDeleted)
                 .build();
     }
 
@@ -663,6 +660,9 @@ public class NonFunctionalRequirementService {
                 .distinct()
                 .toList();
         List<NfrPatternDTO> patterns = patternIds.isEmpty() ? List.of() : techradarClient.getPatternsByIds(patternIds);
+        List<NfrPatternDTO> notDeleted = patterns.stream()
+                .filter(pattern -> pattern.getDeleteDate() == null)
+                .collect(Collectors.toList());
         return NfrDetailsV2DTO.builder()
                 .id(nfr.getId())
                 .code(core != null ? core.getCode() : null)
@@ -671,7 +671,7 @@ public class NonFunctionalRequirementService {
                 .description(nfr.getDescription())
                 .fitnessFunctions(fitnessFunctions)
                 .chapters(chapterDtos)
-                .patterns(patterns)
+                .patterns(notDeleted)
                 .build();
     }
 }

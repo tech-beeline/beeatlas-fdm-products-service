@@ -55,11 +55,13 @@ public class RequirementController {
     @ApiErrorCodes({400, 404, 500})
     @GetMapping("/v1/requirement/{id}/products")
     @Operation(summary = "Продукты, которым назначена версия требования NFR",
-            description = "Необязательный параметр filter: all (по умолчанию), auto (Beeatlas), hand (ручное назначение).")
+            description = "Необязательный параметр filter: all (по умолчанию), auto (Beeatlas), hand (ручное назначение). "
+                    + "Назначения отбираются по ветке branch, в ответе — продукт и ветка.")
     public ResponseEntity<List<RequirementProductDTO>> getProductsByRequirementId(
             @Parameter(description = "Идентификатор версии требования") @PathVariable String id,
-            @Parameter(description = "Фильтр по способу назначения: all | auto | hand") @RequestParam(value = "filter", required = false) String filter) {
-        return ResponseEntity.ok(nonFunctionalRequirementService.getProductsByRequirementId(id, filter));
+            @Parameter(description = "Фильтр по способу назначения: all | auto | hand") @RequestParam(value = "filter", required = false) String filter,
+            @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра.") @RequestParam(required = false) String branch) {
+        return ResponseEntity.ok(nonFunctionalRequirementService.getProductsByRequirementId(id, filter, branch));
     }
 
     @ApiErrorCodes({400, 404, 500})

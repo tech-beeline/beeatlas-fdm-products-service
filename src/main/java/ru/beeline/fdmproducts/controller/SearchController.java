@@ -12,6 +12,8 @@ import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.ArchOperationDTO;
 import ru.beeline.fdmproducts.dto.OperationSearchDTO;
 import ru.beeline.fdmproducts.dto.ProductInfoDTOTree;
+import ru.beeline.fdmproducts.dto.search.MatchedArchOperationDTO;
+import ru.beeline.fdmproducts.dto.search.OperationMatchCandidateDTO;
 import ru.beeline.fdmproducts.service.SearchService;
 
 import java.util.List;
@@ -33,6 +35,26 @@ public class SearchController {
             @Parameter(description = "Фрагмент URL или пути операции") @RequestParam(required = false) String path,
             @Parameter(description = "Тип объекта поиска (контракт сервиса)") @RequestParam(required = false) String type) {
         return ResponseEntity.status(HttpStatus.OK).body(searchService.searchOperations(path, type)).getBody();
+    }
+
+    @ApiErrorCodes({400, 500})
+    @PostMapping("/operation/search-matched")
+    @Operation(summary = "Поиск arch-операций, сопоставимых кандидатам",
+            operationId = "search_matchedOperations",
+            description = "Для каждого кандидата (методы по имени, типу, протоколу интерфейса и коду продукта) "
+                    + "возвращает архитектурные операции, которые могут быть с ним сопоставлены — по тому же "
+                    + "правилу, по которому автоматическое сопоставление проставляет "
+                    + "discovered_operation.connection_operation_id. Ответ — плоский массив: результаты "
+                    + "кандидатов идут подряд в порядке запроса, кандидат без совпадений в ответ ничего не "
+                    + "добавляет. Неизвестный productCode не ошибка — такой кандидат возвращается элементом с "
+                    + "error и notFound, статус остаётся 200. methodType и protocol необязательны: без них "
+                    + "соответствующий фильтр не применяется, а заданный protocol отбрасывает интерфейсы без "
+                    + "протокола.")
+    public ResponseEntity<List<MatchedArchOperationDTO>> searchMatchedOperations(
+            // required = false и проверка в сервисе — чтобы отдать оговорённый в контракте текст ошибки
+            // вместо общего «Неверные входные данные» от обработчика нечитаемого тела.
+            @RequestBody(required = false) List<OperationMatchCandidateDTO> candidates) {
+        return ResponseEntity.ok(searchService.searchMatchedOperations(candidates));
     }
 
     @ApiErrorCodes({400, 404, 500})

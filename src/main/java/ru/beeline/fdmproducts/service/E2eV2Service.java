@@ -223,8 +223,11 @@ public class E2eV2Service {
                 .map(Operation::getId)
                 .collect(Collectors.toSet());
         if (!existingIds.containsAll(connectionOperationIds)) {
+            Set<Integer> missingIds = new HashSet<>(connectionOperationIds);
+            missingIds.removeAll(existingIds);
             throw new IllegalArgumentException(
-                    "Для одной из операций не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
+                    "Для одной из операций не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре. "
+                            + "Отсутствующие id: " + missingIds);
         }
     }
 

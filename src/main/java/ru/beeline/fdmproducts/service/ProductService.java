@@ -1629,7 +1629,7 @@ public class ProductService {
             return patternsAssessmentRepository.findFirstByProductIdOrderByCreateDateDesc(productId).orElse(null);
         }
         if (sourceId != null) {
-            return patternsAssessmentRepository.findBySourceType_NameAndSourceId(sourceType, sourceId).orElse(null);
+            return patternsAssessmentRepository.findBySourceType_NameAndSourceIdAndProductId(sourceType, sourceId,productId).orElse(null);
         }
         return patternsAssessmentRepository.findFirstBySourceType_NameOrderByCreateDateDesc(sourceType).orElse(null);
     }

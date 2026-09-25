@@ -15,7 +15,7 @@ public interface PatternsAssessmentRepository extends JpaRepository<PatternsAsse
 
     Optional<PatternsAssessment> findFirstByProductIdOrderByCreateDateDesc(Integer productId);
 
-    Optional<PatternsAssessment> findBySourceType_NameAndSourceId(String name, Integer sourceId);
+    Optional<PatternsAssessment> findBySourceType_NameAndSourceIdAndProductId(String name, Integer sourceId, Integer productId);
 
     Optional<PatternsAssessment> findFirstBySourceType_NameOrderByCreateDateDesc(String name);
 }

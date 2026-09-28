@@ -22,6 +22,7 @@ import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
 import ru.beeline.fdmproducts.exception.AuthServiceUnavailableException;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
+import ru.beeline.fdmproducts.exception.ExternalServiceException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
 import ru.beeline.fdmproducts.exception.NotAdministratorException;
 import ru.beeline.fdmproducts.exception.UnauthorizedException;
@@ -135,6 +136,15 @@ public class CustomExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorMessageDTO> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest().body(new ErrorMessageDTO("Неверные входные данные"));
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorMessageDTO> handleException(ExternalServiceException e) {
+        log.error(e.getMessage());
+        return ResponseEntity
+                .status(e.getStatus())
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO(e.getMessage()));
     }
 
     @ExceptionHandler(DatabaseConnectionException.class)

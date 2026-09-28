@@ -261,7 +261,7 @@ class E2eV2ServiceTest {
     @DisplayName("create: connectionOperationId пишется в discovered_operation.connection_operation_id")
     void createWritesConnectionOperationId() {
         Integer archOpId = 123;
-        when(operationRepository.findAllById(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
+        when(operationRepository.findAllByIdInAndDeletedDateIsNull(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
 
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setConnectionOperationId(archOpId);
@@ -281,14 +281,14 @@ class E2eV2ServiceTest {
         ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
         verify(discoveredOperationRepository).save(captor.capture());
         assertThat(captor.getValue().getConnectionOperationId()).isNull();
-        verify(operationRepository, never()).findAllById(any());
+        verify(operationRepository, never()).findAllByIdInAndDeletedDateIsNull(any());
     }
 
     @Test
     @DisplayName("update: connectionOperationId обновляет связь и updated_date")
     void updateWritesConnectionOperationIdWhenProvided() {
         Integer archOpId = 456;
-        when(operationRepository.findAllById(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
+        when(operationRepository.findAllByIdInAndDeletedDateIsNull(any())).thenReturn(List.of(Operation.builder().id(archOpId).build()));
         DiscoveredOperation existing = DiscoveredOperation.builder()
                 .id(901)
                 .interfaceId(INTERFACE_ID)
@@ -333,20 +333,21 @@ class E2eV2ServiceTest {
 
         assertThat(existing.getConnectionOperationId()).isEqualTo(previousLink);
         assertThat(existing.getDescription()).isEqualTo("new description");
-        verify(operationRepository, never()).findAllById(any());
+        verify(operationRepository, never()).findAllByIdInAndDeletedDateIsNull(any());
     }
 
     @Test
     @DisplayName("несуществующий connectionOperationId — 400, операция не сохраняется")
     void rejectsUnknownConnectionOperationId() {
-        when(operationRepository.findAllById(any())).thenReturn(List.of());
+        when(operationRepository.findAllByIdInAndDeletedDateIsNull(any())).thenReturn(List.of());
 
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setConnectionOperationId(999_999);
 
         assertThatThrownBy(() -> service.upsert(request, null))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Для одной из операцией не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
+                .hasMessageContaining("Для одной из операций не существует id = connectionOperationId")
+                .hasMessageContaining("999999");
         verify(discoveredOperationRepository, never()).save(any(DiscoveredOperation.class));
         verify(e2eRepository, never()).save(any(E2e.class));
     }

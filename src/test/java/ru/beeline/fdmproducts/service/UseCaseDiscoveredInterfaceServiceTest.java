@@ -101,7 +101,6 @@ class UseCaseDiscoveredInterfaceServiceTest {
         UseCaseDiscoveredInterfaceDTO body = UseCaseDiscoveredInterfaceDTO.builder()
                 .interfaceCode("orders-api")
                 .product(ALIAS)
-                .productPlanned("planned-product")
                 .operations(new ArrayList<>(List.of(
                         UseCaseDiscoveredOperationDTO.builder()
                                 .name("getOrder")
@@ -121,7 +120,7 @@ class UseCaseDiscoveredInterfaceServiceTest {
         UseCaseDiscoveredInterfaceResultDTO iface = result.get(0);
         assertThat(iface.getInterfaceCode()).isEqualTo("orders-api");
         assertThat(iface.getProduct()).isEqualTo(ALIAS);
-        assertThat(iface.getProductPlanned()).isEqualTo("planned-product");
+        assertThat(iface.getProductPlanned()).isNull();
         assertThat(iface.getOperations()).extracting(op -> op.getDiscoveredOperationId())
                 .containsExactly(901, 902);
         assertThat(iface.getOperations()).extracting(op -> op.getIsPlanned())
@@ -134,7 +133,7 @@ class UseCaseDiscoveredInterfaceServiceTest {
         assertThat(savedInterface.getExternalId()).isEqualTo("orders-api");
         assertThat(savedInterface.getSource()).isEqualTo("UseCase");
         assertThat(savedInterface.getProduct().getId()).isEqualTo(PRODUCT_ID);
-        assertThat(savedInterface.getProductPlanned()).isEqualTo("planned-product");
+        assertThat(savedInterface.getProductPlanned()).isNull();
         assertThat(savedInterface.getCreatedDate()).isNotNull();
         assertThat(savedInterface.getDeletedDate()).isNull();
 
@@ -150,7 +149,7 @@ class UseCaseDiscoveredInterfaceServiceTest {
     }
 
     @Test
-    @DisplayName("Обновление: product_planned перезаписывается, удалённый метод оживает, is_planned меняется")
+    @DisplayName("Обновление: удалённый метод оживает, is_planned меняется, productPlanned сбрасывается")
     void updatesExistingInterfaceAndOperation() {
         DiscoveredInterface stored = storedInterface("orders-api", "старый-план");
         when(discoveredInterfaceRepository.findAllBySourceAndExternalIdInIgnoreCase(eq("UseCase"), any()))
@@ -163,7 +162,6 @@ class UseCaseDiscoveredInterfaceServiceTest {
         UseCaseDiscoveredInterfaceDTO body = UseCaseDiscoveredInterfaceDTO.builder()
                 .interfaceCode("orders-api")
                 .product(ALIAS)
-                .productPlanned("новый-план")
                 .operations(List.of(UseCaseDiscoveredOperationDTO.builder()
                         .name("getOrder").type("REST").descriptionOperation("новое описание").isPlanned(true).build()))
                 .build();
@@ -172,7 +170,7 @@ class UseCaseDiscoveredInterfaceServiceTest {
                 service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
 
         assertThat(result.get(0).getOperations().get(0).getDiscoveredOperationId()).isEqualTo(777);
-        assertThat(stored.getProductPlanned()).isEqualTo("новый-план");
+        assertThat(stored.getProductPlanned()).isNull();
         assertThat(stored.getDeletedDate()).isNull();
         assertThat(stored.getUpdatedDate()).isNotNull();
         assertThat(existing.getDescription()).isEqualTo("новое описание");
@@ -186,27 +184,21 @@ class UseCaseDiscoveredInterfaceServiceTest {
     }
 
     @Test
-    @DisplayName("Продукта нет в каталоге: интерфейс сохраняется с пустым product_id, без 404")
-    void savesInterfaceWithoutProduct() {
+    @DisplayName("Продукта нет в каталоге: 400")
+    void failsWhenProductNotFound() {
         when(productRepository.findByAliasInIgnoreCase(anyList())).thenReturn(List.of());
 
         UseCaseDiscoveredInterfaceDTO body = UseCaseDiscoveredInterfaceDTO.builder()
                 .interfaceCode("new-api")
                 .product("unknown-product")
-                .productPlanned("planned")
                 .operations(List.of(UseCaseDiscoveredOperationDTO.builder().name("op").type("REST").build()))
                 .build();
 
-        List<UseCaseDiscoveredInterfaceResultDTO> result =
-                service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getProduct()).isEqualTo("unknown-product");
-
-        ArgumentCaptor<DiscoveredInterface> captor = ArgumentCaptor.forClass(DiscoveredInterface.class);
-        verify(discoveredInterfaceRepository).save(captor.capture());
-        assertThat(captor.getValue().getProduct()).isNull();
-        assertThat(captor.getValue().getProductPlanned()).isEqualTo("planned");
+        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(body)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Продукт не найден")
+                .hasMessageContaining("unknown-product");
+        verify(discoveredInterfaceRepository, never()).save(any());
     }
 
     @Test
@@ -224,7 +216,6 @@ class UseCaseDiscoveredInterfaceServiceTest {
 
         UseCaseDiscoveredInterfaceDTO body = UseCaseDiscoveredInterfaceDTO.builder()
                 .interfaceCode("new-api")
-                .product("unknown-product")
                 .productPlanned("planned")
                 .operations(List.of())
                 .build();
@@ -359,6 +350,29 @@ class UseCaseDiscoveredInterfaceServiceTest {
     }
 
     @Test
+    @DisplayName("Только productPlanned без product: интерфейс создаётся с пустым product_id")
+    void createsWithProductPlannedOnly() {
+        UseCaseDiscoveredInterfaceDTO body = UseCaseDiscoveredInterfaceDTO.builder()
+                .interfaceCode("new-api")
+                .productPlanned("planned-only")
+                .operations(List.of(UseCaseDiscoveredOperationDTO.builder().name("op").type("REST").build()))
+                .build();
+
+        List<UseCaseDiscoveredInterfaceResultDTO> result =
+                service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getProduct()).isNull();
+        assertThat(result.get(0).getProductPlanned()).isEqualTo("planned-only");
+
+        ArgumentCaptor<DiscoveredInterface> captor = ArgumentCaptor.forClass(DiscoveredInterface.class);
+        verify(discoveredInterfaceRepository).save(captor.capture());
+        assertThat(captor.getValue().getProduct()).isNull();
+        assertThat(captor.getValue().getProductPlanned()).isEqualTo("planned-only");
+        verify(productRepository, never()).findByAliasInIgnoreCase(anyList());
+    }
+
+    @Test
     @DisplayName("Пустой элемент, незаполненные обязательные поля и дубли — 400")
     void failsOnInvalidElements() {
         assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, listWith(null)))
@@ -371,11 +385,18 @@ class UseCaseDiscoveredInterfaceServiceTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("interfaceCode");
 
-        UseCaseDiscoveredInterfaceDTO noProduct = request("orders-api");
-        noProduct.setProduct(null);
-        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(noProduct)))
+        UseCaseDiscoveredInterfaceDTO noProductAndPlanned = request("orders-api");
+        noProductAndPlanned.setProduct(null);
+        noProductAndPlanned.setProductPlanned("  ");
+        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(noProductAndPlanned)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("product");
+                .hasMessageContaining("для интерфейса может быть указан существующий product либо планируемый productPlanned");
+
+        UseCaseDiscoveredInterfaceDTO bothProductFields = request("orders-api");
+        bothProductFields.setProductPlanned("planned");
+        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(bothProductFields)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("для интерфейса может быть указан существующий product либо планируемый productPlanned");
 
         UseCaseDiscoveredInterfaceDTO noOperations = request("orders-api");
         noOperations.setOperations(null);
@@ -399,6 +420,20 @@ class UseCaseDiscoveredInterfaceServiceTest {
         UseCaseDiscoveredInterfaceDTO duplicateInterface = request("ORDERS-API");
         assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID,
                 List.of(request("orders-api"), duplicateInterface)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("дважды");
+
+        UseCaseDiscoveredInterfaceDTO plannedA = UseCaseDiscoveredInterfaceDTO.builder()
+                .interfaceCode("api")
+                .productPlanned("plan-a")
+                .operations(List.of())
+                .build();
+        UseCaseDiscoveredInterfaceDTO plannedB = UseCaseDiscoveredInterfaceDTO.builder()
+                .interfaceCode("api")
+                .productPlanned("PLAN-A")
+                .operations(List.of())
+                .build();
+        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(plannedA, plannedB)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("дважды");
     }

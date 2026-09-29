@@ -88,11 +88,12 @@ public class UseCaseDiscoveredInterfaceService {
                 throw new IllegalArgumentException("Пустой элемент в теле запроса");
             }
             String interfaceCode = requireNonBlank(dto.getInterfaceCode(), "interfaceCode");
-            String productAlias = requireNonBlank(dto.getProduct(), "product");
+            String productAlias = "product";
             if (dto.getOperations() == null) {
                 throw new IllegalArgumentException(
                         "Отсутствует обязательное поле operations, interfaceCode=" + interfaceCode);
             }
+            validateProductProductPlanned(dto);
             validateOperations(dto.getOperations(), interfaceCode);
 
             String key = lower(interfaceCode) + KEY_SEPARATOR + lower(productAlias);
@@ -104,6 +105,20 @@ public class UseCaseDiscoveredInterfaceService {
                     productByAlias.get(lower(productAlias)), trimToNull(dto.getProductPlanned())));
         }
         return requested;
+    }
+
+    private void validateProductProductPlanned(UseCaseDiscoveredInterfaceDTO dto) {
+        boolean productFilled =
+                dto.getProduct() != null && !dto.getProduct().isBlank();
+        boolean productPlannedFilled =
+                dto.getProductPlanned() != null && !dto.getProductPlanned().isBlank();
+        boolean exactlyOneFilled = productFilled ^ productPlannedFilled;
+        if (!exactlyOneFilled) {
+            throw new IllegalArgumentException(
+                    "для интерфейса может быть указан существующий product либо планируемый productPlanned," +
+                            " одновременно оба атрибута передавать нельзя"
+            );
+        }
     }
 
     private Map<String, Product> resolveProducts(List<UseCaseDiscoveredInterfaceDTO> interfaces) {

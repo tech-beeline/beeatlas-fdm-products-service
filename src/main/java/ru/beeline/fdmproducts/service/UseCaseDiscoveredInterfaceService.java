@@ -88,7 +88,7 @@ public class UseCaseDiscoveredInterfaceService {
                 throw new IllegalArgumentException("Пустой элемент в теле запроса");
             }
             String interfaceCode = requireNonBlank(dto.getInterfaceCode(), "interfaceCode");
-            String productAlias = "product";
+            String productAlias = dto.getProduct().trim();
             if (dto.getOperations() == null) {
                 throw new IllegalArgumentException(
                         "Отсутствует обязательное поле operations, interfaceCode=" + interfaceCode);

@@ -47,7 +47,6 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
             nativeQuery = true)
     int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
 
-    List<DiscoveredInterface> findAllByConnectionInterfaceId(Integer interfaceId);
 
     @Query(value = "SELECT * FROM product.discovered_interface di "
             + "WHERE di.product_id = :productId "
@@ -58,10 +57,6 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 
-    List<DiscoveredInterface> findAllByProduct(Product product);
-
-    List<DiscoveredInterface> findAllByProductAndDeletedDateIsNull(Product product);
-
     List<DiscoveredInterface> findAllByProductAndSourceIgnoreCase(Product product, String source);
 
     List<DiscoveredInterface> findAllByProductAndSourceIgnoreCaseAndDeletedDateIsNull(Product product, String source);
@@ -69,14 +64,6 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     Optional<DiscoveredInterface> findByExternalId(String externalId);
 
     Optional<DiscoveredInterface> findByApiId(Integer apiId);
-
-    Optional<DiscoveredInterface> findBySourceAndProductIdAndExternalId(String source, Integer productId, String externalId);
-
-    List<DiscoveredInterface> findAllBySourceAndExternalId(String source, String externalId);
-
-    Optional<DiscoveredInterface> findBySourceAndProductIdAndExternalIdIgnoreCase(String source, Integer productId, String externalId);
-
-    List<DiscoveredInterface> findAllBySourceAndExternalIdIgnoreCase(String source, String externalId);
 
     Optional<DiscoveredInterface> findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(String source,
                                                                                             Integer productId,
@@ -86,14 +73,12 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     @Query("""
             SELECT di FROM DiscoveredInterface di
+            LEFT JOIN FETCH di.product
             WHERE LOWER(di.source) = LOWER(:source)
               AND LOWER(di.externalId) IN :codes
             """)
     List<DiscoveredInterface> findAllBySourceAndExternalIdInIgnoreCase(@Param("source") String source,
                                                                        @Param("codes") Collection<String> codes);
-
-
-    List<DiscoveredInterface> findAllByProjectIdAndSourceIgnoreCase(Integer projectId, String source);
 
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);

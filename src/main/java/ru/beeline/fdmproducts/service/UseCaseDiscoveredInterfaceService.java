@@ -88,21 +88,29 @@ public class UseCaseDiscoveredInterfaceService {
                 throw new IllegalArgumentException("Пустой элемент в теле запроса");
             }
             String interfaceCode = requireNonBlank(dto.getInterfaceCode(), "interfaceCode");
-            String productAlias = dto.getProduct().trim();
+            String productAlias = trimToNull(dto.getProduct());
+            String productPlanned = trimToNull(dto.getProductPlanned());
+            validateProductProductPlanned(dto);
             if (dto.getOperations() == null) {
                 throw new IllegalArgumentException(
                         "Отсутствует обязательное поле operations, interfaceCode=" + interfaceCode);
             }
-            validateProductProductPlanned(dto);
             validateOperations(dto.getOperations(), interfaceCode);
 
-            String key = lower(interfaceCode) + KEY_SEPARATOR + lower(productAlias);
+            String identityPart = productAlias != null ? lower(productAlias) : lower(productPlanned);
+            String key = lower(interfaceCode) + KEY_SEPARATOR + identityPart;
             if (!seenInterfaces.add(key)) {
                 throw new IllegalArgumentException("Интерфейс встречается в теле запроса дважды: interfaceCode="
-                        + interfaceCode + ", product=" + productAlias);
+                        + interfaceCode + ", product=" + productAlias + ", productPlanned=" + productPlanned);
             }
-            requested.add(new RequestedInterface(dto, interfaceCode, productAlias,
-                    productByAlias.get(lower(productAlias)), trimToNull(dto.getProductPlanned())));
+            Product product = null;
+            if (productAlias != null) {
+                product = productByAlias.get(lower(productAlias));
+                if (product == null) {
+                    throw new IllegalArgumentException("Продукт не найден: product=" + productAlias);
+                }
+            }
+            requested.add(new RequestedInterface(dto, interfaceCode, productAlias, product, productPlanned));
         }
         return requested;
     }
@@ -115,8 +123,7 @@ public class UseCaseDiscoveredInterfaceService {
         boolean exactlyOneFilled = productFilled ^ productPlannedFilled;
         if (!exactlyOneFilled) {
             throw new IllegalArgumentException(
-                    "для интерфейса может быть указан существующий product либо планируемый productPlanned," +
-                            " одновременно оба атрибута передавать нельзя"
+                    "Для интерфейса обязательно должен быть указан существующий product либо планируемый productPlanned"
             );
         }
     }

@@ -8,10 +8,12 @@ import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
+import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.search.MatchedArchOperationDTO;
 import ru.beeline.fdmproducts.dto.search.OperationMatchCandidateDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
+import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.mapper.ArchOperationMapper;
 import ru.beeline.fdmproducts.mapper.DiscoveredOperationMapper;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
@@ -53,24 +55,39 @@ public class SearchService {
     @Autowired
     private ArchOperationMatchingService archOperationMatchingService;
 
-    public OperationSearchDTO searchOperations(String path, String type) {
-        OperationSearchDTO result = new OperationSearchDTO();
-        result.setArchOperations(new ArrayList<>());
-        result.setDiscoveredOperations(new ArrayList<>());
+    @Autowired
+    private ProductBranchService productBranchService;
+
+    public OperationSearchDTO searchOperations(String path, String type, String alias) {
+        OperationSearchDTO result = emptyOperationSearch();
         if (path == null || path.isEmpty()) {
             throw new IllegalArgumentException("Параметр path не должен быть пустым.");
         }
+        Integer branchId = null;
+        if (alias != null) {
+            if (alias.isBlank()) {
+                throw new IllegalArgumentException("Параметр alias не может быть пустым");
+            }
+            Product product = productRepository.findByAliasCaseInsensitive(alias.trim());
+            if (product == null) {
+                throw new EntityNotFoundException("Продукт не найден.");
+            }
+            Optional<ProductBranch> branch = productBranchService.find(product.getAlias(), null);
+            if (branch.isEmpty()) {
+                return result;
+            }
+            branchId = branch.get().getId();
+        }
+
         path = path.replace("%7B", "{").replace("%7D", "}");
-        List<ArchOperationProjection> archOperationProjections = type != null
-                ? operationRepository.findArchOperationsProjectionByType(path, type)
-                : operationRepository.findArchOperationsProjection(path);
+        List<ArchOperationProjection> archOperationProjections = findArchOperations(path, type, branchId);
 
         List<DiscoveredOperation> discoveredOperationList = new ArrayList<>();
-        if (archOperationProjections.size() < 50) {
+        if (alias == null && archOperationProjections.size() < 50) {
             int limitSearch = 50 - archOperationProjections.size();
-            discoveredOperationList = type != null ?
-                    discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type,
-                                                                                                     limitSearch)
+            discoveredOperationList = type != null
+                    ? discoveredOperationRepository.findAllByNameAndTypeIgnoreCaseAndDeletedDateIsNull(path, type,
+                    limitSearch)
                     : discoveredOperationRepository.findAllByNameAndDeletedDateIsNull(path, limitSearch);
         }
         if (archOperationProjections.isEmpty() && discoveredOperationList.isEmpty()) {
@@ -110,6 +127,24 @@ public class SearchService {
                 .toList();
         result.getDiscoveredOperations().addAll(doResult);
         return result;
+    }
+
+    private OperationSearchDTO emptyOperationSearch() {
+        OperationSearchDTO result = new OperationSearchDTO();
+        result.setArchOperations(new ArrayList<>());
+        result.setDiscoveredOperations(new ArrayList<>());
+        return result;
+    }
+
+    private List<ArchOperationProjection> findArchOperations(String path, String type, Integer branchId) {
+        if (branchId != null) {
+            return type != null
+                    ? operationRepository.findArchOperationsProjectionByTypeAndBranch(path, type, branchId)
+                    : operationRepository.findArchOperationsProjectionByBranch(path, branchId);
+        }
+        return type != null
+                ? operationRepository.findArchOperationsProjectionByType(path, type)
+                : operationRepository.findArchOperationsProjection(path);
     }
 
     private Map<Integer, DiscoveredInterface> getInterfaceMap(List<DiscoveredOperation> discoveredOperations) {
@@ -159,20 +194,11 @@ public class SearchService {
                 .toList();
     }
 
-    /**
-     * Архитектурные операции, сопоставимые кандидатам. Ответ — плоский массив: результаты
-     * кандидатов идут подряд в порядке запроса, кандидат без совпадений просто ничего не добавляет.
-     * <p>
-     * Неизвестный productCode — не ошибка запроса, а состояние каталога: UI показывает его рядом с
-     * остальными строками, поэтому статус остаётся 200, а кандидат отдаётся элементом-признаком.
-     */
     @Transactional(readOnly = true)
     public List<MatchedArchOperationDTO> searchMatchedOperations(List<OperationMatchCandidateDTO> candidates) {
         if (candidates == null || candidates.isEmpty()) {
             throw new IllegalArgumentException("В теле запроса не передан обязательный атрибут");
         }
-        // Тело проверяется целиком до первого запроса в БД: невалидный кандидат в середине списка
-        // не должен отдавать 400 после того, как часть работы уже сделана.
         candidates.forEach(this::validateCandidate);
 
         Map<String, Optional<Product>> productByCode = new HashMap<>();
@@ -212,7 +238,6 @@ public class SearchService {
         }
     }
 
-    /** Незаполненный необязательный фильтр — это его отсутствие, а не поиск по пустой строке. */
     private String emptyToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }

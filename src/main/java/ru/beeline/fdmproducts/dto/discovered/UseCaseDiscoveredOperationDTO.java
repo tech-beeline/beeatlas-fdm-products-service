@@ -22,4 +22,5 @@ public class UseCaseDiscoveredOperationDTO {
     private String tcCode;
     private String descriptionOperation;
     private Boolean isPlanned;
+    private Integer connectionOperationId;
 }

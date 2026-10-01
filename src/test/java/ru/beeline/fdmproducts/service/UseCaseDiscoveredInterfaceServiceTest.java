@@ -19,6 +19,7 @@ import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.client.ProjectClient;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.discovered.UseCaseDiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.discovered.UseCaseDiscoveredInterfaceResultDTO;
@@ -28,6 +29,7 @@ import ru.beeline.fdmproducts.dto.project.OperationUseCasesResponseDTO;
 import ru.beeline.fdmproducts.exception.ExternalServiceException;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 
 import java.time.LocalDateTime;
@@ -64,6 +66,8 @@ class UseCaseDiscoveredInterfaceServiceTest {
     private DiscoveredInterfaceRepository discoveredInterfaceRepository;
     @Mock
     private DiscoveredOperationRepository discoveredOperationRepository;
+    @Mock
+    private OperationRepository operationRepository;
     @Mock
     private ProjectClient projectClient;
 
@@ -145,7 +149,103 @@ class UseCaseDiscoveredInterfaceServiceTest {
         assertThat(first.getTcDescription()).isEqualTo("описание ТС");
         assertThat(first.getIsPlanned()).isTrue();
         assertThat(opCaptor.getAllValues().get(1).getIsPlanned()).isFalse();
+        assertThat(first.getConnectionOperationId()).isNull();
+        verify(operationRepository, never()).findAllByIdIn(anyList());
         verify(projectClient, never()).findUseCasesByOperations(anyList());
+    }
+
+    @Test
+    @DisplayName("Создание с connectionOperationId пишет связь в discovered_operation")
+    void createWritesConnectionOperationId() {
+        Integer archOpId = 123;
+        when(operationRepository.findAllByIdIn(List.of(archOpId)))
+                .thenReturn(List.of(Operation.builder().id(archOpId).build()));
+        UseCaseDiscoveredInterfaceDTO body = request("orders-api");
+        body.getOperations().get(0).setConnectionOperationId(archOpId);
+
+        service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
+
+        ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
+        verify(discoveredOperationRepository).save(captor.capture());
+        assertThat(captor.getValue().getConnectionOperationId()).isEqualTo(archOpId);
+    }
+
+    @Test
+    @DisplayName("Обновление с connectionOperationId перезаписывает связь")
+    void updateWritesConnectionOperationId() {
+        Integer archOpId = 456;
+        when(operationRepository.findAllByIdIn(List.of(archOpId)))
+                .thenReturn(List.of(Operation.builder().id(archOpId).build()));
+        DiscoveredInterface stored = storedInterface("orders-api", null);
+        when(discoveredInterfaceRepository.findAllBySourceAndExternalIdInIgnoreCase(eq("UseCase"), any()))
+                .thenReturn(List.of(stored));
+        DiscoveredOperation existing = storedOperation(777, "getorder", "rest");
+        existing.setConnectionOperationId(111);
+        when(discoveredOperationRepository.findAllByInterfaceIdIn(anyList())).thenReturn(List.of(existing));
+
+        UseCaseDiscoveredInterfaceDTO body = request("orders-api");
+        body.getOperations().get(0).setConnectionOperationId(archOpId);
+
+        service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
+
+        assertThat(existing.getConnectionOperationId()).isEqualTo(archOpId);
+        assertThat(existing.getUpdatedDate()).isNotNull();
+        verify(discoveredOperationRepository).save(existing);
+    }
+
+    @Test
+    @DisplayName("Обновление без connectionOperationId не затирает ранее записанную связь")
+    void updateWithoutConnectionOperationIdKeepsExistingLink() {
+        Integer previousLink = 789;
+        DiscoveredInterface stored = storedInterface("orders-api", null);
+        when(discoveredInterfaceRepository.findAllBySourceAndExternalIdInIgnoreCase(eq("UseCase"), any()))
+                .thenReturn(List.of(stored));
+        DiscoveredOperation existing = storedOperation(777, "getorder", "rest");
+        existing.setConnectionOperationId(previousLink);
+        existing.setDescription("старое");
+        when(discoveredOperationRepository.findAllByInterfaceIdIn(anyList())).thenReturn(List.of(existing));
+
+        UseCaseDiscoveredInterfaceDTO body = request("orders-api");
+        body.getOperations().get(0).setDescriptionOperation("новое");
+
+        service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
+
+        assertThat(existing.getConnectionOperationId()).isEqualTo(previousLink);
+        assertThat(existing.getDescription()).isEqualTo("новое");
+        verify(operationRepository, never()).findAllByIdIn(anyList());
+    }
+
+    @Test
+    @DisplayName("Несуществующий connectionOperationId — 400, запись не создаётся")
+    void rejectsUnknownConnectionOperationId() {
+        when(operationRepository.findAllByIdIn(List.of(999_999))).thenReturn(List.of());
+        UseCaseDiscoveredInterfaceDTO body = request("orders-api");
+        body.getOperations().get(0).setConnectionOperationId(999_999);
+
+        assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(body)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Для одной из операцией не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре");
+        verify(discoveredInterfaceRepository, never()).save(any());
+        verify(discoveredOperationRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Удалённая operation подходит для connectionOperationId: связь записывается")
+    void acceptsDeletedArchitectureOperation() {
+        Integer archOpId = 321;
+        when(operationRepository.findAllByIdIn(List.of(archOpId)))
+                .thenReturn(List.of(Operation.builder()
+                        .id(archOpId)
+                        .deletedDate(LocalDateTime.now().minusDays(1))
+                        .build()));
+        UseCaseDiscoveredInterfaceDTO body = request("orders-api");
+        body.getOperations().get(0).setConnectionOperationId(archOpId);
+
+        service.syncUseCaseOperations(USE_CASE_ID, List.of(body));
+
+        ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
+        verify(discoveredOperationRepository).save(captor.capture());
+        assertThat(captor.getValue().getConnectionOperationId()).isEqualTo(archOpId);
     }
 
     @Test

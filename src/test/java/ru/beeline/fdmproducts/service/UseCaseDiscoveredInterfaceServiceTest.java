@@ -390,13 +390,13 @@ class UseCaseDiscoveredInterfaceServiceTest {
         noProductAndPlanned.setProductPlanned("  ");
         assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(noProductAndPlanned)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("для интерфейса может быть указан существующий product либо планируемый productPlanned");
+                .hasMessageContaining("обязательно должен быть указан существующий product либо планируемый productPlanned");
 
         UseCaseDiscoveredInterfaceDTO bothProductFields = request("orders-api");
         bothProductFields.setProductPlanned("planned");
         assertThatThrownBy(() -> service.syncUseCaseOperations(USE_CASE_ID, List.of(bothProductFields)))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("для интерфейса может быть указан существующий product либо планируемый productPlanned");
+                .hasMessageContaining("обязательно должен быть указан существующий product либо планируемый productPlanned");
 
         UseCaseDiscoveredInterfaceDTO noOperations = request("orders-api");
         noOperations.setOperations(null);

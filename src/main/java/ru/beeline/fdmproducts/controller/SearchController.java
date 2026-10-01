@@ -30,11 +30,15 @@ public class SearchController {
     @GetMapping("/operation")
     @Operation(summary = "Поиск операций по пути и типу",
             operationId = "search_operationsByPathAndType",
-            description = "Ищет методы/интерфейсы/контейнеры/системы по строке пути и фильтру типа сущности.")
+            description = "Ищет архитектурные операции по подстроке path и необязательному type. "
+                    + "Без alias — по всем продуктам, при недоборе до 50 добирает discovered-операции. "
+                    + "С alias — только операции контейнеров ветки main этого продукта; discoveredOperations пустой.")
     public OperationSearchDTO searchOperations(
             @Parameter(description = "Фрагмент URL или пути операции") @RequestParam(required = false) String path,
-            @Parameter(description = "Тип объекта поиска (контракт сервиса)") @RequestParam(required = false) String type) {
-        return ResponseEntity.status(HttpStatus.OK).body(searchService.searchOperations(path, type)).getBody();
+            @Parameter(description = "Тип операции (необязательный фильтр)") @RequestParam(required = false) String type,
+            @Parameter(description = "Alias продукта (необязательный). При передаче поиск только по ветке main этого продукта")
+            @RequestParam(required = false) String alias) {
+        return searchService.searchOperations(path, type, alias);
     }
 
     @ApiErrorCodes({400, 500})

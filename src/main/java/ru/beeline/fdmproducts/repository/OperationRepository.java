@@ -132,6 +132,70 @@ public interface OperationRepository extends JpaRepository<Operation, Integer> {
             """, nativeQuery = true)
     List<ArchOperationProjection> findArchOperationsProjection(String path);
 
+    @Query(value = """
+            SELECT
+                o.id as opId,
+                o.name as opName,
+                o.type as opType,
+                i.id as interfaceId,
+                i.name as interfaceName,
+                i.code as interfaceCode,
+                cp.id as containerId,
+                cp.name as containerName,
+                cp.code as containerCode,
+                p.id as productId,
+                p.name as productName,
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
+            WHERE o.name ILIKE CONCAT('%', :path, '%')
+              AND (:type IS NULL OR o.type ILIKE :type)
+              AND cp.product_branch_id = :branchId
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+            ORDER BY o.id
+            LIMIT 50
+            """, nativeQuery = true)
+    List<ArchOperationProjection> findArchOperationsProjectionByTypeAndBranch(@Param("path") String path,
+                                                                              @Param("type") String type,
+                                                                              @Param("branchId") Integer branchId);
+
+    @Query(value = """
+            SELECT
+                o.id as opId,
+                o.name as opName,
+                o.type as opType,
+                i.id as interfaceId,
+                i.name as interfaceName,
+                i.code as interfaceCode,
+                cp.id as containerId,
+                cp.name as containerName,
+                cp.code as containerCode,
+                p.id as productId,
+                p.name as productName,
+                p.alias as productAlias,
+                pb.branch_name as productBranchName
+            FROM product.operation o
+            JOIN product.interface i ON o.interface_id = i.id
+            JOIN product.containers_product cp ON i.container_id = cp.id
+            JOIN product.product_branch pb ON cp.product_branch_id = pb.id
+            JOIN product.product p ON p.alias = pb.alias
+            WHERE o.name ILIKE CONCAT('%', :path, '%')
+              AND cp.product_branch_id = :branchId
+              AND o.deleted_date IS NULL
+              AND i.deleted_date IS NULL
+              AND cp.deleted_date IS NULL
+            ORDER BY o.id
+            LIMIT 50
+            """, nativeQuery = true)
+    List<ArchOperationProjection> findArchOperationsProjectionByBranch(@Param("path") String path,
+                                                                       @Param("branchId") Integer branchId);
+
     @Query("""
             SELECT
                 o.id AS opId,

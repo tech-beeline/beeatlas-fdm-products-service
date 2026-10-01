@@ -67,6 +67,7 @@ public class ApiErrorCodesCustomizer implements OperationCustomizer {
             case 404: return "Ресурс не найден";
             case 409: return "Конфликт данных";
             case 500: return "Внутренняя ошибка сервера";
+            case 502: return "Сервис capability недоступен";
             default:  return "Error " + code;
         }
     }

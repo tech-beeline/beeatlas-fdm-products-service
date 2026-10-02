@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.client.ProjectClient;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.discovered.UseCaseDiscoveredInterfaceDTO;
 import ru.beeline.fdmproducts.dto.discovered.UseCaseDiscoveredInterfaceResultDTO;
@@ -20,6 +21,7 @@ import ru.beeline.fdmproducts.dto.project.OperationUseCaseDTO;
 import ru.beeline.fdmproducts.dto.project.OperationUseCasesResponseDTO;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 
 import java.time.LocalDateTime;
@@ -33,10 +35,13 @@ public class UseCaseDiscoveredInterfaceService {
 
     public static final String SOURCE = "UseCase";
     private static final String MISSING_USE_CASE_ID = "Не передан обязательный параметр use-case-id";
+    private static final String MISSING_CONNECTION_OPERATION =
+            "Для одной из операцией не существует id = connectionOperationId заявленной сопоставленной операции в архитектуре";
     private static final char KEY_SEPARATOR = 0;
     private final ProductRepository productRepository;
     private final DiscoveredInterfaceRepository discoveredInterfaceRepository;
     private final DiscoveredOperationRepository discoveredOperationRepository;
+    private final OperationRepository operationRepository;
     private final ProjectClient projectClient;
 
     private record RequestedInterface(UseCaseDiscoveredInterfaceDTO dto, String interfaceCode, String productAlias,
@@ -112,6 +117,7 @@ public class UseCaseDiscoveredInterfaceService {
             }
             requested.add(new RequestedInterface(dto, interfaceCode, productAlias, product, productPlanned));
         }
+        validateConnectionOperationIds(requested);
         return requested;
     }
 
@@ -202,6 +208,28 @@ public class UseCaseDiscoveredInterfaceService {
         }
     }
 
+    private void validateConnectionOperationIds(List<RequestedInterface> requested) {
+        Set<Integer> connectionOperationIds = new LinkedHashSet<>();
+        for (RequestedInterface item : requested) {
+            for (UseCaseDiscoveredOperationDTO dto : item.dto().getOperations()) {
+                if (dto.getConnectionOperationId() != null) {
+                    connectionOperationIds.add(dto.getConnectionOperationId());
+                }
+            }
+        }
+        if (connectionOperationIds.isEmpty()) {
+            return;
+        }
+        Set<Integer> existingIds = operationRepository.findAllByIdIn(new ArrayList<>(connectionOperationIds)).stream()
+                .map(Operation::getId)
+                .collect(Collectors.toSet());
+        if (!existingIds.containsAll(connectionOperationIds)) {
+            throw new IllegalArgumentException(MISSING_CONNECTION_OPERATION);
+        }
+        log.info("Проверка connectionOperationId: запрошено={}, найдено в architecture={}",
+                connectionOperationIds.size(), existingIds.size());
+    }
+
     private ResolvedInterface findOrCreateInterface(RequestedInterface item, LocalDateTime now,
                                                     Map<String, List<DiscoveredInterface>> storedByCode) {
         Integer productId = item.product() == null ? null : item.product().getId();
@@ -268,8 +296,11 @@ public class UseCaseDiscoveredInterfaceService {
                         .tcCode(dto.getTcCode())
                         .tcDescription(dto.getDescriptionTc())
                         .isPlanned(isPlanned)
+                        .connectionOperationId(dto.getConnectionOperationId())
                         .createdDate(now)
                         .build());
+                log.info("Создан discovered_operation: id={}, name={}, type={}, connectionOperationId={}",
+                        operation.getId(), name, type, operation.getConnectionOperationId());
             } else {
                 refreshOperation(operation, dto, isPlanned, now);
             }
@@ -320,6 +351,11 @@ public class UseCaseDiscoveredInterfaceService {
         }
         if (!Objects.equals(operation.getIsPlanned(), isPlanned)) {
             operation.setIsPlanned(isPlanned);
+            changed = true;
+        }
+        if (dto.getConnectionOperationId() != null
+                && !Objects.equals(operation.getConnectionOperationId(), dto.getConnectionOperationId())) {
+            operation.setConnectionOperationId(dto.getConnectionOperationId());
             changed = true;
         }
         if (operation.getDeletedDate() != null) {

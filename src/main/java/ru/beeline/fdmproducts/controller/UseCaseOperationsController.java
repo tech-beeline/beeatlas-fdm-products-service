@@ -30,9 +30,10 @@ public class UseCaseOperationsController {
 
     @PutMapping("/use-case/operations")
     @Operation(summary = "Синхронизировать состав интерфейсов и методов use case",
-            description = "Создаёт или обновляет интерфейсы и методы use case (source=UseCase). "
-                    + "В элементе передаётся либо product, либо productPlanned. "
-                    + "В ответе — id методов для сшивки на вызывающей стороне.")
+            description = "Создаёт или обновляет интерфейсы и методы use case. "
+                    + "У интерфейса указывают product или productPlanned. "
+                    + "У метода можно передать connectionOperationId — связь с операцией архитектуры. "
+                    + "В ответе — discoveredOperationId.")
     @ApiResponse(responseCode = "200", description = "Состав сохранён",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     schema = @Schema(implementation = UseCaseDiscoveredInterfaceResultDTO.class)))

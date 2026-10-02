@@ -31,6 +31,7 @@ public class DiscoveredInterfaceByIdsDTO {
     private String context;
     private String source;
     private Integer productId;
+    private DiscoveredInterfaceProductDTO product;
     private String productPlanned;
     private LocalDateTime createdDate;
     private LocalDateTime updatedDate;

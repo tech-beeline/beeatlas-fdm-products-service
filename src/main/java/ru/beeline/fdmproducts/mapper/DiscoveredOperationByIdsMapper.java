@@ -8,8 +8,10 @@ import org.springframework.stereotype.Component;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.TcDTO;
 import ru.beeline.fdmproducts.dto.discovered.DiscoveredInterfaceByIdsDTO;
+import ru.beeline.fdmproducts.dto.discovered.DiscoveredInterfaceProductDTO;
 import ru.beeline.fdmproducts.dto.discovered.DiscoveredOperationByIdsDTO;
 import ru.beeline.fdmproducts.dto.discovered.OperationWithTechCapabilityDTO;
 
@@ -47,9 +49,7 @@ public class DiscoveredOperationByIdsMapper {
         if (discoveredInterface == null) {
             return null;
         }
-        Integer productId = discoveredInterface.getProduct() == null
-                ? null
-                : discoveredInterface.getProduct().getId();
+        Product product = discoveredInterface.getProduct();
         return DiscoveredInterfaceByIdsDTO.builder()
                 .id(discoveredInterface.getId())
                 .name(discoveredInterface.getName())
@@ -62,11 +62,24 @@ public class DiscoveredOperationByIdsMapper {
                 .status(discoveredInterface.getStatus())
                 .context(discoveredInterface.getContext())
                 .source(discoveredInterface.getSource())
-                .productId(productId)
+                .productId(product == null ? null : product.getId())
+                .product(toProductDto(product))
                 .productPlanned(discoveredInterface.getProductPlanned())
                 .createdDate(discoveredInterface.getCreatedDate())
                 .updatedDate(discoveredInterface.getUpdatedDate())
                 .deletedDate(discoveredInterface.getDeletedDate())
+                .build();
+    }
+
+    private DiscoveredInterfaceProductDTO toProductDto(Product product) {
+        if (product == null) {
+            return null;
+        }
+        return DiscoveredInterfaceProductDTO.builder()
+                .id(product.getId())
+                .alias(product.getAlias())
+                .name(product.getName())
+                .description(product.getDescription())
                 .build();
     }
 

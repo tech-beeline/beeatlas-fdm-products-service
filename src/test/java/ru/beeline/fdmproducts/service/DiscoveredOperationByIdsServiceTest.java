@@ -76,6 +76,11 @@ class DiscoveredOperationByIdsServiceTest {
         assertThat(dto.getDiscoveredInterface()).isNotNull();
         assertThat(dto.getDiscoveredInterface().getId()).isEqualTo(5);
         assertThat(dto.getDiscoveredInterface().getProductId()).isEqualTo(3);
+        assertThat(dto.getDiscoveredInterface().getProduct()).isNotNull();
+        assertThat(dto.getDiscoveredInterface().getProduct().getId()).isEqualTo(3);
+        assertThat(dto.getDiscoveredInterface().getProduct().getAlias()).isEqualTo("MYAPP");
+        assertThat(dto.getDiscoveredInterface().getProduct().getName()).isEqualTo("Заказы");
+        assertThat(dto.getDiscoveredInterface().getProduct().getDescription()).isEqualTo("Продукт заказов");
         assertThat(dto.getDiscoveredInterface().getSource()).isEqualTo("UseCase");
         assertThat(dto.getOperation()).isNotNull();
         assertThat(dto.getOperation().getId()).isEqualTo(100);
@@ -238,7 +243,12 @@ class DiscoveredOperationByIdsServiceTest {
                 .name("orders-api")
                 .externalId("orders-api")
                 .source("UseCase")
-                .product(Product.builder().id(3).alias("orders").build())
+                .product(Product.builder()
+                        .id(3)
+                        .alias("MYAPP")
+                        .name("Заказы")
+                        .description("Продукт заказов")
+                        .build())
                 .createdDate(CREATED)
                 .build();
     }

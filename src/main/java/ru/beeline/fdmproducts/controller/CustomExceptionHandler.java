@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
+import ru.beeline.fdmproducts.jackson.BiStepCodesDeserializer;
 import ru.beeline.fdmproducts.jackson.ConnectionOperationIdDeserializer;
 import ru.beeline.fdmproducts.exception.AuthServiceUnavailableException;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
@@ -139,6 +140,14 @@ public class CustomExceptionHandler {
         if (containsMessage(ex, ConnectionOperationIdDeserializer.NOT_INTEGER_MESSAGE)) {
             return ResponseEntity.badRequest()
                     .body(new ErrorMessageDTO(ConnectionOperationIdDeserializer.NOT_INTEGER_MESSAGE));
+        }
+        if (containsMessage(ex, BiStepCodesDeserializer.INVALID_CODE)) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorMessageDTO(BiStepCodesDeserializer.INVALID_CODE));
+        }
+        if (containsMessage(ex, BiStepCodesDeserializer.MISSING_BODY)) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorMessageDTO(BiStepCodesDeserializer.MISSING_BODY));
         }
         return ResponseEntity.badRequest().body(new ErrorMessageDTO("Неверные входные данные"));
     }

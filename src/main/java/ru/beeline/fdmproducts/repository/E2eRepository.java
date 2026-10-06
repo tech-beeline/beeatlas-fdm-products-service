@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.E2e;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,5 +27,8 @@ public interface E2eRepository extends JpaRepository<E2e, Integer> {
 
     @Query("SELECT e FROM E2e e WHERE e.biStepCode IS NOT NULL AND TRIM(e.biStepCode) <> ''")
     List<E2e> findAllWithBiStepCode();
+
+    @Query("SELECT e FROM E2e e WHERE e.biStepCode IS NOT NULL AND LOWER(e.biStepCode) IN :codes")
+    List<E2e> findAllByBiStepCodeInIgnoreCase(@Param("codes") Collection<String> codes);
 }
 

@@ -110,6 +110,29 @@ class E2eByBiStepCodesServiceTest {
     }
 
     @Test
+    @DisplayName("Дубликаты, отличающиеся только регистром, схлопываются; biStepCode — первое вхождение")
+    void deduplicatesCaseInsensitivePreservingFirstCasing() {
+        when(e2eRepository.findAllByBiStepCodeInIgnoreCase(anyCollection())).thenReturn(List.of(
+                e2e(184, "{3A3D8F0F-94DA-4890-8214-48575C3FFF6E}",
+                        "Шаг 1. МП. Открываю экран временной блокировки",
+                        "Step.00.00.02.77", "SPARX")
+        ));
+
+        List<E2eByBiStepCodesGroupDTO> result = service.getByBiStepCodes(
+                List.of("Step.00.00.02.77", "step.00.00.02.77"));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getBiStepCode()).isEqualTo("Step.00.00.02.77");
+        assertThat(result.get(0).getE2e()).hasSize(1);
+        assertThat(result.get(0).getE2e().get(0).getId()).isEqualTo(184);
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<Collection<String>> codesCaptor = ArgumentCaptor.forClass(Collection.class);
+        verify(e2eRepository).findAllByBiStepCodeInIgnoreCase(codesCaptor.capture());
+        assertThat(codesCaptor.getValue()).containsExactly("step.00.00.02.77");
+    }
+
+    @Test
     @DisplayName("Валидация тела: null, пустой список, null/пустой элемент")
     void validatesRequestBody() {
         assertThatThrownBy(() -> service.getByBiStepCodes(null))

@@ -15,7 +15,7 @@ import ru.beeline.fdmproducts.repository.E2eRepository;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -39,7 +39,6 @@ public class E2eByBiStepCodesService {
 
         List<String> lowerCodes = uniqueCodes.stream()
                 .map(code -> code.toLowerCase(Locale.ROOT))
-                .distinct()
                 .toList();
         List<E2e> found = e2eRepository.findAllByBiStepCodeInIgnoreCase(lowerCodes);
         Map<String, List<E2e>> byLowerBiStepCode = found.stream()
@@ -84,7 +83,11 @@ public class E2eByBiStepCodesService {
     }
 
     private List<String> uniqueCodes(List<String> codes) {
-        return new ArrayList<>(new LinkedHashSet<>(codes));
+        Map<String, String> firstByLower = new LinkedHashMap<>();
+        for (String code : codes) {
+            firstByLower.putIfAbsent(code.toLowerCase(Locale.ROOT), code);
+        }
+        return new ArrayList<>(firstByLower.values());
     }
 
     private E2eByBiStepCodeItemDTO toItem(E2e e2e) {

@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 
+import java.util.Collection;
 import java.util.List;
 
 @Repository
@@ -32,4 +33,14 @@ public interface OperationRelationRepository extends JpaRepository<OperationRela
             + "SELECT DISTINCT related_operation_id FROM product.operation_relations WHERE related_operation_id IN :ids",
             nativeQuery = true)
     List<Integer> findOperationIdsInUse(@Param("ids") List<Integer> ids);
+
+    @Query("""
+            SELECT r FROM OperationRelation r
+            WHERE r.e2eId IS NOT NULL
+              AND (
+                    (LOWER(r.entityTypeOperation) = 'discovered_operation' AND r.operationId IN :ids)
+                 OR (LOWER(r.entityTypeOperationRelation) = 'discovered_operation' AND r.relatedOperationId IN :ids)
+              )
+            """)
+    List<OperationRelation> findDiscoveredOperationParticipations(@Param("ids") Collection<Integer> ids);
 }

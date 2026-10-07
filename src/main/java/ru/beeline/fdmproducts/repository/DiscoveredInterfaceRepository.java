@@ -96,4 +96,14 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
             + "WHERE source IS NOT NULL ORDER BY LOWER(source)",
             nativeQuery = true)
     List<String> findDistinctSources();
+
+    @Query("""
+            SELECT di FROM DiscoveredInterface di
+            WHERE di.product.id = :productId
+              AND di.deletedDate IS NULL
+              AND LOWER(di.source) IN :sources
+            """)
+    List<DiscoveredInterface> findActiveByProductIdAndSourceInIgnoreCase(
+            @Param("productId") Integer productId,
+            @Param("sources") Collection<String> sources);
 }

@@ -30,5 +30,10 @@ public interface E2eRepository extends JpaRepository<E2e, Integer> {
 
     @Query("SELECT e FROM E2e e WHERE e.biStepCode IS NOT NULL AND LOWER(e.biStepCode) IN :codes")
     List<E2e> findAllByBiStepCodeInIgnoreCase(@Param("codes") Collection<String> codes);
+
+    @Query("SELECT e.source FROM E2e e")
+    List<String> findAllSources();
+
+    List<E2e> findAllByIdIn(Collection<Integer> ids);
 }
 

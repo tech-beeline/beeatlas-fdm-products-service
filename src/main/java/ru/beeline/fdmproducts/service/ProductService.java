@@ -77,6 +77,7 @@ public class ProductService {
     private final OperationRelationRepository operationRelationRepository;
     private final ProductBranchRepository productBranchRepository;
     private final ProductBranchService productBranchService;
+    private final OperationTechCapabilityResolver techCapabilityResolver;
 
     public ProductService(ContainerMapper containerMapper,
                           OperationMapper operationMapper,
@@ -114,7 +115,8 @@ public class ProductService {
                           LocalAssessmentCheckRepository localAssessmentCheckRepository,
                           OperationRelationRepository operationRelationRepository,
                           ProductBranchRepository productBranchRepository,
-                          ProductBranchService productBranchService) {
+                          ProductBranchService productBranchService,
+                          OperationTechCapabilityResolver techCapabilityResolver) {
         this.containerMapper = containerMapper;
         this.operationMapper = operationMapper;
         this.discoveredOperationMapper = discoveredOperationMapper;
@@ -152,6 +154,7 @@ public class ProductService {
         this.operationRelationRepository = operationRelationRepository;
         this.productBranchRepository = productBranchRepository;
         this.productBranchService = productBranchService;
+        this.techCapabilityResolver = techCapabilityResolver;
     }
 
     private Optional<ProductBranch> findBranch(String alias, String branch) {
@@ -1700,12 +1703,15 @@ public class ProductService {
                 .collect(Collectors.toList());
         Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
                 .collect(Collectors.toMap(Operation::getId, Function.identity()));
-        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById);
+        Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.loadOrEmpty(operationsById.values());
+        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById,
+                techCapabilities);
     }
 
     private List<ProductMapicInterfaceV2DTO> buildProductMapicInterfaceV2DTOs(List<DiscoveredInterface> discoveredInterfaces,
                                                                               Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId,
-                                                                              Map<Integer, Operation> operationsById) {
+                                                                              Map<Integer, Operation> operationsById,
+                                                                              Map<Integer, TcDTO> techCapabilities) {
         return discoveredInterfaces.stream().map(discoveredInterface -> {
                     ProductMapicInterfaceV2DTO dto = InterfaceMapper.createProductMapicInterfaceV2(discoveredInterface);
                     List<DiscoveredOperation> interfaceDiscoveredOperations = discoveredOperationsByInterfaceId.getOrDefault(
@@ -1718,7 +1724,12 @@ public class ProductService {
                                 Operation operation = discoveredOperation.getConnectionOperationId() != null
                                         ? operationsById.get(discoveredOperation.getConnectionOperationId())
                                         : null;
-                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                                ConnectOperationDTO operationDto =
+                                        InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                                operationDto.setIsPlanned(discoveredOperation.getIsPlanned());
+                                operationDto.setTechCapability(OperationTechCapabilityResolver.of(discoveredOperation,
+                                        operation, techCapabilities));
+                                return operationDto;
                             })
                             .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
                             .collect(Collectors.toList());

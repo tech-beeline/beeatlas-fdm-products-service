@@ -5,6 +5,7 @@
 package ru.beeline.fdmproducts.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.*;
 
 import java.time.LocalDateTime;
@@ -26,4 +27,8 @@ public class ConnectOperationDTO {
     private LocalDateTime createDate;
     private LocalDateTime deletedDate;
     private MapicOperationDTO connectOperation;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean isPlanned;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private OperationTechCapabilityDTO techCapability;
 }

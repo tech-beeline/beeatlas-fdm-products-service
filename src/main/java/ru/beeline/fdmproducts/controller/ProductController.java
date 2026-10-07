@@ -18,8 +18,10 @@ import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.dto.dashboard.ResultDTO;
+import ru.beeline.fdmproducts.dto.e2e.ProductE2eStepDTO;
 import ru.beeline.fdmproducts.dto.ffunction.FitnessFunctionDTO;
 import ru.beeline.fdmproducts.service.InfraService;
+import ru.beeline.fdmproducts.service.ProductE2eStepsService;
 import ru.beeline.fdmproducts.service.ProductPatternsService;
 import ru.beeline.fdmproducts.service.ProductService;
 
@@ -44,6 +46,9 @@ public class ProductController {
 
     @Autowired
     private ProductPatternsService productPatternsService;
+
+    @Autowired
+    private ProductE2eStepsService productE2eStepsService;
 
 
     @ApiErrorCodes({400, 404, 500})
@@ -289,6 +294,18 @@ public class ProductController {
     @Operation(summary = "End-to-end процессы продукта")
     public List<ResultDTO> getE2eProcessByCmdb(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb) {
         return productService.getE2eProcessByCmdb(cmdb);
+    }
+
+    @ApiErrorCodes({404, 502})
+    @GetMapping("/v1/product/{cmdb}/e2e-steps")
+    @Operation(summary = "Шаги E2E-сценариев, в которых участвуют методы продукта",
+            description = "Возвращает E2E, в связях которых (operation_relations) на любой стороне стоит архитектурный "
+                    + "метод продукта (ветка main) или его обнаруженный метод. Под каждым E2E — методы продукта из "
+                    + "его связей с ТВ из capability; для обнаруженного метода ТВ берётся у связанного архитектурного "
+                    + "метода, иначе tc_code/tc_description. Группы отсортированы по коду шага BI, затем по коду E2E. "
+                    + "404 — продукт не найден, 502 — capability недоступен.")
+    public List<ProductE2eStepDTO> getE2eSteps(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb) {
+        return productE2eStepsService.getE2eSteps(cmdb);
     }
 
     @ApiErrorCodes({400, 404, 500})

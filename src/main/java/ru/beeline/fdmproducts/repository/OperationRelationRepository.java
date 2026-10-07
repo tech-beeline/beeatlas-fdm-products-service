@@ -22,6 +22,11 @@ public interface OperationRelationRepository extends JpaRepository<OperationRela
 
     List<OperationRelation> findAllByE2eId(Integer e2eId);
 
+    List<OperationRelation> findAllByRelatedOperationIdInAndEntityTypeOperationRelation(List<Integer> ids,
+                                                                                        String entityType);
+
+    List<OperationRelation> findAllByOperationIdInAndEntityTypeOperation(List<Integer> ids, String entityType);
+
     @Query(value = "SELECT DISTINCT operation_id FROM product.operation_relations WHERE operation_id IN :ids "
             + "UNION "
             + "SELECT DISTINCT related_operation_id FROM product.operation_relations WHERE related_operation_id IN :ids",

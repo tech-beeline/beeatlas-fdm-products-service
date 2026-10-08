@@ -18,6 +18,8 @@ import java.util.List;
 @Repository
 public interface ContainerRepository extends JpaRepository<ContainerProduct, Integer> {
 
+    List<ContainerProduct> findAllByIdIn(List<Integer> ids);
+
     @EntityGraph(attributePaths = {"interfaces"})
     List<ContainerProduct> findAllByProductBranchId(Integer productBranchId);
 

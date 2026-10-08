@@ -38,7 +38,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
                 di.source AS source,
                 do.rps AS rps,
                 do.latency AS latency,
-                do.errorRate AS errorRate
+                do.errorRate AS errorRate,
+                do.connectionOperationId AS connectionOperationId
             FROM DiscoveredOperation do
             JOIN do.discoveredInterface di
             JOIN di.product p

@@ -26,9 +26,11 @@ import ru.beeline.fdmproducts.dto.e2e.E2eV2InterfaceDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2OperationRelationDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eV2UpsertRequestDTO;
+import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
+import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
@@ -75,6 +77,10 @@ class E2eV2ServiceTest {
     private OperationRepository operationRepository;
     @Mock
     private SlaRepository slaRepository;
+    @Mock
+    private InterfaceRepository interfaceRepository;
+    @Mock
+    private ContainerRepository containerRepository;
 
     @InjectMocks
     private E2eV2Service service;

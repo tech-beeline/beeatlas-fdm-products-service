@@ -64,9 +64,9 @@ public class E2eV2Controller {
 
     @ApiErrorCodes({404, 405, 500})
     @GetMapping("/{code}")
-    @Operation(summary = "Получить e2e-процесс по коду (смешанное дерево operation / discovered_operation)",
-            description = "Возвращает карточку e2e, дерево operationsRelations с entityTypeRelatedOperation "
-                    + "и два справочника: operations (product.operation) и discoveredOperations (product.discovered_operation).")
+    @Operation(summary = "Получить e2e-процесс по коду",
+            description = "Возвращает карточку e2e, дерево связей и справочники операций. "
+                    + "У обнаруженных методов — сопоставленная операция архитектуры с SLA, интерфейсом и контейнером.")
     public ResponseEntity<E2eV2GetResponseDTO> getE2eByCode(
             @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code) {
         return ResponseEntity.ok(e2eV2Service.getByCode(code));

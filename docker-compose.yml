@@ -87,6 +87,7 @@ services:
       INTEGRATION_AUTHSSO_SERVER_URL: "http://auth-service"
       INTEGRATION_TECHRADAR_SERVER_URL: "http://techradar-service"
       INTEGRATION_GRAPH_SERVER_URL: "http://graph-service"
+      INTEGRATION_PROJECT_SERVER_URL: "${INTEGRATION_PROJECT_SERVER_URL:-http://project-service}"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
       interval: 5s

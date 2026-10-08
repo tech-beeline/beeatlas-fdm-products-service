@@ -21,5 +21,6 @@ public class TcDTO {
     private String code;
     private String name;
     private Date createdDate;
+    private Date updatedDate;
     private Date deletedDate;
 }

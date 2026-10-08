@@ -14,6 +14,7 @@ import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.dto.search.projection.DiscoveredOperationProjection;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,7 +38,8 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
                 di.source AS source,
                 do.rps AS rps,
                 do.latency AS latency,
-                do.errorRate AS errorRate
+                do.errorRate AS errorRate,
+                do.connectionOperationId AS connectionOperationId
             FROM DiscoveredOperation do
             JOIN do.discoveredInterface di
             JOIN di.product p
@@ -92,6 +94,12 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             + "     AND o.id NOT IN (:operationIds))")
     List<DiscoveredOperation> getRows(@Param("interfaceId") Integer interfaceId,
                                       @Param("operationIds") List<Integer> operationIds);
+
+    @Query("SELECT do FROM DiscoveredOperation do "
+            + "LEFT JOIN FETCH do.discoveredInterface di "
+            + "LEFT JOIN FETCH di.product "
+            + "WHERE do.id IN :ids")
+    List<DiscoveredOperation> findAllByIdInWithInterface(@Param("ids") Collection<Integer> ids);
 
     List<DiscoveredOperation> findAllByInterfaceIdIn(List<Integer> discoveredInterfaceIds);
 

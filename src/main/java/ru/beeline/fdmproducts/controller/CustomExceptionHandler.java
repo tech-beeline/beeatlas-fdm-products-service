@@ -19,9 +19,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 import ru.beeline.fdmproducts.dto.ErrorResponse;
 import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
+import ru.beeline.fdmproducts.jackson.BiStepCodesDeserializer;
+import ru.beeline.fdmproducts.jackson.ConnectionOperationIdDeserializer;
 import ru.beeline.fdmproducts.exception.AuthServiceUnavailableException;
 import ru.beeline.fdmproducts.exception.DatabaseConnectionException;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
+import ru.beeline.fdmproducts.exception.ExternalServiceException;
 import ru.beeline.fdmproducts.exception.ForbiddenException;
 import ru.beeline.fdmproducts.exception.NotAdministratorException;
 import ru.beeline.fdmproducts.exception.UnauthorizedException;
@@ -134,7 +137,40 @@ public class CustomExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorMessageDTO> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+        if (containsMessage(ex, ConnectionOperationIdDeserializer.NOT_INTEGER_MESSAGE)) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorMessageDTO(ConnectionOperationIdDeserializer.NOT_INTEGER_MESSAGE));
+        }
+        if (containsMessage(ex, BiStepCodesDeserializer.INVALID_CODE)) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorMessageDTO(BiStepCodesDeserializer.INVALID_CODE));
+        }
+        if (containsMessage(ex, BiStepCodesDeserializer.MISSING_BODY)) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorMessageDTO(BiStepCodesDeserializer.MISSING_BODY));
+        }
         return ResponseEntity.badRequest().body(new ErrorMessageDTO("Неверные входные данные"));
+    }
+
+    private boolean containsMessage(Throwable error, String expected) {
+        Throwable current = error;
+        while (current != null) {
+            if (current.getMessage() != null && current.getMessage().contains(expected)) {
+                return true;
+            }
+            Throwable cause = current.getCause();
+            current = cause == current ? null : cause;
+        }
+        return false;
+    }
+
+    @ExceptionHandler(ExternalServiceException.class)
+    public ResponseEntity<ErrorMessageDTO> handleException(ExternalServiceException e) {
+        log.error(e.getMessage());
+        return ResponseEntity
+                .status(e.getStatus())
+                .header("content-type", MediaType.APPLICATION_JSON_VALUE)
+                .body(new ErrorMessageDTO(e.getMessage()));
     }
 
     @ExceptionHandler(DatabaseConnectionException.class)

@@ -53,6 +53,10 @@ public class DiscoveredOperation {
     @Column(name = "tc_description")
     private String tcDescription;
 
+    @Column(name = "is_planned", nullable = false)
+    @Builder.Default
+    private Boolean isPlanned = false;
+
     private String type;
 
     @Column(name = "return_type")

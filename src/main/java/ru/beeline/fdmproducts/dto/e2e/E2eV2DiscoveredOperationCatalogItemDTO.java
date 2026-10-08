@@ -23,4 +23,5 @@ public class E2eV2DiscoveredOperationCatalogItemDTO {
     private String productAlias;
     private String source;
     private SlaV2DTO sla;
+    private E2eV2ConnectedOperationDTO operation;
 }

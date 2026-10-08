@@ -36,8 +36,8 @@ public class DiscoveredOperationController {
     @ApiErrorCodes({400, 502, 500})
     @PostMapping("/discovered-operation/by-ids")
     @Operation(summary = "Получить discovered_operation по списку id",
-            description = "Возвращает найденные строки product.discovered_operation со всеми колонками, "
-                    + "вложенным discoveredInterface и канонической operation. ")
+            description = "Возвращает найденные методы со вложенным интерфейсом обнаружения и "
+                    + "сопоставленной операцией архитектуры (SLA, интерфейс, контейнер, ТС).")
     @ApiResponse(responseCode = "200", description = "Найденные методы в порядке уникальных id из тела",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     array = @ArraySchema(schema = @Schema(implementation = DiscoveredOperationByIdsDTO.class))))

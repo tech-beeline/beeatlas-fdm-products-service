@@ -16,7 +16,8 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Schema(description = "Строка product.discovered_operation со вложенным интерфейсом и канонической операцией")
+@Schema(description = "Строка product.discovered_operation со вложенным discoveredInterface и канонической operation "
+        + "(id, name, type, tcId, techCapability, sla, interface/container)")
 public class DiscoveredOperationByIdsDTO {
 
     private Integer id;
@@ -37,5 +38,5 @@ public class DiscoveredOperationByIdsDTO {
     private LocalDateTime updatedDate;
     private LocalDateTime deletedDate;
     private DiscoveredInterfaceByIdsDTO discoveredInterface;
-    private OperationWithTechCapabilityDTO operation;
+    private DiscoveredConnectedOperationDTO operation;
 }

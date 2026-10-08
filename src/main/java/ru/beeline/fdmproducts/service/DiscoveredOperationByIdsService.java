@@ -11,16 +11,24 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.client.CapabilityClient;
+import ru.beeline.fdmproducts.domain.ContainerProduct;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
+import ru.beeline.fdmproducts.domain.Sla;
 import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmproducts.dto.discovered.DiscoveredConnectedOperationDTO;
 import ru.beeline.fdmproducts.dto.discovered.DiscoveredOperationByIdsDTO;
 import ru.beeline.fdmproducts.exception.ExternalServiceException;
 import ru.beeline.fdmproducts.mapper.DiscoveredOperationByIdsMapper;
+import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
+import ru.beeline.fdmproducts.repository.SlaRepository;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,6 +50,9 @@ public class DiscoveredOperationByIdsService {
 
     private final DiscoveredOperationRepository discoveredOperationRepository;
     private final OperationRepository operationRepository;
+    private final SlaRepository slaRepository;
+    private final InterfaceRepository interfaceRepository;
+    private final ContainerRepository containerRepository;
     private final CapabilityClient capabilityClient;
     private final DiscoveredOperationByIdsMapper mapper;
 
@@ -53,10 +64,9 @@ public class DiscoveredOperationByIdsService {
         Map<Integer, DiscoveredOperation> byId = found.stream()
                 .collect(Collectors.toMap(DiscoveredOperation::getId, Function.identity(), (left, right) -> left));
 
-        Map<Integer, Operation> operations = loadOperations(found);
+        Map<Integer, DiscoveredConnectedOperationDTO> connectedById = loadConnectedOperations(found);
         log.info("Найдено discovered_operation={}, канонических operation={}, неизвестных id={}",
-                found.size(), operations.size(), uniqueIds.size() - found.size());
-        Map<Integer, TcDTO> techCapabilities = loadTechCapabilities(operations);
+                found.size(), connectedById.size(), uniqueIds.size() - found.size());
 
         List<DiscoveredOperationByIdsDTO> result = new ArrayList<>();
         for (Integer id : uniqueIds) {
@@ -64,14 +74,10 @@ public class DiscoveredOperationByIdsService {
             if (discoveredOperation == null) {
                 continue;
             }
-            Operation operation = discoveredOperation.getConnectionOperationId() == null
+            DiscoveredConnectedOperationDTO operation = discoveredOperation.getConnectionOperationId() == null
                     ? null
-                    : operations.get(discoveredOperation.getConnectionOperationId());
-            TcDTO techCapability = operation == null || operation.getTcId() == null
-                    ? null
-                    : techCapabilities.get(operation.getTcId());
-            result.add(mapper.toDto(discoveredOperation, discoveredOperation.getDiscoveredInterface(),
-                    operation, techCapability));
+                    : connectedById.get(discoveredOperation.getConnectionOperationId());
+            result.add(mapper.toDto(discoveredOperation, discoveredOperation.getDiscoveredInterface(), operation));
         }
         log.info("Чтение discovered_operation по id завершено: элементов в ответе={}", result.size());
         return result;
@@ -98,7 +104,7 @@ public class DiscoveredOperationByIdsService {
         return new ArrayList<>(new LinkedHashSet<>(ids));
     }
 
-    private Map<Integer, Operation> loadOperations(List<DiscoveredOperation> found) {
+    private Map<Integer, DiscoveredConnectedOperationDTO> loadConnectedOperations(List<DiscoveredOperation> found) {
         Set<Integer> operationIds = found.stream()
                 .map(DiscoveredOperation::getConnectionOperationId)
                 .filter(Objects::nonNull)
@@ -106,13 +112,67 @@ public class DiscoveredOperationByIdsService {
         if (operationIds.isEmpty()) {
             return Map.of();
         }
-        return operationRepository.findAllByIdIn(new ArrayList<>(operationIds)).stream()
-                .collect(Collectors.toMap(Operation::getId, Function.identity(), (left, right) -> left,
-                        LinkedHashMap::new));
+        List<Operation> operations = operationRepository.findAllByIdIn(new ArrayList<>(operationIds));
+        if (operations.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Integer> foundOperationIds = operations.stream().map(Operation::getId).toList();
+        Map<Integer, Sla> slaByOperationId = slaRepository.findAllByOperationIdIn(foundOperationIds).stream()
+                .collect(Collectors.toMap(
+                        Sla::getOperationId,
+                        sla -> sla,
+                        (left, right) -> left.getId() <= right.getId() ? left : right));
+
+        List<Integer> interfaceIds = operations.stream()
+                .map(Operation::getInterfaceId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Integer, Interface> interfacesById = new HashMap<>();
+        if (!interfaceIds.isEmpty()) {
+            for (Interface row : interfaceRepository.findAllByIdIn(interfaceIds)) {
+                interfacesById.put(row.getId(), row);
+            }
+        }
+
+        List<Integer> containerIds = interfacesById.values().stream()
+                .map(Interface::getContainerId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Integer, ContainerProduct> containersById = new HashMap<>();
+        if (!containerIds.isEmpty()) {
+            for (ContainerProduct row : containerRepository.findAllByIdIn(containerIds)) {
+                containersById.put(row.getId(), row);
+            }
+        }
+
+        Map<Integer, TcDTO> techCapabilities = loadTechCapabilities(operations);
+
+        Map<Integer, DiscoveredConnectedOperationDTO> result = new LinkedHashMap<>();
+        for (Operation operation : operations) {
+            Interface iface = operation.getInterfaceId() == null
+                    ? null
+                    : interfacesById.get(operation.getInterfaceId());
+            ContainerProduct container = iface == null || iface.getContainerId() == null
+                    ? null
+                    : containersById.get(iface.getContainerId());
+            TcDTO techCapability = operation.getTcId() == null
+                    ? null
+                    : techCapabilities.get(operation.getTcId());
+            result.put(operation.getId(), mapper.toConnectedOperationDto(
+                    operation,
+                    techCapability,
+                    slaByOperationId.get(operation.getId()),
+                    iface,
+                    container));
+        }
+        return result;
     }
 
-    private Map<Integer, TcDTO> loadTechCapabilities(Map<Integer, Operation> operations) {
-        List<Integer> tcIds = operations.values().stream()
+    private Map<Integer, TcDTO> loadTechCapabilities(List<Operation> operations) {
+        List<Integer> tcIds = operations.stream()
                 .map(Operation::getTcId)
                 .filter(Objects::nonNull)
                 .distinct()

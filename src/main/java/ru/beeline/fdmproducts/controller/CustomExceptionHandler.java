@@ -174,12 +174,12 @@ public class CustomExceptionHandler {
     }
 
     @ExceptionHandler(DatabaseConnectionException.class)
-    public ResponseEntity<String> handleDatabaseConnectionException(DatabaseConnectionException e) {
+    public ResponseEntity<ErrorMessageDTO> handleDatabaseConnectionException(DatabaseConnectionException e) {
         log.error(e.getMessage());
         return ResponseEntity
                 .status(HttpStatus.SERVICE_UNAVAILABLE)
                 .header("content-type", MediaType.APPLICATION_JSON_VALUE)
-                .body(e.getMessage());
+                .body(new ErrorMessageDTO(e.getMessage()));
     }
 
     @ExceptionHandler(ResponseStatusException.class)

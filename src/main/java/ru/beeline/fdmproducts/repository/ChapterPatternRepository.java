@@ -14,5 +14,7 @@ import java.util.List;
 public interface ChapterPatternRepository extends JpaRepository<ChapterPattern, Integer> {
 
     List<ChapterPattern> findAllByChapterId(Integer chapterId);
+
+    List<ChapterPattern> findAllByPatternId(Integer patternId);
 }
 

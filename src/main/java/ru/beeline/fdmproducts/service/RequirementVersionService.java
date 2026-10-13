@@ -37,6 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -110,8 +111,12 @@ public class RequirementVersionService {
         if (!chapters.isEmpty()) {
             validateChaptersExist(chapters);
         }
-        if (!patterns.isEmpty()) {
-            validatePatternsExistInTechradar(patterns);
+        Set<Integer> currentPatterns = currentVersionPatternIds(core.getId());
+        List<Integer> newPatterns = patterns.stream()
+                .filter(patternId -> !currentPatterns.contains(patternId))
+                .toList();
+        if (!newPatterns.isEmpty()) {
+            validatePatternsExistInTechradar(newPatterns);
         }
 
         int nextVersion = computeNextVersion(core.getId());
@@ -181,6 +186,17 @@ public class RequirementVersionService {
         if (found.size() != chapterIds.size()) {
             throw new IllegalArgumentException("В массиве chapters переданы идентификаторы несуществующих жизненных ситуаций");
         }
+    }
+
+    private Set<Integer> currentVersionPatternIds(Integer coreId) {
+        return enumRepository.findByCoreId(coreId).stream()
+                .filter(nfr -> nfr.getVersion() != null)
+                .max(Comparator.comparing(NonFunctionalRequirementEnum::getVersion))
+                .map(current -> patternRequirementRepository.findByNfrId(current.getId()).stream()
+                        .map(PatternRequirement::getPatternId)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toSet()))
+                .orElse(Set.of());
     }
 
     private void validatePatternsExistInTechradar(List<Integer> patterns) {

@@ -20,12 +20,12 @@ import ru.beeline.fdmproducts.dto.e2e.E2eRelationTreeNodeDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.E2eRepository;
+import ru.beeline.fdmproducts.repository.E2eSearchRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.SlaRepository;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -46,6 +46,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class E2eService {
 
+    static final String METHOD_WITH_OPERATION_ID = "Параметры method и operation-id нельзя передавать вместе";
+    static final String INVALID_OPERATION_ID = "Параметр operation-id должен быть целым положительным числом";
+
+    private final E2eSearchRepository e2eSearchRepository;
     private final OperationRepository operationRepository;
     private final SlaRepository slaRepository;
     private final E2eRepository e2eRepository;
@@ -170,35 +174,68 @@ public class E2eService {
         }
     }
 
-    @Transactional
-    public List<E2eCardResponseDTO> listE2eByFilter(String filter) {
-        String normalizedFilter = normalizeListFilter(filter);
-        log.info("E2E list: начало, filter={}", normalizedFilter);
-        List<E2e> e2eList = switch (normalizedFilter) {
-            case "without-bi-step" -> e2eRepository.findAllWithoutBiStepCode();
-            case "with-bi-step" -> e2eRepository.findAllWithBiStepCode();
-            default -> e2eRepository.findAll();
-        };
-        List<E2eCardResponseDTO> result = cards(e2eList);
-        log.info("E2E list: завершён, filter={}, count={}", normalizedFilter, result.size());
+    /**
+     * GET /api/v1/e2e (SFDM-4240): список карточек e2e с фильтрами filter, alias, tc-code, method, operation-id.
+     * Сначала проверки параметров — до них e2e не читаются; затем один запрос. Совпадений нет — [].
+     */
+    @Transactional(readOnly = true)
+    public List<E2eCardResponseDTO> search(String filter, String alias, String tcCode, String method,
+                                           String operationId) {
+        E2eSearchRepository.Criteria criteria = criteria(filter, alias, tcCode, method, operationId);
+        log.info("E2E list: начало, criteria={}", criteria);
+        List<E2eCardResponseDTO> result = e2eSearchRepository.search(criteria);
+        log.info("E2E list: завершён, count={}", result.size());
         return result;
     }
 
-    private List<E2eCardResponseDTO> cards(Collection<E2e> e2eList) {
-        Map<Integer, String> ownerAliases = e2eOwnerService.aliasesOf(e2eList);
-        return e2eList.stream()
-                .map(e2e -> mapE2eCard(e2e, ownerAliases))
-                .collect(Collectors.toList());
+    static E2eSearchRepository.Criteria criteria(String filter, String alias, String tcCode, String method,
+                                                 String operationId) {
+        E2eSearchRepository.BiStepFilter biStepFilter = biStepFilter(filter);
+        if (method != null && operationId != null) {
+            throw new IllegalArgumentException(METHOD_WITH_OPERATION_ID);
+        }
+        return new E2eSearchRepository.Criteria(biStepFilter,
+                requiredText(alias, "Параметр alias не может быть пустым"),
+                requiredText(tcCode, "Параметр tc-code не может быть пустым"),
+                requiredText(method, "Параметр method не может быть пустым"),
+                positiveId(operationId));
     }
 
-    private String normalizeListFilter(String filter) {
-        if (!StringUtils.hasText(filter) || "all".equalsIgnoreCase(filter.trim())) {
-            return "all";
+    private static E2eSearchRepository.BiStepFilter biStepFilter(String filter) {
+        if (!StringUtils.hasText(filter)) {
+            return E2eSearchRepository.BiStepFilter.ALL;
         }
-        String value = filter.trim().toLowerCase(Locale.ROOT);
-        if ("without-bi-step".equals(value) || "with-bi-step".equals(value)) {
-            return value;
+        return switch (filter.trim().toLowerCase(Locale.ROOT)) {
+            case "all" -> E2eSearchRepository.BiStepFilter.ALL;
+            case "without-bi-step" -> E2eSearchRepository.BiStepFilter.WITHOUT_BI_STEP;
+            case "with-bi-step" -> E2eSearchRepository.BiStepFilter.WITH_BI_STEP;
+            default -> throw new IllegalArgumentException("Некорректное значение параметра filter");
+        };
+    }
+
+    private static String requiredText(String value, String message) {
+        if (value == null) {
+            return null;
         }
-        throw new IllegalArgumentException("Некорректное значение параметра filter");
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException(message);
+        }
+        return trimmed;
+    }
+
+    private static Integer positiveId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (!trimmed.matches("\\d{1,10}")) {
+            throw new IllegalArgumentException(INVALID_OPERATION_ID);
+        }
+        long id = Long.parseLong(trimmed);
+        if (id <= 0 || id > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(INVALID_OPERATION_ID);
+        }
+        return (int) id;
     }
 }

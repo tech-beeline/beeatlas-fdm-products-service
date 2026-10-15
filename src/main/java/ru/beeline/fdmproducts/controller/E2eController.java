@@ -54,12 +54,28 @@ public class E2eController {
 
     @ApiErrorCodes({400, 405, 500})
     @GetMapping()
-    @Operation(summary = "Получить список e2e",
-            description = "Возвращает массив карточек e2e. filter: all (по умолчанию), without-bi-step, with-bi-step.")
-    public ResponseEntity<List<E2eCardResponseDTO>> listE2eByFilter(
-            @Parameter(description = "Фильтр: all | without-bi-step | with-bi-step")
-            @RequestParam(value = "filter", required = false) String filter) {
-        return ResponseEntity.ok(e2eService.listE2eByFilter(filter));
+    @Operation(summary = "Поиск e2e (SFDM-4240)",
+            description = "Возвращает массив карточек e2e: id, code, name, description, biStepCode, source, productId, "
+                    + "productAlias (без владельца — null). Дерева нет. Все параметры необязательны; переданные "
+                    + "фильтры дают пересечение, без параметров — все e2e. Корневой метод e2e — вызываемый "
+                    + "discovered_operation связи с пустым operation_id. method и operation-id вместе — 400. "
+                    + "Пустые alias, tc-code, method или operation-id — 400. Совпадений нет — 200 и []. "
+                    + "Порядок: code, затем id.")
+    public ResponseEntity<List<E2eCardResponseDTO>> searchE2e(
+            @Parameter(description = "Наличие bi_step_code: all | without-bi-step | with-bi-step. "
+                    + "Не передан или пустой — all. Сравнение после trim, без учёта регистра")
+            @RequestParam(value = "filter", required = false) String filter,
+            @Parameter(description = "Мнемоника продукта-владельца e2e (product.alias), без учёта регистра")
+            @RequestParam(value = "alias", required = false) String alias,
+            @Parameter(description = "tc_code корневого discovered_operation, без учёта регистра")
+            @RequestParam(value = "tc-code", required = false) String tcCode,
+            @Parameter(description = "Сигнатура корневого метода: type, один пробел, name. Совпадает с "
+                    + "discovered_operation или с сопоставленной product.operation, без учёта регистра", example = "GET getCart")
+            @RequestParam(value = "method", required = false) String method,
+            @Parameter(description = "id корневого discovered_operation или его connection_operation_id; "
+                    + "целое положительное. Нельзя вместе с method")
+            @RequestParam(value = "operation-id", required = false) String operationId) {
+        return ResponseEntity.ok(e2eService.search(filter, alias, tcCode, method, operationId));
     }
 
     @ApiErrorCodes({404, 405, 500})

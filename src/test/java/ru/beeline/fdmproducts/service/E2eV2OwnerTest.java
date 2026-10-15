@@ -75,8 +75,10 @@ class E2eV2OwnerTest {
         operationRelationRepository = mock(OperationRelationRepository.class);
         operationRepository = mock(OperationRepository.class);
         service = new E2eV2Service(productRepository, discoveredInterfaceRepository, discoveredOperationRepository,
-                e2eRepository, operationRelationRepository, operationRepository, mock(SlaRepository.class),
-                mock(InterfaceRepository.class), mock(ContainerRepository.class), new E2eOwnerService(productRepository));
+                e2eRepository, operationRelationRepository, operationRepository,
+                new E2eDiscoveredOperationCatalog(operationRepository, mock(SlaRepository.class),
+                        mock(InterfaceRepository.class), mock(ContainerRepository.class)),
+                new E2eOwnerService(productRepository));
 
         when(productRepository.findByAliasCaseInsensitive(anyString()))
                 .thenReturn(Product.builder().id(1).alias(CMDB).build());

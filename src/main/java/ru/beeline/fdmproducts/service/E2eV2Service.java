@@ -81,9 +81,7 @@ public class E2eV2Service {
     private final E2eRepository e2eRepository;
     private final OperationRelationRepository operationRelationRepository;
     private final OperationRepository operationRepository;
-    private final SlaRepository slaRepository;
-    private final InterfaceRepository interfaceRepository;
-    private final ContainerRepository containerRepository;
+    private final E2eDiscoveredOperationCatalog discoveredOperationCatalog;
     private final E2eOwnerService e2eOwnerService;
 
     @Transactional
@@ -673,147 +671,8 @@ public class E2eV2Service {
         if (discoveredOperationIds.isEmpty()) {
             return List.of();
         }
-        List<Integer> idList = new ArrayList<>(discoveredOperationIds);
-        List<DiscoveredOperationProjection> projections = discoveredOperationRepository
-                .findDiscoveredOperationsProjection(idList)
-                .stream()
-                .filter(Objects::nonNull)
-                .toList();
-
-        Set<Integer> connectionOperationIds = projections.stream()
-                .map(DiscoveredOperationProjection::getConnectionOperationId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        Map<Integer, E2eV2ConnectedOperationDTO> connectedById = loadConnectedOperations(connectionOperationIds);
-
-        Map<Integer, E2eV2DiscoveredOperationCatalogItemDTO> catalogById = projections.stream()
-                .collect(Collectors.toMap(
-                        DiscoveredOperationProjection::getOpId,
-                        projection -> mapDiscoveredOperationCatalogItem(projection, connectedById),
-                        (existing, duplicate) -> existing,
-                        LinkedHashMap::new));
-        return discoveredOperationIds.stream()
-                .map(catalogById::get)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toList());
-    }
-
-    private Map<Integer, E2eV2ConnectedOperationDTO> loadConnectedOperations(Set<Integer> connectionOperationIds) {
-        if (connectionOperationIds.isEmpty()) {
-            return Map.of();
-        }
-        List<Operation> operations = operationRepository.findAllByIdIn(new ArrayList<>(connectionOperationIds));
-        if (operations.isEmpty()) {
-            return Map.of();
-        }
-
-        List<Integer> foundOperationIds = operations.stream().map(Operation::getId).toList();
-        Map<Integer, Sla> slaByOperationId = slaRepository.findAllByOperationIdIn(foundOperationIds).stream()
-                .collect(Collectors.toMap(
-                        Sla::getOperationId,
-                        sla -> sla,
-                        (left, right) -> left.getId() <= right.getId() ? left : right));
-
-        List<Integer> interfaceIds = operations.stream()
-                .map(Operation::getInterfaceId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        Map<Integer, Interface> interfacesById = new HashMap<>();
-        if (!interfaceIds.isEmpty()) {
-            for (Interface row : interfaceRepository.findAllByIdIn(interfaceIds)) {
-                interfacesById.put(row.getId(), row);
-            }
-        }
-
-        List<Integer> containerIds = interfacesById.values().stream()
-                .map(Interface::getContainerId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
-        Map<Integer, ContainerProduct> containersById = new HashMap<>();
-        if (!containerIds.isEmpty()) {
-            for (ContainerProduct row : containerRepository.findAllByIdIn(containerIds)) {
-                containersById.put(row.getId(), row);
-            }
-        }
-
-        Map<Integer, E2eV2ConnectedOperationDTO> result = new LinkedHashMap<>();
-        for (Operation operation : operations) {
-            result.put(operation.getId(), mapConnectedOperation(operation, slaByOperationId, interfacesById, containersById));
-        }
-        return result;
-    }
-
-    private E2eV2ConnectedOperationDTO mapConnectedOperation(Operation operation,
-                                                             Map<Integer, Sla> slaByOperationId,
-                                                             Map<Integer, Interface> interfacesById,
-                                                             Map<Integer, ContainerProduct> containersById) {
-        E2eV2ConnectedInterfaceDTO connectedInterface = null;
-        if (operation.getInterfaceId() != null) {
-            Interface iface = interfacesById.get(operation.getInterfaceId());
-            if (iface != null) {
-                E2eV2ConnectedContainerDTO container = null;
-                if (iface.getContainerId() != null) {
-                    ContainerProduct containerProduct = containersById.get(iface.getContainerId());
-                    if (containerProduct != null) {
-                        container = E2eV2ConnectedContainerDTO.builder()
-                                .id(containerProduct.getId())
-                                .code(containerProduct.getCode())
-                                .build();
-                    }
-                }
-                connectedInterface = E2eV2ConnectedInterfaceDTO.builder()
-                        .id(iface.getId())
-                        .code(iface.getCode())
-                        .container(container)
-                        .build();
-            }
-        }
-        return E2eV2ConnectedOperationDTO.builder()
-                .id(operation.getId())
-                .name(operation.getName())
-                .type(operation.getType())
-                .tcId(operation.getTcId())
-                .sla(toConnectedOperationSla(slaByOperationId.get(operation.getId())))
-                .connectedInterface(connectedInterface)
-                .build();
-    }
-
-    private E2eV2ConnectedOperationSlaDTO toConnectedOperationSla(Sla sla) {
-        if (sla == null) {
-            return null;
-        }
-        return E2eV2ConnectedOperationSlaDTO.builder()
-                .id(sla.getId())
-                .operationId(sla.getOperationId())
-                .rps(sla.getRps())
-                .latency(sla.getLatency())
-                .errorRate(sla.getErrorRate())
-                .build();
-    }
-
-    private E2eV2DiscoveredOperationCatalogItemDTO mapDiscoveredOperationCatalogItem(
-            DiscoveredOperationProjection projection,
-            Map<Integer, E2eV2ConnectedOperationDTO> connectedById) {
-        boolean hasSla = projection.getRps() != null || projection.getLatency() != null || projection.getErrorRate() != null;
-        E2eV2ConnectedOperationDTO connected = projection.getConnectionOperationId() == null
-                ? null
-                : connectedById.get(projection.getConnectionOperationId());
-        return E2eV2DiscoveredOperationCatalogItemDTO.builder()
-                .id(projection.getOpId())
-                .name(projection.getOpName())
-                .type(projection.getOpType())
-                .interfaceCode(projection.getInterfaceCode())
-                .productAlias(projection.getProductAlias())
-                .source(projection.getSource())
-                .sla(hasSla ? SlaV2DTO.builder()
-                        .rps(projection.getRps())
-                        .latency(projection.getLatency())
-                        .errorRate(projection.getErrorRate())
-                        .build() : null)
-                .operation(connected)
-                .build();
+        return discoveredOperationCatalog.build(discoveredOperationIds,
+                discoveredOperationRepository.findDiscoveredOperationsProjection(new ArrayList<>(discoveredOperationIds)));
     }
 
     private void requireNonBlank(String value, String fieldName) {

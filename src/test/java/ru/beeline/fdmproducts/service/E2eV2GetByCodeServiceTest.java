@@ -71,8 +71,16 @@ class E2eV2GetByCodeServiceTest {
     @Mock
     private E2eOwnerService e2eOwnerService;
 
-    @InjectMocks
     private E2eV2Service service;
+
+    @org.junit.jupiter.api.BeforeEach
+    void setUp() {
+        service = new E2eV2Service(productRepository, discoveredInterfaceRepository, discoveredOperationRepository,
+                e2eRepository, operationRelationRepository, operationRepository,
+                new E2eDiscoveredOperationCatalog(operationRepository, slaRepository, interfaceRepository,
+                        containerRepository),
+                e2eOwnerService);
+    }
 
     @Test
     @DisplayName("operation со sla, interface и container")

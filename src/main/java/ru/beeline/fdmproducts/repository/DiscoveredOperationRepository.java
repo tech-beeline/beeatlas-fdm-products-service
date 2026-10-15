@@ -47,6 +47,29 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             """)
     List<DiscoveredOperationProjection> findDiscoveredOperationsProjection(@Param("ids") List<Integer> ids);
 
+    /**
+     * Карточки discovered_operation для GET /api/v3/e2e/{code} (SFDM-4239): интерфейс и продукт через LEFT JOIN —
+     * метод без продукта интерфейса в справочнике остаётся.
+     */
+    @Query("""
+            SELECT
+                do.id AS opId,
+                do.name AS opName,
+                do.type AS opType,
+                di.externalId AS interfaceCode,
+                p.alias AS productAlias,
+                di.source AS source,
+                do.rps AS rps,
+                do.latency AS latency,
+                do.errorRate AS errorRate,
+                do.connectionOperationId AS connectionOperationId
+            FROM DiscoveredOperation do
+            LEFT JOIN do.discoveredInterface di
+            LEFT JOIN di.product p
+            WHERE do.id IN :ids
+            """)
+    List<DiscoveredOperationProjection> findDiscoveredOperationCards(@Param("ids") Collection<Integer> ids);
+
     List<DiscoveredOperation> findAllByConnectionOperationIdIn(List<Integer> interfaceId);
 
     List<DiscoveredOperation> findAllByConnectionOperationIdInAndDeletedDateIsNull(Collection<Integer> operationIds);

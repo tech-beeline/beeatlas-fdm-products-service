@@ -19,8 +19,6 @@ import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.e2e.E2eByBiStepCodesGroupDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eCardResponseDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eGetResponseDTO;
-import ru.beeline.fdmproducts.dto.e2e.E2eUpsertRequestDTO;
-import ru.beeline.fdmproducts.dto.e2e.E2eUpsertResponseDTO;
 import ru.beeline.fdmproducts.jackson.BiStepCodesRequest;
 import ru.beeline.fdmproducts.service.E2eByBiStepCodesService;
 import ru.beeline.fdmproducts.service.E2eService;
@@ -29,7 +27,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/e2e")
-@Tag(name = "e2e", description = "Загрузка и чтение e2e-процессов с деревом вызовов операций.")
+@Tag(name = "e2e", description = "Чтение e2e-процессов. Загрузка — POST /api/v2/e2e.")
 public class E2eController {
 
     @Autowired
@@ -37,15 +35,6 @@ public class E2eController {
 
     @Autowired
     private E2eByBiStepCodesService e2eByBiStepCodesService;
-
-    @ApiErrorCodes({400, 404, 500})
-    @PostMapping()
-    @Operation(summary = "Создать или обновить e2e-процесс",
-            description = "Принимает описание e2e, дерево products → containers → interfaces → operations "
-                    + "и последовательность вызовов operationsRelations.")
-    public ResponseEntity<E2eUpsertResponseDTO> upsertE2e(@RequestBody E2eUpsertRequestDTO request) {
-        return ResponseEntity.ok(e2eService.upsert(request));
-    }
 
     @ApiErrorCodes({400, 500})
     @PostMapping("/by-bi-step-codes")

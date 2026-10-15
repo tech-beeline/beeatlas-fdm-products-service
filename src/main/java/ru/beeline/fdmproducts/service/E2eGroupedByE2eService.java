@@ -55,7 +55,6 @@ public class E2eGroupedByE2eService {
     private static final String EMPTY_ALIAS = "Параметр alias не может быть пустым";
     private static final String PRODUCT_NOT_FOUND = "Продукт не найден.";
     private static final String CAPABILITY_UNAVAILABLE = "Сервис capability недоступен";
-    private static final String DISCOVERED_OPERATION = "discovered_operation";
 
     private final ProductRepository productRepository;
     private final E2eRepository e2eRepository;
@@ -65,6 +64,7 @@ public class E2eGroupedByE2eService {
     private final OperationRepository operationRepository;
     private final CapabilityClient capabilityClient;
     private final E2eGroupedByE2eMapper mapper;
+    private final E2eOwnerService e2eOwnerService;
 
     @Transactional(readOnly = true)
     public List<E2eGroupedByE2eDTO> findGroupedByE2e(String id, String alias) {
@@ -130,6 +130,7 @@ public class E2eGroupedByE2eService {
 
         Map<Integer, Operation> archOperations = loadArchOperations(participatingOperationIds, operationsById);
         Map<Integer, TcDTO> techCapabilities = loadTechCapabilities(archOperations);
+        Map<Integer, String> ownerAliases = e2eOwnerService.aliasesOf(e2eById.values());
 
         List<E2eGroupedByE2eDTO> result = new ArrayList<>();
         for (Map.Entry<Integer, Set<Integer>> entry : responseOperationIdsByE2e.entrySet()) {
@@ -143,7 +144,8 @@ public class E2eGroupedByE2eService {
             if (operations.isEmpty()) {
                 continue;
             }
-            result.add(mapper.toE2eDto(e2e, operations));
+            result.add(mapper.toE2eDto(e2e, operations,
+                    e2e.getProductId() == null ? null : ownerAliases.get(e2e.getProductId())));
         }
         log.info("grouped-by-e2e: ответ карточек={}", result.size());
         return result;
@@ -215,24 +217,17 @@ public class E2eGroupedByE2eService {
             if (relation.getE2eId() == null) {
                 continue;
             }
+            // SFDM-4244: обе стороны связи — id discovered_operation, фильтра по типу нет.
             Set<Integer> ids = byE2e.computeIfAbsent(relation.getE2eId(), key -> new TreeSet<>());
-            if (isDiscoveredOperation(relation.getEntityTypeOperation())
-                    && relation.getOperationId() != null
-                    && candidateIds.contains(relation.getOperationId())) {
+            if (relation.getOperationId() != null && candidateIds.contains(relation.getOperationId())) {
                 ids.add(relation.getOperationId());
             }
-            if (isDiscoveredOperation(relation.getEntityTypeOperationRelation())
-                    && relation.getRelatedOperationId() != null
-                    && candidateIds.contains(relation.getRelatedOperationId())) {
+            if (relation.getRelatedOperationId() != null && candidateIds.contains(relation.getRelatedOperationId())) {
                 ids.add(relation.getRelatedOperationId());
             }
         }
         byE2e.entrySet().removeIf(entry -> entry.getValue().isEmpty());
         return byE2e;
-    }
-
-    private boolean isDiscoveredOperation(String entityType) {
-        return entityType != null && DISCOVERED_OPERATION.equalsIgnoreCase(entityType.trim());
     }
 
     private Map<Integer, Operation> loadArchOperations(Set<Integer> participatingOperationIds,

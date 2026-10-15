@@ -82,6 +82,9 @@ class E2eV2ServiceTest {
     @Mock
     private ContainerRepository containerRepository;
 
+    @Mock
+    private E2eOwnerService e2eOwnerService;
+
     @InjectMocks
     private E2eV2Service service;
 

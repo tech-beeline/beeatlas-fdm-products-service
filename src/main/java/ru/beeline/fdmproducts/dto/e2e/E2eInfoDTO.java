@@ -19,4 +19,9 @@ public class E2eInfoDTO {
     private String name;
     private String description;
     private String biStepCode;
+    /**
+     * Продукт-владелец (product.alias), POST /api/v2/e2e. Не передан или null — при создании владельца нет,
+     * при обновлении не меняется; пустая строка снимает владельца.
+     */
+    private String productAlias;
 }

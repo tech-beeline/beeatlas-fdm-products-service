@@ -19,4 +19,6 @@ public class ProductE2eCardDTO {
     private String name;
     private String biStepCode;
     private String source;
+    private Integer productId;
+    private String productAlias;
 }

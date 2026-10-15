@@ -31,6 +31,9 @@ class E2eByBiStepCodesServiceTest {
     @Mock
     private E2eRepository e2eRepository;
 
+    @Mock
+    private E2eOwnerService e2eOwnerService;
+
     @InjectMocks
     private E2eByBiStepCodesService service;
 

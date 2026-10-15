@@ -68,6 +68,8 @@ class E2eV2GetByCodeServiceTest {
     private InterfaceRepository interfaceRepository;
     @Mock
     private ContainerRepository containerRepository;
+    @Mock
+    private E2eOwnerService e2eOwnerService;
 
     @InjectMocks
     private E2eV2Service service;
@@ -198,8 +200,8 @@ class E2eV2GetByCodeServiceTest {
     void sameConnectionSharedBetweenTwoDiscovered() {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e()));
         when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(List.of(
-                relation(null, null, 20, "discovered_operation"),
-                relation(20, "discovered_operation", 40, "discovered_operation")));
+                relation(null, 20),
+                relation(20, 40)));
 
         DiscoveredOperationProjection p20 = projection(20, 100, null, null, null);
         DiscoveredOperationProjection p40 = projection(40, 100, null, null, null);
@@ -262,24 +264,60 @@ class E2eV2GetByCodeServiceTest {
         verify(operationRepository, never()).findAllByIdIn(anyList());
     }
 
+    @Test
+    @DisplayName("SFDM-4244: GET v2 отдаёт пустой operations и узел без entityTypeRelatedOperation")
+    void v2HasEmptyOperationsAndNoEntityTypeInNodes() throws Exception {
+        stubE2eWithDiscovered(20);
+        DiscoveredOperationProjection projection = projection(20, null, null, null, null);
+        when(discoveredOperationRepository.findDiscoveredOperationsProjection(List.of(20)))
+                .thenReturn(List.of(projection));
+
+        E2eV2GetResponseDTO response = service.getByCode(CODE);
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(response);
+
+        assertThat(response.getOperations()).isEmpty();
+        assertThat(response.getOperationsRelations()).singleElement()
+                .satisfies(node -> assertThat(node.getRelatedOperationId()).isEqualTo(20));
+        assertThat(json).doesNotContain("entityTypeRelatedOperation").contains("\"operations\":[]");
+        verify(operationRepository, never()).findOperationsProjection(anyList());
+    }
+
+    @Test
+    @DisplayName("SFDM-4244: одинаковые числа id operation и discovered_operation не склеиваются")
+    void sameNumericIdsOfOperationAndDiscoveredStayApart() {
+        stubE2eWithDiscovered(100);
+        DiscoveredOperationProjection projection = projection(100, 100, null, null, null);
+        when(discoveredOperationRepository.findDiscoveredOperationsProjection(List.of(100)))
+                .thenReturn(List.of(projection));
+        when(operationRepository.findAllByIdIn(List.of(100)))
+                .thenReturn(List.of(operation(100, null, "arch", "GET", null)));
+        when(slaRepository.findAllByOperationIdIn(List.of(100))).thenReturn(List.of());
+
+        E2eV2GetResponseDTO response = service.getByCode(CODE);
+
+        assertThat(response.getDiscoveredOperations()).singleElement().satisfies(item -> {
+            assertThat(item.getId()).isEqualTo(100);
+            assertThat(item.getName()).isEqualTo("name-100");
+            assertThat(item.getOperation().getName()).isEqualTo("arch");
+        });
+        assertThat(response.getOperations()).isEmpty();
+    }
+
     private void stubE2eWithDiscovered(Integer discoveredId) {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e()));
         when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(List.of(
-                relation(null, null, discoveredId, "discovered_operation")));
+                relation(null, discoveredId)));
     }
 
     private E2e e2e() {
         return E2e.builder().id(E2E_ID).code(CODE).name("E2E").source("SPARX").build();
     }
 
-    private OperationRelation relation(Integer operationId, String entityTypeOperation,
-                                       Integer relatedOperationId, String entityTypeRelated) {
+    private OperationRelation relation(Integer operationId, Integer relatedOperationId) {
         return OperationRelation.builder()
                 .e2eId(E2E_ID)
                 .operationId(operationId)
-                .entityTypeOperation(entityTypeOperation == null ? "operation" : entityTypeOperation)
                 .relatedOperationId(relatedOperationId)
-                .entityTypeOperationRelation(entityTypeRelated)
                 .order(1)
                 .stereoType("sparx")
                 .build();

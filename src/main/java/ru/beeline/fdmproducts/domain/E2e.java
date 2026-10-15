@@ -39,4 +39,8 @@ public class E2e {
 
     @Column(name = "source")
     private String source;
+
+    /** Продукт-владелец e2e (product.product.id), может отсутствовать. SFDM-4244. */
+    @Column(name = "product_id")
+    private Integer productId;
 }

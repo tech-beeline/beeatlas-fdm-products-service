@@ -19,4 +19,6 @@ public class E2eByBiStepCodeItemDTO {
     private String name;
     private String code;
     private String source;
+    private Integer productId;
+    private String productAlias;
 }

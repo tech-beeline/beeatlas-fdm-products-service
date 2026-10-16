@@ -31,9 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,7 +59,7 @@ class ProductPatternsServiceTest {
     void firstCallInsertsActualWithMainBranch() {
         givenProduct();
         givenSource(SOURCE_NFR, false);
-        when(productPatternsRepository.findActual(eq(ALIAS), eq("main"), eq(2), isNull(), eq("PAT-001")))
+        when(productPatternsRepository.findActual(eq(ALIAS), eq("main"), eq("PAT-001")))
                 .thenReturn(Optional.empty());
         when(productPatternsRepository.save(any())).thenAnswer(inv -> {
             ProductPatterns p = inv.getArgument(0);
@@ -100,21 +98,61 @@ class ProductPatternsServiceTest {
                 .sourceTypeId(2)
                 .isActual(true)
                 .build();
-        when(productPatternsRepository.findActual(eq(ALIAS), eq("main"), eq(2), isNull(), eq("PAT-001")))
+        when(productPatternsRepository.findActual(eq(ALIAS), eq("main"), eq("PAT-001")))
                 .thenReturn(Optional.of(previous));
+        when(productPatternsRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
         when(productPatternsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         service.postPatternProductV2(ALIAS, SOURCE_NFR, "MAIN", null,
                 List.of(item("PAT-001", true, "new")));
 
-        ArgumentCaptor<ProductPatterns> captor = ArgumentCaptor.forClass(ProductPatterns.class);
-        verify(productPatternsRepository, times(2)).save(captor.capture());
-        assertThat(captor.getAllValues().get(0).getIsActual()).isFalse();
-        ProductPatterns created = captor.getAllValues().get(1);
+        ArgumentCaptor<ProductPatterns> deactivated = ArgumentCaptor.forClass(ProductPatterns.class);
+        ArgumentCaptor<ProductPatterns> createdCaptor = ArgumentCaptor.forClass(ProductPatterns.class);
+        verify(productPatternsRepository).saveAndFlush(deactivated.capture());
+        verify(productPatternsRepository).save(createdCaptor.capture());
+        assertThat(deactivated.getValue().getIsActual()).isFalse();
+        ProductPatterns created = createdCaptor.getValue();
         assertThat(created.getIsActual()).isTrue();
         assertThat(created.getIsCheck()).isTrue();
         assertThat(created.getResultDetails()).isEqualTo("new");
         assertThat(created.getProductBranch()).isEqualTo("main");
+    }
+
+    @Test
+    @DisplayName("Повтор с другим source-type деактуализирует первую строку")
+    void secondCallWithOtherSourceDeactivatesPrevious() {
+        givenProduct();
+        givenSource(SOURCE_PIPELINE, true);
+        ProductPatterns previous = ProductPatterns.builder()
+                .id(1)
+                .patternCode("PAT-001")
+                .isCheck(true)
+                .productAlias(ALIAS)
+                .productBranch("main")
+                .sourceTypeId(2)
+                .sourceId(null)
+                .isActual(true)
+                .build();
+        when(productPatternsRepository.findActual(eq(ALIAS), eq("main"), eq("PAT-001")))
+                .thenReturn(Optional.of(previous));
+        when(productPatternsRepository.saveAndFlush(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(productPatternsRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        service.postPatternProductV2(ALIAS, SOURCE_PIPELINE, null, 55,
+                List.of(item("PAT-001", false, "from pipeline")));
+
+        ArgumentCaptor<ProductPatterns> deactivated = ArgumentCaptor.forClass(ProductPatterns.class);
+        ArgumentCaptor<ProductPatterns> createdCaptor = ArgumentCaptor.forClass(ProductPatterns.class);
+        verify(productPatternsRepository).saveAndFlush(deactivated.capture());
+        verify(productPatternsRepository).save(createdCaptor.capture());
+        assertThat(deactivated.getValue().getIsActual()).isFalse();
+        ProductPatterns created = createdCaptor.getValue();
+        assertThat(created.getIsActual()).isTrue();
+        assertThat(created.getSourceTypeId()).isEqualTo(1);
+        assertThat(created.getSourceId()).isEqualTo(55);
+        assertThat(created.getIsCheck()).isFalse();
+        assertThat(created.getResultDetails()).isEqualTo("from pipeline");
+        verify(productPatternsRepository).findActual(ALIAS, "main", "PAT-001");
     }
 
     @Test
@@ -126,7 +164,7 @@ class ProductPatternsServiceTest {
         service.postPatternProductV2(ALIAS, SOURCE_NFR, null, null, List.of());
 
         verify(productPatternsRepository, never()).save(any());
-        verify(productPatternsRepository, never()).findActual(any(), any(), any(), any(), any());
+        verify(productPatternsRepository, never()).findActual(any(), any(), any());
     }
 
     @Test

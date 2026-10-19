@@ -37,11 +37,13 @@ public class E2eSearchRepository {
             LEFT JOIN product.product p ON p.id = e.product_id
             WHERE 1 = 1""";
 
+    /** SFDM-4250: связь принадлежит ветке e2e, корневая связь ищется во всех ветках карточки. */
     private static final String ROOT_RELATION = """
             SELECT 1 FROM product.operation_relations r
+                JOIN product.e2e_branch b ON b.id = r.e2e_branch_id
                 JOIN product.discovered_operation d ON d.id = r.related_operation_id""";
 
-    private static final String ROOT_OF_E2E = " WHERE r.e2e_id = e.id AND r.operation_id IS NULL";
+    private static final String ROOT_OF_E2E = " WHERE b.code = e.code AND r.operation_id IS NULL";
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
 

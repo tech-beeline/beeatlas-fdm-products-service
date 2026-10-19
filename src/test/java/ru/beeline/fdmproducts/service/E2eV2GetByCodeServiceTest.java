@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.domain.ContainerProduct;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.E2eBranch;
 import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
@@ -24,6 +25,7 @@ import ru.beeline.fdmproducts.dto.search.projection.DiscoveredOperationProjectio
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.E2eBranchRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
@@ -70,6 +72,8 @@ class E2eV2GetByCodeServiceTest {
     private ContainerRepository containerRepository;
     @Mock
     private E2eOwnerService e2eOwnerService;
+    @Mock
+    private E2eBranchRepository e2eBranchRepository;
 
     private E2eV2Service service;
 
@@ -79,7 +83,10 @@ class E2eV2GetByCodeServiceTest {
                 e2eRepository, operationRelationRepository, operationRepository,
                 new E2eDiscoveredOperationCatalog(operationRepository, slaRepository, interfaceRepository,
                         containerRepository),
-                e2eOwnerService);
+                e2eOwnerService, new E2eBranchService(e2eBranchRepository, operationRelationRepository));
+        // Ветка main карточки получила id карточки (SFDM-4250).
+        when(e2eBranchRepository.findAllByCodeAndBranchNameIgnoreCaseOrderByIdAsc(CODE, "main"))
+                .thenReturn(List.of(E2eBranch.builder().id(E2E_ID).code(CODE).branchName("main").build()));
     }
 
     @Test
@@ -98,7 +105,7 @@ class E2eV2GetByCodeServiceTest {
         when(containerRepository.findAllByIdIn(List.of(4)))
                 .thenReturn(List.of(container(4, "cart-api")));
 
-        E2eV2GetResponseDTO response = service.getByCode(CODE);
+        E2eV2GetResponseDTO response = service.getByCode(CODE, null);
         E2eV2DiscoveredOperationCatalogItemDTO item = response.getDiscoveredOperations().get(0);
 
         assertThat(item.getOperation().getId()).isEqualTo(100);
@@ -125,7 +132,7 @@ class E2eV2GetByCodeServiceTest {
         when(interfaceRepository.findAllByIdIn(List.of(8)))
                 .thenReturn(List.of(archInterface(8, "cart-rest", null)));
 
-        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE).getDiscoveredOperations().get(0);
+        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE, null).getDiscoveredOperations().get(0);
 
         assertThat(item.getOperation()).isNotNull();
         assertThat(item.getOperation().getSla()).isNull();
@@ -146,7 +153,7 @@ class E2eV2GetByCodeServiceTest {
         when(interfaceRepository.findAllByIdIn(List.of(8)))
                 .thenReturn(List.of(archInterface(8, "no-container", null)));
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations().get(0)
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations().get(0)
                 .getOperation().getConnectedInterface().getContainer()).isNull();
         verify(containerRepository, never()).findAllByIdIn(anyList());
     }
@@ -159,7 +166,7 @@ class E2eV2GetByCodeServiceTest {
         when(discoveredOperationRepository.findDiscoveredOperationsProjection(List.of(40)))
                 .thenReturn(List.of(projection));
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations().get(0).getOperation()).isNull();
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations().get(0).getOperation()).isNull();
         verify(operationRepository, never()).findAllByIdIn(anyList());
     }
 
@@ -172,7 +179,7 @@ class E2eV2GetByCodeServiceTest {
                 .thenReturn(List.of(projection));
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of());
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations().get(0).getOperation()).isNull();
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations().get(0).getOperation()).isNull();
         verify(slaRepository, never()).findAllByOperationIdIn(anyList());
     }
 
@@ -196,7 +203,7 @@ class E2eV2GetByCodeServiceTest {
         when(interfaceRepository.findAllByIdIn(List.of(8))).thenReturn(List.of(deletedIface));
         when(containerRepository.findAllByIdIn(List.of(4))).thenReturn(List.of(deletedContainer));
 
-        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE).getDiscoveredOperations().get(0);
+        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE, null).getDiscoveredOperations().get(0);
 
         assertThat(item.getOperation().getId()).isEqualTo(100);
         assertThat(item.getOperation().getConnectedInterface().getId()).isEqualTo(8);
@@ -207,7 +214,7 @@ class E2eV2GetByCodeServiceTest {
     @DisplayName("Две discovered-операции с одним connection_operation_id — один вложенный объект")
     void sameConnectionSharedBetweenTwoDiscovered() {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e()));
-        when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(List.of(
+        when(operationRelationRepository.findAllByE2eBranchId(E2E_ID)).thenReturn(List.of(
                 relation(null, 20),
                 relation(20, 40)));
 
@@ -219,7 +226,7 @@ class E2eV2GetByCodeServiceTest {
                 .thenReturn(List.of(operation(100, null, "shared", "GET", null)));
         when(slaRepository.findAllByOperationIdIn(List.of(100))).thenReturn(List.of());
 
-        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE).getDiscoveredOperations();
+        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE, null).getDiscoveredOperations();
 
         assertThat(items).hasSize(2);
         assertThat(items.get(0).getOperation()).isSameAs(items.get(1).getOperation());
@@ -240,7 +247,7 @@ class E2eV2GetByCodeServiceTest {
                 sla(10, 100, 2.0, 2.0, 2.0),
                 sla(20, 100, 3.0, 3.0, 3.0)));
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations().get(0).getOperation().getSla().getId())
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations().get(0).getOperation().getSla().getId())
                 .isEqualTo(10);
     }
 
@@ -255,7 +262,7 @@ class E2eV2GetByCodeServiceTest {
                 .thenReturn(List.of(operation(100, null, "arch-only", "GET", null)));
         when(slaRepository.findAllByOperationIdIn(List.of(100))).thenReturn(List.of());
 
-        E2eV2GetResponseDTO response = service.getByCode(CODE);
+        E2eV2GetResponseDTO response = service.getByCode(CODE, null);
 
         assertThat(response.getDiscoveredOperations().get(0).getOperation().getId()).isEqualTo(100);
         assertThat(response.getOperations()).isEmpty();
@@ -265,9 +272,9 @@ class E2eV2GetByCodeServiceTest {
     @DisplayName("Пустой discoveredOperations не читает operation")
     void emptyDiscoveredDoesNotReadOperation() {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e()));
-        when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(List.of());
+        when(operationRelationRepository.findAllByE2eBranchId(E2E_ID)).thenReturn(List.of());
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations()).isEmpty();
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations()).isEmpty();
         verify(discoveredOperationRepository, never()).findDiscoveredOperationsProjection(anyList());
         verify(operationRepository, never()).findAllByIdIn(anyList());
     }
@@ -280,7 +287,7 @@ class E2eV2GetByCodeServiceTest {
         when(discoveredOperationRepository.findDiscoveredOperationsProjection(List.of(20)))
                 .thenReturn(List.of(projection));
 
-        E2eV2GetResponseDTO response = service.getByCode(CODE);
+        E2eV2GetResponseDTO response = service.getByCode(CODE, null);
         String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(response);
 
         assertThat(response.getOperations()).isEmpty();
@@ -301,7 +308,7 @@ class E2eV2GetByCodeServiceTest {
                 .thenReturn(List.of(operation(100, null, "arch", "GET", null)));
         when(slaRepository.findAllByOperationIdIn(List.of(100))).thenReturn(List.of());
 
-        E2eV2GetResponseDTO response = service.getByCode(CODE);
+        E2eV2GetResponseDTO response = service.getByCode(CODE, null);
 
         assertThat(response.getDiscoveredOperations()).singleElement().satisfies(item -> {
             assertThat(item.getId()).isEqualTo(100);
@@ -313,7 +320,7 @@ class E2eV2GetByCodeServiceTest {
 
     private void stubE2eWithDiscovered(Integer discoveredId) {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e()));
-        when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(List.of(
+        when(operationRelationRepository.findAllByE2eBranchId(E2E_ID)).thenReturn(List.of(
                 relation(null, discoveredId)));
     }
 
@@ -323,7 +330,7 @@ class E2eV2GetByCodeServiceTest {
 
     private OperationRelation relation(Integer operationId, Integer relatedOperationId) {
         return OperationRelation.builder()
-                .e2eId(E2E_ID)
+                .e2eBranchId(E2E_ID)
                 .operationId(operationId)
                 .relatedOperationId(relatedOperationId)
                 .order(1)

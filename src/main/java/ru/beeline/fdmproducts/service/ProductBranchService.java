@@ -42,6 +42,11 @@ public class ProductBranchService {
      * уникальный индекс в БД — нет, поэтому запись в одном регистре не даёт развести main и Main.
      */
     public String resolveBranchName(String branch) {
+        return normalizeBranchName(branch);
+    }
+
+    /** Те же правила для ветки e2e (SFDM-4250): {@link E2eBranchService}. */
+    public static String normalizeBranchName(String branch) {
         if (branch == null) {
             return DEFAULT_BRANCH;
         }

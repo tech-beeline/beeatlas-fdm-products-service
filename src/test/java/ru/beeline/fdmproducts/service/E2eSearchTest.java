@@ -14,7 +14,6 @@ import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.E2eSearchRepository;
 import ru.beeline.fdmproducts.repository.E2eSearchRepository.BiStepFilter;
 import ru.beeline.fdmproducts.repository.E2eSearchRepository.Criteria;
-import ru.beeline.fdmproducts.repository.OperationRelationRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.SlaRepository;
 
@@ -38,7 +37,7 @@ class E2eSearchTest {
     void setUp() {
         searchRepository = mock(E2eSearchRepository.class);
         service = new E2eService(searchRepository, mock(OperationRepository.class), mock(SlaRepository.class),
-                mock(E2eRepository.class), mock(OperationRelationRepository.class), mock(E2eOwnerService.class));
+                mock(E2eRepository.class), mock(E2eBranchService.class), mock(E2eOwnerService.class));
     }
 
     @Test

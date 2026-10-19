@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.e2e.E2eV3GetResponseDTO;
@@ -25,7 +26,7 @@ public class E2eV3Controller {
 
     private final E2eV3Service e2eV3Service;
 
-    @ApiErrorCodes({404, 405, 500})
+    @ApiErrorCodes({400, 404, 405, 500})
     @GetMapping("/{code}")
     @Operation(summary = "Получить e2e с деревом вызовов по коду (SFDM-4239)",
             description = "Возвращает карточку e2e с владельцем (productId, productAlias), дерево operationsRelations "
@@ -36,10 +37,12 @@ public class E2eV3Controller {
                     + "discoveredOperations — методы всех узлов без повторов в порядке первого появления; operation "
                     + "внутри карточки — product.operation по connection_operation_id со sla, interface и container "
                     + "или null; удалённые operation, interface и container в объект входят. "
-                    + "Нет e2e — 404 {\"errorMessage\": \"E2e с указанным кодом не найден\"}; нет связей — 200 "
-                    + "с пустыми массивами.")
+                    + "Нет e2e — 404 {\"errorMessage\": \"E2e с указанным кодом не найден\"}; нет связей или ветки "
+                    + "branch — 200 с пустыми массивами.")
     public ResponseEntity<E2eV3GetResponseDTO> getE2eByCode(
-            @Parameter(description = "Код e2e (product.e2e.code), поиск без учёта регистра") @PathVariable String code) {
-        return ResponseEntity.ok(e2eV3Service.getByCode(code));
+            @Parameter(description = "Код e2e (product.e2e.code), поиск без учёта регистра") @PathVariable String code,
+            @Parameter(description = E2eV2Controller.BRANCH_READ_DESCRIPTION)
+            @RequestParam(value = "branch", required = false) String branch) {
+        return ResponseEntity.ok(e2eV3Service.getByCode(code, branch));
     }
 }

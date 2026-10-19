@@ -78,13 +78,16 @@ public class E2eController {
         return ResponseEntity.ok(e2eService.search(filter, alias, tcCode, method, operationId));
     }
 
-    @ApiErrorCodes({404, 405, 500})
+    @ApiErrorCodes({400, 404, 405, 500})
     @GetMapping("/{code}")
     @Operation(summary = "Получить e2e-процесс по коду",
-            description = "Возвращает карточку e2e, дерево operationsRelations и справочник operations.")
+            description = "Возвращает карточку e2e, дерево operationsRelations ветки branch и справочник operations. "
+                    + "Нет карточки — 404; ветки нет — 200 и пустое дерево.")
     public ResponseEntity<E2eGetResponseDTO> getE2eByCode(
-            @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code) {
-        return ResponseEntity.ok(e2eService.getByCode(code));
+            @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code,
+            @Parameter(description = E2eV2Controller.BRANCH_READ_DESCRIPTION)
+            @RequestParam(value = "branch", required = false) String branch) {
+        return ResponseEntity.ok(e2eService.getByCode(code, branch));
     }
 }
 

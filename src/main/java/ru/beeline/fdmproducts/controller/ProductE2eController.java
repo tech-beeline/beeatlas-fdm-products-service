@@ -39,7 +39,8 @@ public class ProductE2eController {
             description = "По id или alias продукта возвращает карточки e2e, в шагах которых участвуют "
                     + "discovered-методы интерфейсов этого продукта. Источники берутся из карточек e2e "
                     + "(уникальные source без учёта регистра). Участвующие методы обогащаются archOperation "
-                    + "и techCapability. Сервис project не вызывается.")
+                    + "и techCapability. Сервис project не вызывается. Участие берётся из связей ветки e2e branch "
+                    + "(не передан — main, пустой — 400, без учёта регистра); у карточки без такой ветки участий нет.")
     @ApiResponse(responseCode = "200", description = "Массив карточек e2e с operations; может быть пустым",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
                     array = @ArraySchema(schema = @Schema(implementation = E2eGroupedByE2eDTO.class))))
@@ -47,7 +48,10 @@ public class ProductE2eController {
             @Parameter(description = "Id продукта (ровно один из id/alias)")
             @RequestParam(required = false) String id,
             @Parameter(description = "Alias продукта без учёта регистра (ровно один из id/alias)")
-            @RequestParam(required = false) String alias) {
-        return ResponseEntity.ok(e2eGroupedByE2eService.findGroupedByE2e(id, alias));
+            @RequestParam(required = false) String alias,
+            @Parameter(description = "Ветка e2e. Необязательный: не передан — main. Пустое значение — 400. "
+                    + "Сравнение без учёта регистра; ветка не создаётся.")
+            @RequestParam(value = "branch", required = false) String branch) {
+        return ResponseEntity.ok(e2eGroupedByE2eService.findGroupedByE2e(id, alias, branch));
     }
 }

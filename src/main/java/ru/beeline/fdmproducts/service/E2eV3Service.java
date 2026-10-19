@@ -17,7 +17,6 @@ import ru.beeline.fdmproducts.dto.e2e.E2eV3RelationTreeNodeDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
-import ru.beeline.fdmproducts.repository.OperationRelationRepository;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -45,18 +44,19 @@ public class E2eV3Service {
             .thenComparing(OperationRelation::getId, Comparator.nullsLast(Comparator.naturalOrder()));
 
     private final E2eRepository e2eRepository;
-    private final OperationRelationRepository operationRelationRepository;
+    private final E2eBranchService e2eBranchService;
     private final DiscoveredOperationRepository discoveredOperationRepository;
     private final E2eDiscoveredOperationCatalog discoveredOperationCatalog;
     private final E2eOwnerService e2eOwnerService;
 
     @Transactional(readOnly = true)
-    public E2eV3GetResponseDTO getByCode(String code) {
-        log.info("E2E v3 get: начало, code={}", code);
+    public E2eV3GetResponseDTO getByCode(String code, String branch) {
+        String branchName = e2eBranchService.resolveBranchName(branch);
+        log.info("E2E v3 get: начало, code={}, branch={}", code, branchName);
         E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new EntityNotFoundException(E2E_NOT_FOUND));
 
-        List<OperationRelation> relations = operationRelationRepository.findAllByE2eId(e2e.getId());
+        List<OperationRelation> relations = e2eBranchService.relationsOf(e2e, branchName);
         Map<Integer, List<OperationRelation>> childrenByCaller = new HashMap<>();
         List<OperationRelation> roots = new ArrayList<>();
         for (OperationRelation relation : relations) {

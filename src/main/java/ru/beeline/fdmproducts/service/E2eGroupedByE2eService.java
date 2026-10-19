@@ -20,6 +20,7 @@ import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.TcDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eGroupedByE2eDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eGroupedByE2eOperationDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eRelationParticipation;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.exception.ExternalServiceException;
 import ru.beeline.fdmproducts.mapper.E2eGroupedByE2eMapper;
@@ -67,9 +68,11 @@ public class E2eGroupedByE2eService {
     private final E2eOwnerService e2eOwnerService;
 
     @Transactional(readOnly = true)
-    public List<E2eGroupedByE2eDTO> findGroupedByE2e(String id, String alias) {
+    public List<E2eGroupedByE2eDTO> findGroupedByE2e(String id, String alias, String branch) {
+        // Ветка e2e (SFDM-4250) по правилам ветки продукта; не создаётся.
+        String branchName = ProductBranchService.normalizeBranchName(branch);
         Product product = resolveProduct(id, alias);
-        log.info("grouped-by-e2e: продукт id={}, alias={}", product.getId(), product.getAlias());
+        log.info("grouped-by-e2e: продукт id={}, alias={}, branch={}", product.getId(), product.getAlias(), branchName);
 
         Set<String> e2eSources = uniqueSourcesIgnoreCase(e2eRepository.findAllSources());
         if (e2eSources.isEmpty()) {
@@ -97,8 +100,8 @@ public class E2eGroupedByE2eService {
                         (left, right) -> left, LinkedHashMap::new));
         List<Integer> operationIds = new ArrayList<>(operationsById.keySet());
 
-        List<OperationRelation> relations = operationRelationRepository
-                .findDiscoveredOperationParticipations(operationIds);
+        List<E2eRelationParticipation> relations = operationRelationRepository
+                .findDiscoveredOperationParticipations(operationIds, branchName);
         if (relations.isEmpty()) {
             log.info("grouped-by-e2e: участий в operation_relations нет — пустой ответ");
             return List.of();
@@ -210,15 +213,16 @@ public class E2eGroupedByE2eService {
         return result;
     }
 
-    private Map<Integer, Set<Integer>> groupParticipatingOperationIds(List<OperationRelation> relations,
+    private Map<Integer, Set<Integer>> groupParticipatingOperationIds(List<E2eRelationParticipation> participations,
                                                                       Set<Integer> candidateIds) {
         Map<Integer, Set<Integer>> byE2e = new TreeMap<>();
-        for (OperationRelation relation : relations) {
-            if (relation.getE2eId() == null) {
+        for (E2eRelationParticipation participation : participations) {
+            if (participation.e2eId() == null) {
                 continue;
             }
+            OperationRelation relation = participation.relation();
             // SFDM-4244: обе стороны связи — id discovered_operation, фильтра по типу нет.
-            Set<Integer> ids = byE2e.computeIfAbsent(relation.getE2eId(), key -> new TreeSet<>());
+            Set<Integer> ids = byE2e.computeIfAbsent(participation.e2eId(), key -> new TreeSet<>());
             if (relation.getOperationId() != null && candidateIds.contains(relation.getOperationId())) {
                 ids.add(relation.getOperationId());
             }

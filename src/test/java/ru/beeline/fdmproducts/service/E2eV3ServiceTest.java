@@ -11,6 +11,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import ru.beeline.fdmproducts.domain.ContainerProduct;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.E2eBranch;
 import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
@@ -23,6 +24,7 @@ import ru.beeline.fdmproducts.dto.search.projection.DiscoveredOperationProjectio
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.E2eBranchRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
@@ -59,6 +61,7 @@ class E2eV3ServiceTest {
     private InterfaceRepository interfaceRepository;
     private ContainerRepository containerRepository;
     private ProductRepository productRepository;
+    private E2eBranchRepository e2eBranchRepository;
     private E2eV3Service service;
 
     @BeforeEach
@@ -71,7 +74,12 @@ class E2eV3ServiceTest {
         interfaceRepository = mock(InterfaceRepository.class);
         containerRepository = mock(ContainerRepository.class);
         productRepository = mock(ProductRepository.class);
-        service = new E2eV3Service(e2eRepository, operationRelationRepository, discoveredOperationRepository,
+        e2eBranchRepository = mock(E2eBranchRepository.class);
+        // Ветка main карточки получила id карточки (SFDM-4250).
+        when(e2eBranchRepository.findAllByCodeAndBranchNameIgnoreCaseOrderByIdAsc(CODE, "main"))
+                .thenReturn(List.of(E2eBranch.builder().id(E2E_ID).code(CODE).branchName("main").build()));
+        service = new E2eV3Service(e2eRepository,
+                new E2eBranchService(e2eBranchRepository, operationRelationRepository), discoveredOperationRepository,
                 new E2eDiscoveredOperationCatalog(operationRepository, slaRepository, interfaceRepository,
                         containerRepository),
                 new E2eOwnerService(productRepository));
@@ -92,7 +100,7 @@ class E2eV3ServiceTest {
         when(interfaceRepository.findAllByIdIn(List.of(8))).thenReturn(List.of(iface(8, "cart-rest", 4)));
         when(containerRepository.findAllByIdIn(List.of(4))).thenReturn(List.of(container(4, "cart-api")));
 
-        E2eV3GetResponseDTO response = service.getByCode(CODE);
+        E2eV3GetResponseDTO response = service.getByCode(CODE, null);
         JsonNode json = new ObjectMapper().valueToTree(response);
 
         assertThat(json.has("operations")).isFalse();
@@ -131,7 +139,7 @@ class E2eV3ServiceTest {
         givenRelations(relation(9, null, 30, 1, ""), relation(3, null, 20, 1, "  "), relation(1, null, 50, 2, "x"));
         givenCards(card(20), card(30), card(50));
 
-        E2eV3GetResponseDTO response = service.getByCode(CODE);
+        E2eV3GetResponseDTO response = service.getByCode(CODE, null);
 
         assertThat(response.getOperationsRelations()).extracting(E2eV3RelationTreeNodeDTO::getRelatedOperationId)
                 .containsExactly(20, 30, 50);
@@ -148,7 +156,7 @@ class E2eV3ServiceTest {
         givenRelations(relation(1, null, 20, 1, null), relation(2, 20, 40, 1, null), relation(3, 40, 20, 1, null));
         givenCards(card(20), card(40));
 
-        E2eV3GetResponseDTO response = service.getByCode(CODE);
+        E2eV3GetResponseDTO response = service.getByCode(CODE, null);
 
         E2eV3RelationTreeNodeDTO back = response.getOperationsRelations().get(0)
                 .getOperationsRelations().get(0).getOperationsRelations().get(0);
@@ -164,7 +172,7 @@ class E2eV3ServiceTest {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e(null)));
         givenRelations();
 
-        E2eV3GetResponseDTO response = service.getByCode(CODE);
+        E2eV3GetResponseDTO response = service.getByCode(CODE, null);
 
         assertThat(response.getE2e().getProductId()).isNull();
         assertThat(response.getE2e().getProductAlias()).isNull();
@@ -176,7 +184,7 @@ class E2eV3ServiceTest {
     void unknownCodeIsNotFound() {
         when(e2eRepository.findByCodeIgnoreCase("nope")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.getByCode("nope"))
+        assertThatThrownBy(() -> service.getByCode("nope", null))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("E2e с указанным кодом не найден");
     }
@@ -187,7 +195,7 @@ class E2eV3ServiceTest {
         when(e2eRepository.findByCodeIgnoreCase(CODE)).thenReturn(Optional.of(e2e(null)));
         givenRelations();
 
-        E2eV3GetResponseDTO response = service.getByCode(CODE);
+        E2eV3GetResponseDTO response = service.getByCode(CODE, null);
 
         assertThat(response.getE2e().getCode()).isEqualTo(CODE);
         assertThat(response.getOperationsRelations()).isEmpty();
@@ -211,7 +219,7 @@ class E2eV3ServiceTest {
         when(interfaceRepository.findAllByIdIn(List.of(8))).thenReturn(List.of(deletedIface));
         when(containerRepository.findAllByIdIn(List.of(4))).thenReturn(List.of(deletedContainer));
 
-        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE).getDiscoveredOperations().get(0);
+        E2eV2DiscoveredOperationCatalogItemDTO item = service.getByCode(CODE, null).getDiscoveredOperations().get(0);
 
         assertThat(item.getOperation().getName()).isEqualTo("gone");
         assertThat(item.getOperation().getConnectedInterface().getCode()).isEqualTo("gone-iface");
@@ -228,7 +236,7 @@ class E2eV3ServiceTest {
                 card(40, "/b", "GET", "c", "P", 100, null, null, null));
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of(operation(100, "shared", null)));
 
-        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE).getDiscoveredOperations();
+        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE, null).getDiscoveredOperations();
 
         assertThat(items.get(0).getOperation()).isSameAs(items.get(1).getOperation());
         verify(operationRepository).findAllByIdIn(List.of(100));
@@ -242,7 +250,7 @@ class E2eV3ServiceTest {
         givenRelations(relation(1, null, 40, 1, null));
         givenCards(card(40));
 
-        assertThat(service.getByCode(CODE).getDiscoveredOperations().get(0).getOperation()).isNull();
+        assertThat(service.getByCode(CODE, null).getDiscoveredOperations().get(0).getOperation()).isNull();
         verify(operationRepository, never()).findAllByIdIn(anyList());
         verify(slaRepository, never()).findAllByOperationIdIn(anyList());
         verify(interfaceRepository, never()).findAllByIdIn(anyList());
@@ -257,7 +265,7 @@ class E2eV3ServiceTest {
         givenCards(card(20, "/a", "GET", "c", "P", 100, null, null, null));
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of());
 
-        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE).getDiscoveredOperations();
+        List<E2eV2DiscoveredOperationCatalogItemDTO> items = service.getByCode(CODE, null).getDiscoveredOperations();
 
         assertThat(items).singleElement().satisfies(item -> {
             assertThat(item.getId()).isEqualTo(20);
@@ -266,7 +274,7 @@ class E2eV3ServiceTest {
     }
 
     private void givenRelations(OperationRelation... relations) {
-        when(operationRelationRepository.findAllByE2eId(E2E_ID)).thenReturn(new ArrayList<>(Arrays.asList(relations)));
+        when(operationRelationRepository.findAllByE2eBranchId(E2E_ID)).thenReturn(new ArrayList<>(Arrays.asList(relations)));
     }
 
     private void givenCards(DiscoveredOperationProjection... cards) {
@@ -280,7 +288,7 @@ class E2eV3ServiceTest {
 
     private static OperationRelation relation(Integer id, Integer operationId, Integer relatedOperationId,
                                               Integer order, String stereotype) {
-        return OperationRelation.builder().id(id).e2eId(E2E_ID).operationId(operationId)
+        return OperationRelation.builder().id(id).e2eBranchId(E2E_ID).operationId(operationId)
                 .relatedOperationId(relatedOperationId).order(order).stereoType(stereotype).build();
     }
 

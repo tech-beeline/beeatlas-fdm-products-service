@@ -21,7 +21,6 @@ import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.E2eSearchRepository;
-import ru.beeline.fdmproducts.repository.OperationRelationRepository;
 import ru.beeline.fdmproducts.repository.OperationRepository;
 import ru.beeline.fdmproducts.repository.SlaRepository;
 
@@ -53,16 +52,18 @@ public class E2eService {
     private final OperationRepository operationRepository;
     private final SlaRepository slaRepository;
     private final E2eRepository e2eRepository;
-    private final OperationRelationRepository operationRelationRepository;
+    private final E2eBranchService e2eBranchService;
     private final E2eOwnerService e2eOwnerService;
 
     @Transactional
-    public E2eGetResponseDTO getByCode(String code) {
-        log.info("E2E get: начало, code={}", code);
+    public E2eGetResponseDTO getByCode(String code, String branch) {
+        String branchName = e2eBranchService.resolveBranchName(branch);
+        log.info("E2E get: начало, code={}, branch={}", code, branchName);
         E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new EntityNotFoundException("E2e с указанным кодом не найден"));
-        List<OperationRelation> relations = operationRelationRepository.findAllByE2eId(e2e.getId());
-        log.info("E2E get: найден e2e id={}, code={}, relations={}", e2e.getId(), e2e.getCode(), relations.size());
+        List<OperationRelation> relations = e2eBranchService.relationsOf(e2e, branchName);
+        log.info("E2E get: найден e2e id={}, code={}, branch={}, relations={}",
+                e2e.getId(), e2e.getCode(), branchName, relations.size());
         List<E2eRelationTreeNodeDTO> tree = relations.isEmpty() ? List.of() : buildBranch(relations, null, new HashSet<>());
         List<E2eOperationCatalogItemDTO> operations = buildOperationsCatalog(tree);
         log.info("E2E get: завершён, code={}, treeNodes={}, operations={}",

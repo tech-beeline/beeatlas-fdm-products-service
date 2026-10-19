@@ -11,6 +11,7 @@ import org.mockito.ArgumentCaptor;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.E2eBranch;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
@@ -25,6 +26,7 @@ import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.DiscoveredOperationRepository;
+import ru.beeline.fdmproducts.repository.E2eBranchRepository;
 import ru.beeline.fdmproducts.repository.E2eRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.OperationRelationRepository;
@@ -74,11 +76,14 @@ class E2eV2OwnerTest {
         e2eRepository = mock(E2eRepository.class);
         operationRelationRepository = mock(OperationRelationRepository.class);
         operationRepository = mock(OperationRepository.class);
+        E2eBranchRepository e2eBranchRepository = mock(E2eBranchRepository.class);
         service = new E2eV2Service(productRepository, discoveredInterfaceRepository, discoveredOperationRepository,
                 e2eRepository, operationRelationRepository, operationRepository,
                 new E2eDiscoveredOperationCatalog(operationRepository, mock(SlaRepository.class),
                         mock(InterfaceRepository.class), mock(ContainerRepository.class)),
-                new E2eOwnerService(productRepository));
+                new E2eOwnerService(productRepository),
+                new E2eBranchService(e2eBranchRepository, operationRelationRepository));
+        when(e2eBranchRepository.upsert(anyString(), anyString())).thenReturn(E2E_ID);
 
         when(productRepository.findByAliasCaseInsensitive(anyString()))
                 .thenReturn(Product.builder().id(1).alias(CMDB).build());
@@ -119,7 +124,7 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("Создание без владельца — product_id остаётся null")
     void createsWithoutOwner() {
-        service.upsert(request(null), "STRUCTURIZR");
+        service.upsert(request(null), "STRUCTURIZR", null);
 
         assertThat(stored.getProductId()).isNull();
         assertThat(stored.getSource()).isEqualTo("STRUCTURIZR");
@@ -128,7 +133,7 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("Создание с владельцем: alias ищется после trim без учёта регистра")
     void createsWithOwner() {
-        service.upsert(request("  " + OWNER_ALIAS + " "), null);
+        service.upsert(request("  " + OWNER_ALIAS + " "), null, null);
 
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
     }
@@ -136,7 +141,7 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("Неизвестный alias — 404, ни продукт, ни e2e, ни discovered-методы не создаются")
     void unknownOwnerIsNotFoundAndNothingIsWritten() {
-        assertThatThrownBy(() -> service.upsert(request("UNKNOWN"), null))
+        assertThatThrownBy(() -> service.upsert(request("UNKNOWN"), null, null))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Продукт с указанным alias не найден");
         verify(productRepository, never()).save(any(Product.class));
@@ -147,7 +152,7 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("productAlias из пробелов — 400")
     void blankOwnerIsBadRequest() {
-        assertThatThrownBy(() -> service.upsert(request("   "), null))
+        assertThatThrownBy(() -> service.upsert(request("   "), null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("productAlias не может быть пустым");
         verify(e2eRepository, never()).save(any(E2e.class));
@@ -156,24 +161,24 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("Повторный POST без поля владельца его сохраняет, пустой productAlias снимает")
     void repeatedPostKeepsOwnerAndEmptyStringClearsIt() {
-        service.upsert(request(OWNER_ALIAS), null);
+        service.upsert(request(OWNER_ALIAS), null, null);
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
 
-        service.upsert(request(null), null);
+        service.upsert(request(null), null, null);
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
 
-        service.upsert(request(""), null);
+        service.upsert(request(""), null, null);
         assertThat(stored.getProductId()).isNull();
     }
 
     @Test
     @DisplayName("Повторный POST без name не затирает название")
     void repeatedPostKeepsName() {
-        service.upsert(request(OWNER_ALIAS), null);
+        service.upsert(request(OWNER_ALIAS), null, null);
         E2eV2UpsertRequestDTO withoutName = request(null);
         withoutName.getE2e().setName(null);
 
-        service.upsert(withoutName, null);
+        service.upsert(withoutName, null, null);
 
         assertThat(stored.getName()).isEqualTo("E2E 1");
     }
@@ -181,20 +186,20 @@ class E2eV2OwnerTest {
     @Test
     @DisplayName("PATCH: null не меняет владельца, пустая строка снимает, неизвестный alias — 404")
     void patchHandlesOwner() {
-        service.upsert(request(OWNER_ALIAS), null);
+        service.upsert(request(OWNER_ALIAS), null, null);
 
-        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().name("Новое").build());
+        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().name("Новое").build(), null);
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
         assertThat(stored.getName()).isEqualTo("Новое");
 
-        assertThatThrownBy(() -> service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias("UNKNOWN").build()))
+        assertThatThrownBy(() -> service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias("UNKNOWN").build(), null))
                 .isInstanceOf(EntityNotFoundException.class);
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
 
-        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias("").build());
+        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias("").build(), null);
         assertThat(stored.getProductId()).isNull();
 
-        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias(OWNER_ALIAS).build());
+        service.patch(E2E_UID, E2eV2PatchRequestDTO.builder().productAlias(OWNER_ALIAS).build(), null);
         assertThat(stored.getProductId()).isEqualTo(OWNER_ID);
     }
 
@@ -209,7 +214,7 @@ class E2eV2OwnerTest {
                 E2eV2OperationRelationDTO.builder().relatedOperationId("op-1").order(1).build(),
                 E2eV2OperationRelationDTO.builder().operationId("op-1").relatedOperationId("op-2").order(1).build()));
 
-        service.upsert(request, null);
+        service.upsert(request, null, null);
 
         ArgumentCaptor<DiscoveredOperation> discovered = ArgumentCaptor.forClass(DiscoveredOperation.class);
         verify(discoveredOperationRepository, org.mockito.Mockito.times(2)).save(discovered.capture());

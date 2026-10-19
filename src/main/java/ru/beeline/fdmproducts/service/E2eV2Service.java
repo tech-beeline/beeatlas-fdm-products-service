@@ -13,6 +13,7 @@ import ru.beeline.fdmproducts.domain.ContainerProduct;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.E2eBranch;
 import ru.beeline.fdmproducts.domain.Interface;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
@@ -83,12 +84,15 @@ public class E2eV2Service {
     private final OperationRepository operationRepository;
     private final E2eDiscoveredOperationCatalog discoveredOperationCatalog;
     private final E2eOwnerService e2eOwnerService;
+    private final E2eBranchService e2eBranchService;
 
     @Transactional
-    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request, String source) {
+    public E2eUpsertResponseDTO upsert(E2eV2UpsertRequestDTO request, String source, String branch) {
         String requestSource = resolveRequestSource(source);
-        log.info("E2E v2 upsert: обработка, e2e.uid={}, source={}",
-                request != null && request.getE2e() != null ? request.getE2e().getUid() : null, requestSource);
+        String branchName = e2eBranchService.resolveBranchName(branch);
+        log.info("E2E v2 upsert: обработка, e2e.uid={}, source={}, branch={}",
+                request != null && request.getE2e() != null ? request.getE2e().getUid() : null, requestSource,
+                branchName);
         validateRequest(request);
         // Владелец разбирается до любой записи: неизвестный alias — 404, ни продукт, ни e2e не создаются.
         E2eOwnerService.OwnerChange owner = e2eOwnerService.resolve(request.getE2e().getProductAlias());
@@ -104,17 +108,19 @@ public class E2eV2Service {
         validateRelations(relations, operationIdByUid);
         E2eInfoDTO e2eInfo = request.getE2e();
         E2e e2e = upsertE2e(e2eInfo, requestSource, owner);
-        rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
-        log.info("E2E v2 upsert: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
-        return E2eUpsertResponseDTO.builder()
-                .id(e2e.getId())
-                .code(e2e.getCode())
-                .build();
+        // Дерево пишется только в эту ветку: связи других веток той же карточки не трогаются.
+        E2eBranch e2eBranch = e2eBranchService.getOrCreate(e2e.getCode(), branchName);
+        operationRelationRepository.deleteAllByE2eBranchId(e2eBranch.getId());
+        rebuildOperationRelations(e2eBranch.getId(), relations, operationIdByUid);
+        log.info("E2E v2 upsert: завершён, id={}, code={}, e2eBranchId={}, branch={}",
+                e2e.getId(), e2e.getCode(), e2eBranch.getId(), e2eBranch.getBranchName());
+        return upsertResponse(e2e, e2eBranch);
     }
 
     @Transactional
-    public E2eUpsertResponseDTO patch(String code, E2eV2PatchRequestDTO request) {
-        log.info("E2E v2 patch: обработка, code={}", code);
+    public E2eUpsertResponseDTO patch(String code, E2eV2PatchRequestDTO request, String branch) {
+        String branchName = e2eBranchService.resolveBranchName(branch);
+        log.info("E2E v2 patch: обработка, code={}, branch={}", code, branchName);
         if (request == null) {
             throw new IllegalArgumentException("Отсутствует тело запроса");
         }
@@ -145,21 +151,30 @@ public class E2eV2Service {
         Map<String, List<DiscoveredInterface>> interfacesByCode = upsertInterfaces(interfaces, productByCmdb, DEFAULT_SOURCE);
         Map<String, Integer> operationIdByUid = upsertOperations(operations, interfacesByCode, DEFAULT_SOURCE);
 
+        // Ветка находится или создаётся и без дерева в теле — ответ содержит e2eBranchId.
+        E2eBranch e2eBranch = e2eBranchService.getOrCreate(e2e.getCode(), branchName);
         if (request.getOperationsRelations() != null) {
             List<E2eV2OperationRelationDTO> relations = defaultList(request.getOperationsRelations());
             validateRelationsStructure(relations);
             validateRelations(relations, operationIdByUid);
-            operationRelationRepository.deleteAllByE2eId(e2e.getId());
-            rebuildOperationRelations(e2e.getId(), relations, operationIdByUid);
+            operationRelationRepository.deleteAllByE2eBranchId(e2eBranch.getId());
+            rebuildOperationRelations(e2eBranch.getId(), relations, operationIdByUid);
         } else {
-            log.info("E2E v2 patch: operationsRelations не передан — существующие operation_relations не изменены, e2eId={}",
-                    e2e.getId());
+            log.info("E2E v2 patch: operationsRelations не передан — operation_relations веток не изменены, "
+                    + "e2eId={}, e2eBranchId={}", e2e.getId(), e2eBranch.getId());
         }
 
-        log.info("E2E v2 patch: завершён, id={}, code={}", e2e.getId(), e2e.getCode());
+        log.info("E2E v2 patch: завершён, id={}, code={}, e2eBranchId={}, branch={}",
+                e2e.getId(), e2e.getCode(), e2eBranch.getId(), e2eBranch.getBranchName());
+        return upsertResponse(e2e, e2eBranch);
+    }
+
+    private E2eUpsertResponseDTO upsertResponse(E2e e2e, E2eBranch e2eBranch) {
         return E2eUpsertResponseDTO.builder()
                 .id(e2e.getId())
                 .code(e2e.getCode())
+                .e2eBranchId(e2eBranch.getId())
+                .branch(e2eBranch.getBranchName())
                 .build();
     }
 
@@ -565,14 +580,12 @@ public class E2eV2Service {
             }
             e2eOwnerService.apply(e2e, owner);
             e2e = e2eRepository.save(e2e);
-            operationRelationRepository.deleteAllByE2eId(e2e.getId());
-            log.info("Обновлён e2e, id={}, code={}, старые operation_relations удалены",
-                    e2e.getId(), e2e.getCode());
+            log.info("Обновлён e2e, id={}, code={}", e2e.getId(), e2e.getCode());
         }
         return e2e;
     }
 
-    private void rebuildOperationRelations(Integer e2eId, List<E2eV2OperationRelationDTO> relations,
+    private void rebuildOperationRelations(Integer e2eBranchId, List<E2eV2OperationRelationDTO> relations,
                                            Map<String, Integer> operationIdByUid) {
         List<OperationRelation> toSave = new ArrayList<>();
         for (E2eV2OperationRelationDTO relation : relations) {
@@ -580,7 +593,7 @@ public class E2eV2Service {
                     ? operationIdByUid.get(relation.getOperationId()) : null;
             Integer relatedOperationId = operationIdByUid.get(relation.getRelatedOperationId());
             toSave.add(OperationRelation.builder()
-                    .e2eId(e2eId)
+                    .e2eBranchId(e2eBranchId)
                     .operationId(operationId)
                     .relatedOperationId(relatedOperationId)
                     .order(relation.getOrder())
@@ -590,16 +603,19 @@ public class E2eV2Service {
         if (!toSave.isEmpty()) {
             operationRelationRepository.saveAll(toSave);
         }
-        log.info("E2E v2 upsert: сохранены operation_relations, e2eId={}, count={}", e2eId, toSave.size());
+        log.info("E2E v2: сохранены operation_relations, e2eBranchId={}, count={}", e2eBranchId, toSave.size());
     }
 
     @Transactional
-    public E2eV2GetResponseDTO getByCode(String code) {
-        log.info("E2E v2 get: начало, code={}", code);
+    public E2eV2GetResponseDTO getByCode(String code, String branch) {
+        String branchName = e2eBranchService.resolveBranchName(branch);
+        log.info("E2E v2 get: начало, code={}, branch={}", code, branchName);
         E2e e2e = e2eRepository.findByCodeIgnoreCase(code)
                 .orElseThrow(() -> new EntityNotFoundException("E2e с указанным кодом не найден"));
-        List<OperationRelation> relations = operationRelationRepository.findAllByE2eId(e2e.getId());
-        log.info("E2E v2 get: найден e2e id={}, code={}, relations={}", e2e.getId(), e2e.getCode(), relations.size());
+        // Ветки нет — пустое дерево, ветка не создаётся.
+        List<OperationRelation> relations = e2eBranchService.relationsOf(e2e, branchName);
+        log.info("E2E v2 get: найден e2e id={}, code={}, branch={}, relations={}",
+                e2e.getId(), e2e.getCode(), branchName, relations.size());
         List<E2eV2RelationTreeNodeDTO> tree = relations.isEmpty()
                 ? List.of() : buildBranch(relations, null, new HashSet<>());
         Set<Integer> discoveredOperationIds = new LinkedHashSet<>();

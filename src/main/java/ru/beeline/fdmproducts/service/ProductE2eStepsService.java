@@ -16,6 +16,7 @@ import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eRelationParticipation;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eCardDTO;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eOperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eStepDTO;
@@ -61,7 +62,9 @@ public class ProductE2eStepsService {
     private final OperationTechCapabilityResolver techCapabilityResolver;
     private final E2eOwnerService e2eOwnerService;
 
-    public List<ProductE2eStepDTO> getE2eSteps(String cmdb) {
+    public List<ProductE2eStepDTO> getE2eSteps(String cmdb, String branch) {
+        // Ветка e2e (SFDM-4250); архитектура продукта по-прежнему берётся из его ветки main.
+        String e2eBranchName = ProductBranchService.normalizeBranchName(branch);
         String decodedCmdb = URLDecoder.decode(cmdb, StandardCharsets.UTF_8);
         Product product = productRepository.findByAliasCaseInsensitive(decodedCmdb);
         if (product == null) {
@@ -75,7 +78,7 @@ public class ProductE2eStepsService {
             return List.of();
         }
 
-        Map<Integer, List<MethodRef>> methodsByE2e = methodsByE2e(operations, discoveredOperations);
+        Map<Integer, List<MethodRef>> methodsByE2e = methodsByE2e(operations, discoveredOperations, e2eBranchName);
         if (methodsByE2e.isEmpty()) {
             log.info("E2E-шаги продукта: методы не участвуют в E2E, cmdb={}", decodedCmdb);
             return List.of();
@@ -142,7 +145,8 @@ public class ProductE2eStepsService {
      * connection_operation_id обнаруженного метода этой связи равен id метода.
      */
     private Map<Integer, List<MethodRef>> methodsByE2e(Map<Integer, Operation> operations,
-                                                       Map<Integer, DiscoveredOperation> discoveredOperations) {
+                                                       Map<Integer, DiscoveredOperation> discoveredOperations,
+                                                       String e2eBranchName) {
         Map<Integer, DiscoveredOperation> connectedToProduct = operations.isEmpty() ? Map.of()
                 : discoveredOperationRepository.findAllByConnectionOperationIdInAndDeletedDateIsNull(operations.keySet())
                 .stream()
@@ -156,20 +160,22 @@ public class ProductE2eStepsService {
         }
 
         List<MethodOccurrence> occurrences = new ArrayList<>();
-        for (OperationRelation relation : operationRelationRepository.findDiscoveredOperationParticipations(participantIds)) {
+        for (E2eRelationParticipation participation
+                : operationRelationRepository.findDiscoveredOperationParticipations(participantIds, e2eBranchName)) {
+            OperationRelation relation = participation.relation();
             for (Integer side : java.util.Arrays.asList(relation.getRelatedOperationId(), relation.getOperationId())) {
                 if (side == null) {
                     continue;
                 }
                 if (discoveredOperations.containsKey(side)) {
-                    occurrences.add(new MethodOccurrence(relation.getE2eId(), relation.getOrder(), relation.getId(),
+                    occurrences.add(new MethodOccurrence(participation.e2eId(), relation.getOrder(), relation.getId(),
                             new MethodRef(DISCOVERED_OPERATION, side)));
                 }
                 DiscoveredOperation discovered = discoveredOperations.containsKey(side)
                         ? discoveredOperations.get(side) : connectedToProduct.get(side);
                 Integer connectionId = discovered == null ? null : discovered.getConnectionOperationId();
                 if (connectionId != null && operations.containsKey(connectionId)) {
-                    occurrences.add(new MethodOccurrence(relation.getE2eId(), relation.getOrder(), relation.getId(),
+                    occurrences.add(new MethodOccurrence(participation.e2eId(), relation.getOrder(), relation.getId(),
                             new MethodRef(OPERATION, connectionId)));
                 }
             }

@@ -69,6 +69,8 @@ class E2eGroupedByE2eServiceTest {
     private CapabilityClient capabilityClient;
     @Spy
     private E2eGroupedByE2eMapper mapper = new E2eGroupedByE2eMapper();
+    @Mock
+    private E2eOwnerService e2eOwnerService;
 
     @InjectMocks
     private E2eGroupedByE2eService service;
@@ -85,7 +87,7 @@ class E2eGroupedByE2eServiceTest {
         when(discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(List.of(5)))
                 .thenReturn(List.of(method));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
 
         List<E2eGroupedByE2eDTO> result = service.findGroupedByE2e("1", null);
@@ -146,7 +148,7 @@ class E2eGroupedByE2eServiceTest {
         stubProductById();
         stubHappyPathWithoutArch(20);
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, 20, "discovered_operation", "discovered_operation")));
+                .thenReturn(List.of(relation(1, 20, 20)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
 
         List<E2eGroupedByE2eDTO> result = service.findGroupedByE2e("1", null);
@@ -163,8 +165,8 @@ class E2eGroupedByE2eServiceTest {
         stubHappyPathWithoutArch(20);
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
                 .thenReturn(List.of(
-                        relation(2, 20, null, "discovered_operation", "operation"),
-                        relation(1, null, 20, "operation", "discovered_operation")));
+                        relation(2, 20, null),
+                        relation(1, null, 20)));
         when(e2eRepository.findAllByIdIn(Set.of(1, 2)))
                 .thenReturn(List.of(e2e(1, "SPARX"), e2e(2, "sparx")));
 
@@ -178,7 +180,7 @@ class E2eGroupedByE2eServiceTest {
     }
 
     @Test
-    @DisplayName("Связь с типом operation не даёт участия")
+    @DisplayName("Нет участий в связях — пустой ответ без чтения e2e")
     void operationEntityTypeDoesNotParticipate() {
         stubProductById();
         stubHappyPathWithoutArch(20);
@@ -202,7 +204,7 @@ class E2eGroupedByE2eServiceTest {
         when(discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(List.of(5)))
                 .thenReturn(List.of(participating, orphan));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20, 30)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of(operationRow(100, null)));
 
@@ -223,7 +225,7 @@ class E2eGroupedByE2eServiceTest {
         when(discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(List.of(5)))
                 .thenReturn(List.of(discoveredRow(20, 5, 100)));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
         Operation arch = operationRow(100, 3);
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of(arch));
@@ -243,7 +245,7 @@ class E2eGroupedByE2eServiceTest {
         stubProductById();
         stubHappyPathWithoutArch(20);
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
 
         assertThat(service.findGroupedByE2e("1", null).get(0).getOperations().get(0).getArchOperation()).isNull();
@@ -266,8 +268,8 @@ class E2eGroupedByE2eServiceTest {
                 .thenReturn(List.of(discoveredRow(10, 5, 100), discoveredRow(20, 5, 101)));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(10, 20)))
                 .thenReturn(List.of(
-                        relation(1, 10, null, "discovered_operation", "operation"),
-                        relation(1, 20, null, "DISCOVERED_OPERATION", "operation")));
+                        relation(1, 10, null),
+                        relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
         when(operationRepository.findAllByIdIn(List.of(100, 101)))
                 .thenReturn(List.of(operationRow(100, 3), operationRow(101, 3)));
@@ -340,7 +342,7 @@ class E2eGroupedByE2eServiceTest {
         when(discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(List.of(5)))
                 .thenReturn(List.of(discoveredRow(20, 5, 100)));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
         when(operationRepository.findAllByIdIn(List.of(100))).thenReturn(List.of(operationRow(100, 3)));
 
@@ -369,9 +371,9 @@ class E2eGroupedByE2eServiceTest {
                 .thenReturn(List.of(discoveredRow(30, 5, null), discoveredRow(10, 5, null)));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(30, 10)))
                 .thenReturn(List.of(
-                        relation(5, 30, null, "discovered_operation", "operation"),
-                        relation(2, 10, null, "discovered_operation", "operation"),
-                        relation(5, 10, null, "discovered_operation", "operation")));
+                        relation(5, 30, null),
+                        relation(2, 10, null),
+                        relation(5, 10, null)));
         when(e2eRepository.findAllByIdIn(Set.of(2, 5)))
                 .thenReturn(List.of(e2e(5, "SPARX"), e2e(2, "SPARX")));
 
@@ -393,7 +395,7 @@ class E2eGroupedByE2eServiceTest {
         when(discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(List.of(5)))
                 .thenReturn(List.of(discoveredRow(20, 5, 100)));
         when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
-                .thenReturn(List.of(relation(1, 20, null, "discovered_operation", "operation")));
+                .thenReturn(List.of(relation(1, 20, null)));
         when(e2eRepository.findAllByIdIn(Set.of(1))).thenReturn(List.of(e2e(1, "SPARX")));
         Operation deleted = operationRow(100, null);
         deleted.setDeletedDate(LocalDateTime.of(2026, 1, 1, 0, 0));
@@ -403,6 +405,27 @@ class E2eGroupedByE2eServiceTest {
         assertThat(service.findGroupedByE2e("1", null).get(0).getOperations().get(0).getArchOperation().getDeletedDate())
                 .isEqualTo(LocalDateTime.of(2026, 1, 1, 0, 0));
         verify(capabilityClient, never()).getTcs(anyList());
+    }
+
+    @Test
+    @DisplayName("SFDM-4244: участие считается по id discovered_operation на любой стороне, в карточке владелец")
+    void countsParticipationOnAnySideAndAddsOwner() {
+        stubProductById();
+        stubHappyPathWithoutArch(20);
+        when(operationRelationRepository.findDiscoveredOperationParticipations(List.of(20)))
+                .thenReturn(List.of(relation(1, null, 20), relation(2, 20, 77)));
+        E2e owned = e2e(1, "SPARX");
+        owned.setProductId(PRODUCT_ID);
+        when(e2eRepository.findAllByIdIn(Set.of(1, 2))).thenReturn(List.of(owned, e2e(2, "SPARX")));
+        when(e2eOwnerService.aliasesOf(any())).thenReturn(java.util.Map.of(PRODUCT_ID, ALIAS));
+
+        List<E2eGroupedByE2eDTO> result = service.findGroupedByE2e("1", null);
+
+        assertThat(result).extracting(E2eGroupedByE2eDTO::getId).containsExactly(1, 2);
+        assertThat(result.get(0).getProductId()).isEqualTo(PRODUCT_ID);
+        assertThat(result.get(0).getProductAlias()).isEqualTo(ALIAS);
+        assertThat(result.get(1).getProductId()).isNull();
+        assertThat(result.get(1).getProductAlias()).isNull();
     }
 
     private void stubProductById() {
@@ -435,15 +458,12 @@ class E2eGroupedByE2eServiceTest {
                 .build();
     }
 
-    private OperationRelation relation(Integer e2eId, Integer operationId, Integer relatedOperationId,
-                                       String entityTypeOperation, String entityTypeRelation) {
+    private OperationRelation relation(Integer e2eId, Integer operationId, Integer relatedOperationId) {
         return OperationRelation.builder()
                 .e2eId(e2eId)
                 .operationId(operationId)
                 .relatedOperationId(relatedOperationId == null ? 0 : relatedOperationId)
                 .order(1)
-                .entityTypeOperation(entityTypeOperation)
-                .entityTypeOperationRelation(entityTypeRelation)
                 .build();
     }
 

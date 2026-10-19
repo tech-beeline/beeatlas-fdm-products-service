@@ -23,5 +23,7 @@ public class E2eGroupedByE2eDTO {
     private String name;
     private String code;
     private String source;
+    private Integer productId;
+    private String productAlias;
     private List<E2eGroupedByE2eOperationDTO> operations;
 }

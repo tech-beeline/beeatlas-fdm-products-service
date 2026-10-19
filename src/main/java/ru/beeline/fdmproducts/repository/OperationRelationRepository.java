@@ -23,24 +23,14 @@ public interface OperationRelationRepository extends JpaRepository<OperationRela
 
     List<OperationRelation> findAllByE2eId(Integer e2eId);
 
-    List<OperationRelation> findAllByRelatedOperationIdInAndEntityTypeOperationRelation(List<Integer> ids,
-                                                                                        String entityType);
-
-    List<OperationRelation> findAllByOperationIdInAndEntityTypeOperation(List<Integer> ids, String entityType);
-
-    @Query(value = "SELECT DISTINCT operation_id FROM product.operation_relations WHERE operation_id IN :ids "
-            + "UNION "
-            + "SELECT DISTINCT related_operation_id FROM product.operation_relations WHERE related_operation_id IN :ids",
-            nativeQuery = true)
-    List<Integer> findOperationIdsInUse(@Param("ids") List<Integer> ids);
-
+    /**
+     * Связи e2e, где discovered_operation из ids стоит на любой стороне (SFDM-4244: обе колонки — id
+     * product.discovered_operation, фильтра по типу нет).
+     */
     @Query("""
             SELECT r FROM OperationRelation r
             WHERE r.e2eId IS NOT NULL
-              AND (
-                    (LOWER(r.entityTypeOperation) = 'discovered_operation' AND r.operationId IN :ids)
-                 OR (LOWER(r.entityTypeOperationRelation) = 'discovered_operation' AND r.relatedOperationId IN :ids)
-              )
+              AND (r.operationId IN :ids OR r.relatedOperationId IN :ids)
             """)
     List<OperationRelation> findDiscoveredOperationParticipations(@Param("ids") Collection<Integer> ids);
 }

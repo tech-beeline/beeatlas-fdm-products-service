@@ -19,12 +19,14 @@ import java.util.Map;
 @Component
 public class E2eGroupedByE2eMapper {
 
-    public E2eGroupedByE2eDTO toE2eDto(E2e e2e, List<E2eGroupedByE2eOperationDTO> operations) {
+    public E2eGroupedByE2eDTO toE2eDto(E2e e2e, List<E2eGroupedByE2eOperationDTO> operations, String ownerAlias) {
         return E2eGroupedByE2eDTO.builder()
                 .id(e2e.getId())
                 .name(e2e.getName())
                 .code(e2e.getCode())
                 .source(e2e.getSource())
+                .productId(e2e.getProductId())
+                .productAlias(e2e.getProductId() == null ? null : ownerAlias)
                 .operations(operations)
                 .build();
     }

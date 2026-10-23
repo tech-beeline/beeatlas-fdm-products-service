@@ -131,7 +131,8 @@ public class ProductPatternsService {
         ProductPatternV2DTO.ProductPatternV2DTOBuilder builder = ProductPatternV2DTO.builder()
                 .code(row.getPatternCode())
                 .isCheck(row.getIsCheck())
-                .resultDetails(row.getResultDetails());
+                .resultDetails(row.getResultDetails())
+                .checkedAt(row.getCreatedDate());
         if (card != null) {
             builder.id(card.getId())
                     .name(card.getName())

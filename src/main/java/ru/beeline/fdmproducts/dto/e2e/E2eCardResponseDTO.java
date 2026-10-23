@@ -21,4 +21,8 @@ public class E2eCardResponseDTO {
     private String description;
     private String biStepCode;
     private String source;
+    /** Продукт-владелец: product.e2e.product_id, без владельца — null. */
+    private Integer productId;
+    /** product.alias владельца как записан в таблице, без владельца — null. */
+    private String productAlias;
 }

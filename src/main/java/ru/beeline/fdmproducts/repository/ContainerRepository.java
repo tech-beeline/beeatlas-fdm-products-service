@@ -53,6 +53,9 @@ public interface ContainerRepository extends JpaRepository<ContainerProduct, Int
     void markContainersAsDeletedByIds(@Param("ids") List<Integer> ids,
                                       @Param("deletedDate") Date deletedDate);
 
+    @Query("SELECT DISTINCT c FROM ContainerProduct c " +
+            "LEFT JOIN FETCH c.productBranch " +
+            "WHERE c.sourceMetric IS NOT NULL AND c.deletedDate IS NULL")
     List<ContainerProduct> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
 
     @Modifying

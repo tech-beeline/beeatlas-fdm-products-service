@@ -29,7 +29,7 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
 
     @Query("SELECT i FROM Interface i WHERE i.containerId = :containerId AND LOWER(i.code) = LOWER(:code)")
     List<Interface> findAllByContainerIdAndCodeIgnoreCase(@Param("containerId") Integer containerId,
-                                                           @Param("code") String code);
+                                                          @Param("code") String code);
 
     @Query("SELECT i FROM Interface i WHERE i.containerId = :containerId AND i.code IS NULL AND LOWER(i.name) = LOWER(:name)")
     List<Interface> findAllByContainerIdAndCodeIsNullAndNameIgnoreCase(@Param("containerId") Integer containerId,
@@ -44,6 +44,10 @@ public interface InterfaceRepository extends JpaRepository<Interface, Integer> {
     void markInterfacesAsDeletedByIds(@Param("ids") List<Integer> ids,
                                       @Param("deletedDate") LocalDateTime deletedDate);
 
+    @Query("SELECT DISTINCT i FROM Interface i " +
+            "LEFT JOIN FETCH i.containerProduct cp " +
+            "LEFT JOIN FETCH cp.productBranch " +
+            "WHERE i.sourceMetric IS NOT NULL AND i.deletedDate IS NULL")
     List<Interface> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
 
     @Modifying

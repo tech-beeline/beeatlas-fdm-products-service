@@ -21,6 +21,5 @@ public class E2eV2RelationTreeNodeDTO {
     private Integer order;
     private Integer relatedOperationId;
     private String stereotype;
-    private String entityTypeRelatedOperation;
     private List<E2eV2RelationTreeNodeDTO> operationsRelations = new ArrayList<>();
 }

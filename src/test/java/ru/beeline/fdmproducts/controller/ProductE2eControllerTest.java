@@ -53,7 +53,7 @@ class ProductE2eControllerTest {
     @Test
     @DisplayName("200 — успешный ответ")
     void success() throws Exception {
-        when(service.findGroupedByE2e(eq("1"), isNull()))
+        when(service.findGroupedByE2e(eq("1"), isNull(), isNull()))
                 .thenReturn(List.of(E2eGroupedByE2eDTO.builder()
                         .id(1)
                         .code("checkout-flow")
@@ -67,13 +67,13 @@ class ProductE2eControllerTest {
                 .andExpect(jsonPath("$[0].id").value(1))
                 .andExpect(jsonPath("$[0].source").value("SPARX"));
 
-        verify(service).findGroupedByE2e("1", null);
+        verify(service).findGroupedByE2e("1", null, null);
     }
 
     @Test
     @DisplayName("400 — оба параметра")
     void bothParams() throws Exception {
-        when(service.findGroupedByE2e(eq("1"), eq("alias")))
+        when(service.findGroupedByE2e(eq("1"), eq("alias"), isNull()))
                 .thenThrow(new IllegalArgumentException("Нужно передать либо идентификатор, либо alias продукта"));
 
         mockMvc.perform(get(URL).param("id", "1").param("alias", "alias"))
@@ -85,7 +85,7 @@ class ProductE2eControllerTest {
     @Test
     @DisplayName("404 — продукт не найден")
     void notFound() throws Exception {
-        when(service.findGroupedByE2e(isNull(), eq("unknown")))
+        when(service.findGroupedByE2e(isNull(), eq("unknown"), isNull()))
                 .thenThrow(new EntityNotFoundException("Продукт не найден."));
 
         mockMvc.perform(get(URL).param("alias", "unknown"))
@@ -96,7 +96,7 @@ class ProductE2eControllerTest {
     @Test
     @DisplayName("502 — capability недоступен")
     void capabilityUnavailable() throws Exception {
-        when(service.findGroupedByE2e(eq("1"), isNull()))
+        when(service.findGroupedByE2e(eq("1"), isNull(), isNull()))
                 .thenThrow(new ExternalServiceException(HttpStatus.BAD_GATEWAY, "Сервис capability недоступен"));
 
         mockMvc.perform(get(URL).param("id", "1"))

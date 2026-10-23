@@ -20,15 +20,11 @@ public interface ProductPatternsRepository extends JpaRepository<ProductPatterns
             SELECT p FROM ProductPatterns p
             WHERE p.productAlias = :alias
               AND p.productBranch = :branch
-              AND p.sourceTypeId = :sourceTypeId
-              AND ((:sourceId IS NULL AND p.sourceId IS NULL) OR p.sourceId = :sourceId)
               AND p.patternCode = :patternCode
               AND p.isActual = true
             """)
     Optional<ProductPatterns> findActual(@Param("alias") String alias,
                                          @Param("branch") String branch,
-                                         @Param("sourceTypeId") Integer sourceTypeId,
-                                         @Param("sourceId") Integer sourceId,
                                          @Param("patternCode") String patternCode);
 
     List<ProductPatterns> findAllByProductAliasAndProductBranchAndIsActualTrue(String productAlias,

@@ -75,7 +75,6 @@ public class ProductService {
     private final DiscoveredParameterRepository discoveredParameterRepository;
     private final LocalAssessmentRepository localAssessmentRepository;
     private final LocalAssessmentCheckRepository localAssessmentCheckRepository;
-    private final OperationRelationRepository operationRelationRepository;
     private final ProductBranchRepository productBranchRepository;
     private final ProductBranchService productBranchService;
     private final OperationTechCapabilityResolver techCapabilityResolver;
@@ -114,7 +113,6 @@ public class ProductService {
                           DiscoveredParameterRepository discoveredParameterRepository,
                           LocalAssessmentRepository localAssessmentRepository,
                           LocalAssessmentCheckRepository localAssessmentCheckRepository,
-                          OperationRelationRepository operationRelationRepository,
                           ProductBranchRepository productBranchRepository,
                           ProductBranchService productBranchService,
                           OperationTechCapabilityResolver techCapabilityResolver) {
@@ -152,7 +150,6 @@ public class ProductService {
         this.discoveredParameterRepository = discoveredParameterRepository;
         this.localAssessmentRepository = localAssessmentRepository;
         this.localAssessmentCheckRepository = localAssessmentCheckRepository;
-        this.operationRelationRepository = operationRelationRepository;
         this.productBranchRepository = productBranchRepository;
         this.productBranchService = productBranchService;
         this.techCapabilityResolver = techCapabilityResolver;
@@ -601,35 +598,12 @@ public class ProductService {
             log.info("Удаление Containers с productBranchId: {}", productBranchId);
             return;
         }
-        List<Integer> interfaceIds = interfaces.stream().map(Interface::getId).toList();
-        List<Operation> operations = operationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(interfaceIds);
-        Map<Integer, Integer> interfaceIdByOperationId = operations.stream()
-                .collect(Collectors.toMap(Operation::getId, Operation::getInterfaceId));
-        Map<Integer, Integer> containerIdByInterfaceId = interfaces.stream()
-                .collect(Collectors.toMap(Interface::getId, Interface::getContainerId));
-        Set<Integer> operationIdsInUse = findOperationIdsInUse(new ArrayList<>(interfaceIdByOperationId.keySet()));
-        Set<Integer> protectedContainerIds = operationIdsInUse.stream()
-                .map(interfaceIdByOperationId::get)
-                .map(containerIdByInterfaceId::get)
-                .collect(Collectors.toSet());
-        if (!protectedContainerIds.isEmpty()) {
-            log.info("Containers не будут удалены т.к. их operation учавствуют в operation_relations: {}",
-                    protectedContainerIds);
-        }
-        List<Integer> containersToDelete = containerIds.stream()
-                .filter(id -> !protectedContainerIds.contains(id))
-                .toList();
-        if (containersToDelete.isEmpty()) {
-            return;
-        }
-        Set<Integer> containersToDeleteSet = new HashSet<>(containersToDelete);
-        List<Integer> interfacesToDelete = interfaces.stream()
-                .filter(i -> containersToDeleteSet.contains(i.getContainerId()))
-                .map(Interface::getId)
-                .toList();
-        Set<Integer> interfacesToDeleteSet = new HashSet<>(interfacesToDelete);
-        List<Integer> operationsToDelete = operations.stream()
-                .filter(o -> interfacesToDeleteSet.contains(o.getInterfaceId()))
+        // SFDM-4244: operation_relations ссылается на discovered_operation, а не на product.operation —
+        // участие в e2e удаление архитектуры больше не блокирует.
+        List<Integer> containersToDelete = containerIds;
+        List<Integer> interfacesToDelete = interfaces.stream().map(Interface::getId).toList();
+        List<Integer> operationsToDelete = operationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(interfacesToDelete)
+                .stream()
                 .map(Operation::getId)
                 .toList();
         if (!operationsToDelete.isEmpty()) {
@@ -644,13 +618,6 @@ public class ProductService {
         }
         containerRepository.markContainersAsDeletedByIds(containersToDelete, new Date());
         log.info("Удаление Containers, count: {} шт.", containersToDelete.size());
-    }
-
-    private Set<Integer> findOperationIdsInUse(List<Integer> operationIds) {
-        if (operationIds == null || operationIds.isEmpty()) {
-            return Collections.emptySet();
-        }
-        return new HashSet<>(operationRelationRepository.findOperationIdsInUse(operationIds));
     }
 
     private void validateContainers(List<ContainerDTO> containers, ValidationErrorResponse errorEntity) {
@@ -966,26 +933,10 @@ public class ProductService {
                 .filter(c -> !dtoCodes.contains(c.getCode()))
                 .toList();
         for (ContainerProduct container : candidates) {
-            if (isContainerProtected(container.getId())) {
-                log.info("Container code={} не удалён т.к. его operation учавствуют в operation_relations",
-                        container.getCode());
-                continue;
-            }
             container.setDeletedDate(new Date());
             containerRepository.save(container);
             cascadeDeleteContainer(container);
         }
-    }
-
-    private boolean isContainerProtected(Integer containerId) {
-        List<Integer> interfaceIds = interfaceRepository.findInterfaceIdsByContainerIdInAndDeletedDateIsNull(
-                List.of(containerId));
-        if (interfaceIds.isEmpty()) {
-            return false;
-        }
-        List<Integer> operationIds = operationRepository.findOperationIdsByInterfaceIdInAndDeletedDateIsNull(
-                interfaceIds);
-        return !findOperationIdsInUse(operationIds).isEmpty();
     }
 
     private List<Interface> processInterfaces(List<InterfaceDTO> interfaces,
@@ -1035,26 +986,8 @@ public class ProductService {
         if (candidates.isEmpty()) {
             return;
         }
-        List<Integer> candidateInterfaceIds = candidates.stream().map(Interface::getId).toList();
-        Map<Integer, List<Integer>> operationIdsByInterface = operationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(
-                        candidateInterfaceIds)
-                .stream()
-                .collect(Collectors.groupingBy(Operation::getInterfaceId,
-                        Collectors.mapping(Operation::getId, Collectors.toList())));
-        Set<Integer> operationIdsInUse = findOperationIdsInUse(operationIdsByInterface.values()
-                .stream()
-                .flatMap(List::stream)
-                .toList());
         List<Interface> toDelete = new ArrayList<>();
         for (Interface interfaceObj : candidates) {
-            boolean protectedInterface = operationIdsByInterface.getOrDefault(interfaceObj.getId(), List.of())
-                    .stream()
-                    .anyMatch(operationIdsInUse::contains);
-            if (protectedInterface) {
-                log.info("Interface code={} не удалён т.к. его operation учавствуют в operation_relations",
-                        interfaceObj.getCode());
-                continue;
-            }
             interfaceObj.setDeletedDate(LocalDateTime.now());
             toDelete.add(interfaceObj);
         }
@@ -1128,13 +1061,8 @@ public class ProductService {
         if (candidates.isEmpty()) {
             return;
         }
-        Set<Integer> operationIdsInUse = findOperationIdsInUse(candidates.stream().map(Operation::getId).toList());
         List<Operation> toDelete = new ArrayList<>();
         for (Operation op : candidates) {
-            if (operationIdsInUse.contains(op.getId())) {
-                log.info("Operation id={} не удалена т.к. учавствует в operation_relations", op.getId());
-                continue;
-            }
             op.setDeletedDate(LocalDateTime.now());
             toDelete.add(op);
         }

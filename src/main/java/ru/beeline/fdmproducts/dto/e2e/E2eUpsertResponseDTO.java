@@ -17,4 +17,8 @@ public class E2eUpsertResponseDTO {
 
     private Integer id;
     private String code;
+    /** product.e2e_branch.id ветки, в которую шла запись (SFDM-4250). */
+    private Integer e2eBranchId;
+    /** branch_name ветки, как записан. */
+    private String branch;
 }

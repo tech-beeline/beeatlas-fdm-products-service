@@ -29,6 +29,9 @@ public interface ProductRepository extends JpaRepository<Product, Integer> {
     @Query(value = "SELECT * FROM product.product p WHERE p.alias ILIKE :code", nativeQuery = true)
     Product findByAliasCaseInsensitive(@Param("code") String code);
 
+    /** Точное совпадение alias без учёта регистра, без шаблонов ILIKE. */
+    Optional<Product> findFirstByAliasIgnoreCase(String alias);
+
     Product findByStructurizrApiKey(String apiKey);
 
     @Query("SELECT DISTINCT p FROM Product p JOIN p.techProducts tp WHERE tp.deletedDate IS NULL")

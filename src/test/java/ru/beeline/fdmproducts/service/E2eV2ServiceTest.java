@@ -17,6 +17,7 @@ import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.E2e;
+import ru.beeline.fdmproducts.domain.E2eBranch;
 import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.e2e.E2eInfoDTO;
@@ -82,6 +83,11 @@ class E2eV2ServiceTest {
     @Mock
     private ContainerRepository containerRepository;
 
+    @Mock
+    private E2eOwnerService e2eOwnerService;
+    @Mock
+    private E2eBranchService e2eBranchService;
+
     @InjectMocks
     private E2eV2Service service;
 
@@ -113,6 +119,10 @@ class E2eV2ServiceTest {
             }
             return saved;
         });
+        when(e2eBranchService.resolveBranchName(any()))
+                .thenAnswer(invocation -> ProductBranchService.normalizeBranchName(invocation.getArgument(0)));
+        when(e2eBranchService.getOrCreate(anyString(), anyString())).thenAnswer(invocation -> E2eBranch.builder()
+                .id(E2E_ID).code(invocation.getArgument(0)).branchName(invocation.getArgument(1)).build());
         when(e2eRepository.findByCode(anyString())).thenReturn(Optional.empty());
         when(e2eRepository.save(any(E2e.class))).thenAnswer(invocation -> {
             E2e saved = invocation.getArgument(0);
@@ -126,7 +136,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("source не передан — интерфейс создаётся с SPARX, как до SFDM-4091")
     void createsInterfaceWithSparxWhenSourceIsAbsent() {
-        E2eUpsertResponseDTO response = service.upsert(request(), null);
+        E2eUpsertResponseDTO response = service.upsert(request(), null, null);
 
         assertThat(response.getId()).isEqualTo(E2E_ID);
         assertThat(response.getCode()).isEqualTo(E2E_UID);
@@ -138,7 +148,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("?source=SPARX даёт тот же результат, что и вызов без параметра")
     void explicitSparxMatchesDefault() {
-        service.upsert(request(), "SPARX");
+        service.upsert(request(), "SPARX", null);
 
         verify(discoveredInterfaceRepository)
                 .findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(eq("SPARX"), eq(PRODUCT_ID), eq(INTERFACE_CODE));
@@ -148,7 +158,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("?source=MAPIC — интерфейс с source=MAPIC, операция привязана к нему")
     void createsInterfaceWithRequestedSource() {
-        service.upsert(request(), "MAPIC");
+        service.upsert(request(), "MAPIC", null);
 
         verify(discoveredInterfaceRepository)
                 .findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(eq("MAPIC"), eq(PRODUCT_ID), eq(INTERFACE_CODE));
@@ -164,7 +174,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("source пишется как передан, без нормализации регистра")
     void keepsSourceLetterCaseAsSent() {
-        service.upsert(request(), "Structurizr");
+        service.upsert(request(), "Structurizr", null);
 
         assertThat(savedInterface().getSource()).isEqualTo("Structurizr");
     }
@@ -172,7 +182,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("source обрезается по краям: ' MAPIC ' → 'MAPIC'")
     void trimsSource() {
-        service.upsert(request(), "  MAPIC  ");
+        service.upsert(request(), "  MAPIC  ", null);
 
         verify(discoveredInterfaceRepository)
                 .findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(eq("MAPIC"), eq(PRODUCT_ID), eq(INTERFACE_CODE));
@@ -192,7 +202,7 @@ class E2eV2ServiceTest {
         when(discoveredInterfaceRepository.findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(
                 eq("SPARX"), anyInt(), anyString())).thenReturn(Optional.of(sparxInterface));
 
-        service.upsert(request(), "MAPIC");
+        service.upsert(request(), "MAPIC", null);
 
         DiscoveredInterface created = savedInterface();
         assertThat(created).isNotSameAs(sparxInterface);
@@ -213,7 +223,7 @@ class E2eV2ServiceTest {
         when(discoveredInterfaceRepository.findBySourceIgnoreCaseAndProductIdAndExternalIdIgnoreCase(
                 eq("MAPIC"), anyInt(), anyString())).thenReturn(Optional.of(existing));
 
-        service.upsert(request(), "MAPIC");
+        service.upsert(request(), "MAPIC", null);
 
         assertThat(existing.getName()).isEqualTo("Интерфейс 1");
         assertThat(existing.getSource()).isEqualTo("mapic");
@@ -233,7 +243,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.setInterfaces(List.of());
 
-        service.upsert(request, "MAPIC");
+        service.upsert(request, "MAPIC", null);
 
         verify(discoveredInterfaceRepository)
                 .findAllBySourceAndExternalIdInIgnoreCase(eq("MAPIC"), any());
@@ -246,7 +256,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.setInterfaces(List.of());
 
-        assertThatThrownBy(() -> service.upsert(request, "MAPIC"))
+        assertThatThrownBy(() -> service.upsert(request, "MAPIC", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Не найден parentInterfaceCode");
     }
@@ -254,10 +264,10 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("?source= и ?source=%20 — 400 с явным сообщением")
     void rejectsBlankSource() {
-        assertThatThrownBy(() -> service.upsert(request(), ""))
+        assertThatThrownBy(() -> service.upsert(request(), "", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Параметр source не может быть пустым");
-        assertThatThrownBy(() -> service.upsert(request(), "   "))
+        assertThatThrownBy(() -> service.upsert(request(), "   ", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Параметр source не может быть пустым");
         verify(e2eRepository, never()).save(any(E2e.class));
@@ -272,7 +282,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setConnectionOperationId(archOpId);
 
-        service.upsert(request, null);
+        service.upsert(request, null, null);
 
         ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
         verify(discoveredOperationRepository).save(captor.capture());
@@ -282,7 +292,7 @@ class E2eV2ServiceTest {
     @Test
     @DisplayName("create без connectionOperationId — connection_operation_id = NULL")
     void createWithoutConnectionOperationIdLeavesNull() {
-        service.upsert(request(), null);
+        service.upsert(request(), null, null);
 
         ArgumentCaptor<DiscoveredOperation> captor = ArgumentCaptor.forClass(DiscoveredOperation.class);
         verify(discoveredOperationRepository).save(captor.capture());
@@ -309,7 +319,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setConnectionOperationId(archOpId);
 
-        service.upsert(request, null);
+        service.upsert(request, null, null);
 
         assertThat(existing.getConnectionOperationId()).isEqualTo(archOpId);
         assertThat(existing.getUpdatedDate()).isNotNull();
@@ -335,7 +345,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setDescription("new description");
 
-        service.upsert(request, null);
+        service.upsert(request, null, null);
 
         assertThat(existing.getConnectionOperationId()).isEqualTo(previousLink);
         assertThat(existing.getDescription()).isEqualTo("new description");
@@ -350,7 +360,7 @@ class E2eV2ServiceTest {
         E2eV2UpsertRequestDTO request = request();
         request.getOperations().get(0).setConnectionOperationId(999_999);
 
-        assertThatThrownBy(() -> service.upsert(request, null))
+        assertThatThrownBy(() -> service.upsert(request, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Для одной из операций не существует id = connectionOperationId")
                 .hasMessageContaining("999999");

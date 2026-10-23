@@ -24,6 +24,7 @@ import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eRelationParticipation;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eOperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eStepDTO;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
@@ -88,7 +89,7 @@ class ProductE2eStepsServiceTest {
         service = new ProductE2eStepsService(productRepository, productBranchService, containerRepository,
                 interfaceRepository, operationRepository, discoveredInterfaceRepository,
                 discoveredOperationRepository, operationRelationRepository, e2eRepository,
-                new OperationTechCapabilityResolver(capabilityClient));
+                new OperationTechCapabilityResolver(capabilityClient), new E2eOwnerService(productRepository));
 
         when(productRepository.findByAliasCaseInsensitive("fdmshowcaseapp")).thenReturn(product);
         when(productBranchService.find("fdmshowcaseapp", null))
@@ -110,19 +111,19 @@ class ProductE2eStepsServiceTest {
                 .thenReturn(List.of(operation(541, "GET", "/api/v2/profile/balance", 98)));
         when(capabilityClient.getTcs(anyList()))
                 .thenReturn(List.of(TcDTO.builder().id(98).code("TC.00.00.00.98").name("Перенос средств").build()));
-        when(operationRelationRepository.findAllByRelatedOperationIdInAndEntityTypeOperationRelation(anyList(),
-                anyString())).thenReturn(List.of());
-        when(operationRelationRepository.findAllByOperationIdInAndEntityTypeOperation(anyList(), anyString()))
-                .thenReturn(List.of());
+        when(discoveredOperationRepository.findAllByConnectionOperationIdInAndDeletedDateIsNull(any()))
+                .thenReturn(List.of(discovered(88001, "GET", "/balance", 541, null, null),
+                        discovered(88002, "POST", "/cart", 542, null, null)));
+        when(operationRelationRepository.findDiscoveredOperationParticipations(any(), any())).thenReturn(List.of());
     }
 
     @Test
     @DisplayName("Метод приложения на вызываемой стороне — E2E с этим методом и его ТВ из capability")
     void returnsAnE2eWhereTheAppMethodIsCalled() {
-        givenCalleeRelations(OPERATION, relation(1, 5, 1, 900, OPERATION, 541, OPERATION));
+        givenRelations(relation(1, 5, 1, 900, 88001));
         givenE2es(e2e(5, "checkout-flow", "Step.00.00.02.77"));
 
-        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp");
+        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp", null);
 
         assertThat(result).singleElement().satisfies(step -> {
             assertThat(step.getE2e().getCode()).isEqualTo("checkout-flow");
@@ -141,10 +142,10 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("Метод приложения на вызывающей стороне учитывается, чужой метод E2E — нет")
     void countsTheCallerSideAndSkipsForeignMethods() {
-        givenCallerRelations(DISCOVERED, relation(2, 6, 1, 77513, DISCOVERED, 999, OPERATION));
+        givenRelations(relation(2, 6, 1, 77513, 999));
         givenE2es(e2e(6, "push-flow", "Step.00.00.03.01"));
 
-        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp");
+        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp", null);
 
         assertThat(result).singleElement().satisfies(step -> assertThat(step.getOperations())
                 .extracting(ProductE2eOperationDTO::getId).containsExactly(77513));
@@ -153,12 +154,12 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("Метод в нескольких шагах одного E2E — один раз, порядок по первому шагу")
     void listsAMethodOnceInOrderOfFirstAppearance() {
-        givenCalleeRelations(OPERATION, relation(3, 5, 4, 900, OPERATION, 541, OPERATION),
-                relation(4, 5, 2, 900, OPERATION, 542, OPERATION),
-                relation(5, 5, 7, 901, OPERATION, 541, OPERATION));
+        givenRelations(relation(3, 5, 4, 900, 88001),
+                relation(4, 5, 2, 900, 88002),
+                relation(5, 5, 7, 901, 88001));
         givenE2es(e2e(5, "checkout-flow", "Step.00.00.02.77"));
 
-        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp");
+        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp", null);
 
         assertThat(result.get(0).getOperations()).extracting(ProductE2eOperationDTO::getId)
                 .containsExactly(542, 541);
@@ -167,12 +168,12 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("Группы по коду шага BI, без кода — в конце, при равном коде — по коду E2E")
     void sortsGroupsByBiStepCodeThenCode() {
-        givenCalleeRelations(OPERATION, relation(6, 7, 1, 900, OPERATION, 541, OPERATION),
-                relation(7, 8, 1, 900, OPERATION, 541, OPERATION),
-                relation(8, 9, 1, 900, OPERATION, 541, OPERATION));
+        givenRelations(relation(6, 7, 1, 900, 88001),
+                relation(7, 8, 1, 900, 88001),
+                relation(8, 9, 1, 900, 88001));
         givenE2es(e2e(7, "z-flow", null), e2e(8, "b-flow", "Step.00.00.01.00"), e2e(9, "a-flow", "Step.00.00.01.00"));
 
-        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp");
+        List<ProductE2eStepDTO> result = service.getE2eSteps("fdmshowcaseapp", null);
 
         assertThat(result).extracting(step -> step.getE2e().getCode()).containsExactly("a-flow", "b-flow", "z-flow");
     }
@@ -180,11 +181,11 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("ТВ обнаруженного метода — от связанного архитектурного метода, иначе tc_code самого метода")
     void resolvesTechCapabilitiesOfDiscoveredMethods() {
-        givenCalleeRelations(DISCOVERED, relation(9, 5, 1, 900, OPERATION, 77513, DISCOVERED),
-                relation(10, 5, 2, 900, OPERATION, 77514, DISCOVERED));
+        givenRelations(relation(9, 5, 1, 900, 77513),
+                relation(10, 5, 2, 900, 77514));
         givenE2es(e2e(5, "checkout-flow", "Step.00.00.02.77"));
 
-        List<ProductE2eOperationDTO> operations = service.getE2eSteps("fdmshowcaseapp").get(0).getOperations();
+        List<ProductE2eOperationDTO> operations = service.getE2eSteps("fdmshowcaseapp", null).get(0).getOperations();
 
         assertThat(operations.get(0).getTechCapability().getCode()).isEqualTo("TC.07");
         assertThat(operations.get(0).getTechCapability().getName()).isEqualTo("Своя ТВ");
@@ -196,7 +197,7 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("Методы приложения нигде не участвуют — пустой список, E2E не читаются")
     void returnsAnEmptyListWithoutParticipation() {
-        assertThat(service.getE2eSteps("fdmshowcaseapp")).isEmpty();
+        assertThat(service.getE2eSteps("fdmshowcaseapp", null)).isEmpty();
         verify(e2eRepository, never()).findAllById(any());
     }
 
@@ -206,15 +207,44 @@ class ProductE2eStepsServiceTest {
         when(containerRepository.findAllByProductBranchIdAndDeletedDateIsNull(1)).thenReturn(List.of());
         when(discoveredInterfaceRepository.findAllByProductAndDeletedDateIsNull(product)).thenReturn(List.of());
 
-        assertThat(service.getE2eSteps("fdmshowcaseapp")).isEmpty();
-        verify(operationRelationRepository, never())
-                .findAllByRelatedOperationIdInAndEntityTypeOperationRelation(anyList(), anyString());
+        assertThat(service.getE2eSteps("fdmshowcaseapp", null)).isEmpty();
+        verify(operationRelationRepository, never()).findDiscoveredOperationParticipations(any(), any());
+    }
+
+    @Test
+    @DisplayName("SFDM-4244: e2e находится и по discovered-методу продукта, и по connection_operation_id архитектурного")
+    void findsE2eByDiscoveredMethodAndByConnectedArchitectureMethod() {
+        givenRelations(relation(11, 5, 1, 88001, 77513));
+        E2e owned = e2e(5, "checkout-flow", "Step.00.00.02.77");
+        owned.setProductId(3);
+        givenE2es(owned);
+        when(productRepository.findAllById(List.of(3))).thenReturn(List.of(product));
+
+        ProductE2eStepDTO step = service.getE2eSteps("fdmshowcaseapp", null).get(0);
+
+        assertThat(step.getOperations()).extracting(ProductE2eOperationDTO::getId, ProductE2eOperationDTO::getEntityType)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(77513, DISCOVERED),
+                        org.assertj.core.groups.Tuple.tuple(541, OPERATION));
+        assertThat(step.getE2e().getProductId()).isEqualTo(3);
+        assertThat(step.getE2e().getProductAlias()).isEqualTo("fdmshowcaseapp");
+    }
+
+    @Test
+    @DisplayName("SFDM-4244: без владельца productId и productAlias карточки шага равны null")
+    void cardWithoutOwnerHasNullOwnerFields() {
+        givenRelations(relation(12, 5, 1, null, 77513));
+        givenE2es(e2e(5, "checkout-flow", "Step.00.00.02.77"));
+
+        ProductE2eStepDTO step = service.getE2eSteps("fdmshowcaseapp", null).get(0);
+
+        assertThat(step.getE2e().getProductId()).isNull();
+        assertThat(step.getE2e().getProductAlias()).isNull();
     }
 
     @Test
     @DisplayName("Неизвестный продукт — 404 с мнемоникой в тексте")
     void rejectsAnUnknownProduct() {
-        assertThatThrownBy(() -> service.getE2eSteps("unknown"))
+        assertThatThrownBy(() -> service.getE2eSteps("unknown", null))
                 .isInstanceOf(EntityNotFoundException.class)
                 .hasMessage("Продукт с данным cmdb: unknown не найден.");
     }
@@ -222,24 +252,18 @@ class ProductE2eStepsServiceTest {
     @Test
     @DisplayName("Capability недоступен — 502")
     void failsWhenCapabilityIsUnavailable() {
-        givenCalleeRelations(OPERATION, relation(1, 5, 1, 900, OPERATION, 541, OPERATION));
+        givenRelations(relation(1, 5, 1, 900, 88001));
         givenE2es(e2e(5, "checkout-flow", "Step.00.00.02.77"));
         when(capabilityClient.getTcs(anyList())).thenThrow(new RuntimeException("timeout"));
 
-        assertThatThrownBy(() -> service.getE2eSteps("fdmshowcaseapp"))
+        assertThatThrownBy(() -> service.getE2eSteps("fdmshowcaseapp", null))
                 .isInstanceOf(ExternalServiceException.class)
                 .hasMessage("Сервис capability недоступен")
                 .satisfies(e -> assertThat(((ExternalServiceException) e).getStatus()).isEqualTo(BAD_GATEWAY));
     }
 
-    private void givenCalleeRelations(String entityType, OperationRelation... relations) {
-        when(operationRelationRepository.findAllByRelatedOperationIdInAndEntityTypeOperationRelation(anyList(),
-                eq(entityType))).thenReturn(List.of(relations));
-    }
-
-    private void givenCallerRelations(String entityType, OperationRelation... relations) {
-        when(operationRelationRepository.findAllByOperationIdInAndEntityTypeOperation(anyList(),
-                eq(entityType))).thenReturn(List.of(relations));
+    private void givenRelations(E2eRelationParticipation... relations) {
+        when(operationRelationRepository.findDiscoveredOperationParticipations(any(), any())).thenReturn(List.of(relations));
     }
 
     private void givenE2es(E2e... e2es) {
@@ -256,11 +280,10 @@ class ProductE2eStepsServiceTest {
                 .connectionOperationId(connectionOperationId).tcCode(tcCode).tcDescription(tcDescription).build();
     }
 
-    private static OperationRelation relation(Integer id, Integer e2eId, Integer order, Integer operationId,
-                                              String operationType, Integer relatedOperationId, String relatedType) {
-        return OperationRelation.builder().id(id).e2eId(e2eId).order(order).operationId(operationId)
-                .entityTypeOperation(operationType).relatedOperationId(relatedOperationId)
-                .entityTypeOperationRelation(relatedType).build();
+    private static E2eRelationParticipation relation(Integer id, Integer e2eId, Integer order, Integer operationId,
+                                                     Integer relatedOperationId) {
+        return new E2eRelationParticipation(OperationRelation.builder().id(id).e2eBranchId(e2eId).order(order)
+                .operationId(operationId).relatedOperationId(relatedOperationId).build(), e2eId);
     }
 
     private static E2e e2e(Integer id, String code, String biStepCode) {

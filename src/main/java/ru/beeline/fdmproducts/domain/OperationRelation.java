@@ -11,6 +11,11 @@ import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 
+/**
+ * Шаг последовательности вызовов e2e (SFDM-4244): operation_id и related_operation_id — id
+ * product.discovered_operation. operation_id пустой у корня. Колонок типа у связи нет. Связь принадлежит
+ * ветке e2e (SFDM-4250).
+ */
 @Builder
 @Data
 @AllArgsConstructor
@@ -37,14 +42,7 @@ public class OperationRelation {
     @Column(name = "stereo_type")
     private String stereoType;
 
-    @Column(name = "e2e_id", nullable = false)
-    private Integer e2eId;
-
-    @Builder.Default
-    @Column(name = "entity_type_operation", nullable = false)
-    private String entityTypeOperation = "operation";
-
-    @Builder.Default
-    @Column(name = "entity_type_operation_relation", nullable = false)
-    private String entityTypeOperationRelation = "operation";
+    /** Ветка e2e (product.e2e_branch.id), SFDM-4250. Карточка — через e2e_branch.code. */
+    @Column(name = "e2e_branch_id", nullable = false)
+    private Integer e2eBranchId;
 }

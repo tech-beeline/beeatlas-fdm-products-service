@@ -15,5 +15,7 @@ import lombok.NoArgsConstructor;
 public class InterfaceMetricDto {
     private Integer id;
     private String code;
+    private String containerCode;
+    private String productAlias;
     private String sourceMetric;
 }

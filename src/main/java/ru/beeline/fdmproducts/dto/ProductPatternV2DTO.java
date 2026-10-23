@@ -33,4 +33,6 @@ public class ProductPatternV2DTO {
     private List<TechnologyDTO> technologies;
     private Boolean isCheck;
     private String resultDetails;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss.SSS")
+    private LocalDateTime checkedAt;
 }

@@ -25,6 +25,8 @@ public class E2eV2PatchRequestDTO {
     private String name;
     private String description;
     private String biStepCode;
+    /** Продукт-владелец (product.alias): не передан или null — не меняется, пустая строка снимает владельца. */
+    private String productAlias;
     private List<E2eProductDTO> products;
     private List<E2eV2InterfaceDTO> interfaces;
     private List<E2eV2OperationDTO> operations;

@@ -19,8 +19,6 @@ import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
 import ru.beeline.fdmproducts.dto.e2e.E2eByBiStepCodesGroupDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eCardResponseDTO;
 import ru.beeline.fdmproducts.dto.e2e.E2eGetResponseDTO;
-import ru.beeline.fdmproducts.dto.e2e.E2eUpsertRequestDTO;
-import ru.beeline.fdmproducts.dto.e2e.E2eUpsertResponseDTO;
 import ru.beeline.fdmproducts.jackson.BiStepCodesRequest;
 import ru.beeline.fdmproducts.service.E2eByBiStepCodesService;
 import ru.beeline.fdmproducts.service.E2eService;
@@ -29,7 +27,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/e2e")
-@Tag(name = "e2e", description = "Загрузка и чтение e2e-процессов с деревом вызовов операций.")
+@Tag(name = "e2e", description = "Чтение e2e-процессов. Загрузка — POST /api/v2/e2e.")
 public class E2eController {
 
     @Autowired
@@ -37,15 +35,6 @@ public class E2eController {
 
     @Autowired
     private E2eByBiStepCodesService e2eByBiStepCodesService;
-
-    @ApiErrorCodes({400, 404, 500})
-    @PostMapping()
-    @Operation(summary = "Создать или обновить e2e-процесс",
-            description = "Принимает описание e2e, дерево products → containers → interfaces → operations "
-                    + "и последовательность вызовов operationsRelations.")
-    public ResponseEntity<E2eUpsertResponseDTO> upsertE2e(@RequestBody E2eUpsertRequestDTO request) {
-        return ResponseEntity.ok(e2eService.upsert(request));
-    }
 
     @ApiErrorCodes({400, 500})
     @PostMapping("/by-bi-step-codes")
@@ -65,21 +54,40 @@ public class E2eController {
 
     @ApiErrorCodes({400, 405, 500})
     @GetMapping()
-    @Operation(summary = "Получить список e2e",
-            description = "Возвращает массив карточек e2e. filter: all (по умолчанию), without-bi-step, with-bi-step.")
-    public ResponseEntity<List<E2eCardResponseDTO>> listE2eByFilter(
-            @Parameter(description = "Фильтр: all | without-bi-step | with-bi-step")
-            @RequestParam(value = "filter", required = false) String filter) {
-        return ResponseEntity.ok(e2eService.listE2eByFilter(filter));
+    @Operation(summary = "Поиск e2e (SFDM-4240)",
+            description = "Возвращает массив карточек e2e: id, code, name, description, biStepCode, source, productId, "
+                    + "productAlias (без владельца — null). Дерева нет. Все параметры необязательны; переданные "
+                    + "фильтры дают пересечение, без параметров — все e2e. Корневой метод e2e — вызываемый "
+                    + "discovered_operation связи с пустым operation_id. method и operation-id вместе — 400. "
+                    + "Пустые alias, tc-code, method или operation-id — 400. Совпадений нет — 200 и []. "
+                    + "Порядок: code, затем id.")
+    public ResponseEntity<List<E2eCardResponseDTO>> searchE2e(
+            @Parameter(description = "Наличие bi_step_code: all | without-bi-step | with-bi-step. "
+                    + "Не передан или пустой — all. Сравнение после trim, без учёта регистра")
+            @RequestParam(value = "filter", required = false) String filter,
+            @Parameter(description = "Мнемоника продукта-владельца e2e (product.alias), без учёта регистра")
+            @RequestParam(value = "alias", required = false) String alias,
+            @Parameter(description = "tc_code корневого discovered_operation, без учёта регистра")
+            @RequestParam(value = "tc-code", required = false) String tcCode,
+            @Parameter(description = "Сигнатура корневого метода: type, один пробел, name. Совпадает с "
+                    + "discovered_operation или с сопоставленной product.operation, без учёта регистра", example = "GET getCart")
+            @RequestParam(value = "method", required = false) String method,
+            @Parameter(description = "id корневого discovered_operation или его connection_operation_id; "
+                    + "целое положительное. Нельзя вместе с method")
+            @RequestParam(value = "operation-id", required = false) String operationId) {
+        return ResponseEntity.ok(e2eService.search(filter, alias, tcCode, method, operationId));
     }
 
-    @ApiErrorCodes({404, 405, 500})
+    @ApiErrorCodes({400, 404, 405, 500})
     @GetMapping("/{code}")
     @Operation(summary = "Получить e2e-процесс по коду",
-            description = "Возвращает карточку e2e, дерево operationsRelations и справочник operations.")
+            description = "Возвращает карточку e2e, дерево operationsRelations ветки branch и справочник operations. "
+                    + "Нет карточки — 404; ветки нет — 200 и пустое дерево.")
     public ResponseEntity<E2eGetResponseDTO> getE2eByCode(
-            @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code) {
-        return ResponseEntity.ok(e2eService.getByCode(code));
+            @Parameter(description = "Код e2e (product.e2e.code)") @PathVariable String code,
+            @Parameter(description = E2eV2Controller.BRANCH_READ_DESCRIPTION)
+            @RequestParam(value = "branch", required = false) String branch) {
+        return ResponseEntity.ok(e2eService.getByCode(code, branch));
     }
 }
 

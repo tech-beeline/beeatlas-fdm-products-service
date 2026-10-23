@@ -31,6 +31,7 @@ public class E2eByBiStepCodesService {
     private static final String INVALID_CODE = "Код bi-step не может быть пустым";
 
     private final E2eRepository e2eRepository;
+    private final E2eOwnerService e2eOwnerService;
 
     @Transactional(readOnly = true)
     public List<E2eByBiStepCodesGroupDTO> getByBiStepCodes(List<String> biStepCodes) {
@@ -43,13 +44,14 @@ public class E2eByBiStepCodesService {
         List<E2e> found = e2eRepository.findAllByBiStepCodeInIgnoreCase(lowerCodes);
         Map<String, List<E2e>> byLowerBiStepCode = found.stream()
                 .collect(Collectors.groupingBy(e2e -> e2e.getBiStepCode().toLowerCase(Locale.ROOT)));
+        Map<Integer, String> ownerAliases = e2eOwnerService.aliasesOf(found);
 
         List<E2eByBiStepCodesGroupDTO> result = new ArrayList<>(uniqueCodes.size());
         for (String code : uniqueCodes) {
             List<E2e> group = byLowerBiStepCode.getOrDefault(code.toLowerCase(Locale.ROOT), List.of());
             List<E2eByBiStepCodeItemDTO> items = group.stream()
                     .sorted(Comparator.comparing(E2e::getId))
-                    .map(this::toItem)
+                    .map(e2e -> toItem(e2e, ownerAliases))
                     .toList();
             result.add(E2eByBiStepCodesGroupDTO.builder()
                     .biStepCode(code)
@@ -90,12 +92,14 @@ public class E2eByBiStepCodesService {
         return new ArrayList<>(firstByLower.values());
     }
 
-    private E2eByBiStepCodeItemDTO toItem(E2e e2e) {
+    private E2eByBiStepCodeItemDTO toItem(E2e e2e, Map<Integer, String> ownerAliases) {
         return E2eByBiStepCodeItemDTO.builder()
                 .id(e2e.getId())
                 .name(e2e.getName())
                 .code(e2e.getCode())
                 .source(e2e.getSource())
+                .productId(e2e.getProductId())
+                .productAlias(e2e.getProductId() == null ? null : ownerAliases.get(e2e.getProductId()))
                 .build();
     }
 }

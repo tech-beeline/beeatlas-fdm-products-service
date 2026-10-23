@@ -341,20 +341,21 @@ public class ChapterService {
                 .filter(Objects::nonNull)
                 .distinct()
                 .toList();
-        if (!target.isEmpty()) {
-            ProductAvailableDTO availability = techradarClient.checkPatternsAvailability(target);
+        List<ChapterPattern> existing = chapterPatternRepository.findAllByChapterId(chapterId);
+        Set<Integer> existingIds = existing.stream().map(ChapterPattern::getPatternId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        List<Integer> toAddIds = target.stream().filter(patternId -> !existingIds.contains(patternId)).toList();
+        if (!toAddIds.isEmpty()) {
+            ProductAvailableDTO availability = techradarClient.checkPatternsAvailability(toAddIds);
             if (availability == null || Boolean.FALSE.equals(availability.getAvailability())) {
                 throw new IllegalArgumentException("В массиве patterns переданы идентификаторы несуществующих паттернов");
             }
         }
-        List<ChapterPattern> existing = chapterPatternRepository.findAllByChapterId(chapterId);
         Set<Integer> targetSet = new HashSet<>(target);
         List<ChapterPattern> toRemove = existing.stream()
                 .filter(link -> link.getPatternId() == null || !targetSet.contains(link.getPatternId()))
                 .toList();
-        Set<Integer> existingIds = existing.stream().map(ChapterPattern::getPatternId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        List<ChapterPattern> toCreate = target.stream().filter(patternId -> !existingIds.contains(patternId))
+        List<ChapterPattern> toCreate = toAddIds.stream()
                 .map(patternId -> ChapterPattern.builder()
                         .chapterId(chapterId)
                         .patternId(patternId)

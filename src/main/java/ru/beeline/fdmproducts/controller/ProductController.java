@@ -296,16 +296,21 @@ public class ProductController {
         return productService.getE2eProcessByCmdb(cmdb);
     }
 
-    @ApiErrorCodes({404, 502})
+    @ApiErrorCodes({400, 404, 502})
     @GetMapping("/v1/product/{cmdb}/e2e-steps")
     @Operation(summary = "Шаги E2E-сценариев, в которых участвуют методы продукта",
-            description = "Возвращает E2E, в связях которых (operation_relations) на любой стороне стоит архитектурный "
-                    + "метод продукта (ветка main) или его обнаруженный метод. Под каждым E2E — методы продукта из "
-                    + "его связей с ТВ из capability; для обнаруженного метода ТВ берётся у связанного архитектурного "
-                    + "метода, иначе tc_code/tc_description. Группы отсортированы по коду шага BI, затем по коду E2E. "
-                    + "404 — продукт не найден, 502 — capability недоступен.")
-    public List<ProductE2eStepDTO> getE2eSteps(@Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb) {
-        return productE2eStepsService.getE2eSteps(cmdb);
+            description = "Возвращает E2E, в связях которых (operation_relations ветки e2e branch) на любой стороне "
+                    + "стоит архитектурный метод продукта (ветка продукта main) или его обнаруженный метод. Под каждым "
+                    + "E2E — методы продукта из его связей с ТВ из capability; для обнаруженного метода ТВ берётся у "
+                    + "связанного архитектурного метода, иначе tc_code/tc_description. Группы отсортированы по коду "
+                    + "шага BI, затем по коду E2E. 400 — пустой branch, 404 — продукт не найден, 502 — capability "
+                    + "недоступен.")
+    public List<ProductE2eStepDTO> getE2eSteps(
+            @Parameter(description = "CMDB-мнемоника") @PathVariable String cmdb,
+            @Parameter(description = "Ветка e2e. Необязательный: не передан — main. Пустое значение — 400. "
+                    + "Сравнение без учёта регистра; ветка не создаётся.")
+            @RequestParam(value = "branch", required = false) String branch) {
+        return productE2eStepsService.getE2eSteps(cmdb, branch);
     }
 
     @ApiErrorCodes({400, 404, 500})

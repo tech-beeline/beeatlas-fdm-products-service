@@ -65,11 +65,11 @@ public class ProductPatternsService {
         for (PostPatternProductDTO item : body) {
             String patternCode = item.getCode().trim();
             Optional<ProductPatterns> actual = productPatternsRepository.findActual(
-                    productAlias, normalizedBranch, enumSourceType.getId(), sourceId, patternCode);
+                    productAlias, normalizedBranch, patternCode);
             if (actual.isPresent()) {
                 ProductPatterns previous = actual.get();
                 previous.setIsActual(false);
-                productPatternsRepository.save(previous);
+                productPatternsRepository.saveAndFlush(previous);
                 log.info("Деактуализирована запись product_patterns: id={}, alias={}, branch={}, code={}",
                         previous.getId(), productAlias, normalizedBranch, patternCode);
             }
@@ -131,7 +131,8 @@ public class ProductPatternsService {
         ProductPatternV2DTO.ProductPatternV2DTOBuilder builder = ProductPatternV2DTO.builder()
                 .code(row.getPatternCode())
                 .isCheck(row.getIsCheck())
-                .resultDetails(row.getResultDetails());
+                .resultDetails(row.getResultDetails())
+                .checkedAt(row.getCreatedDate());
         if (card != null) {
             builder.id(card.getId())
                     .name(card.getName())

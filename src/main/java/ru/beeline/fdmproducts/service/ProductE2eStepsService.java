@@ -16,6 +16,7 @@ import ru.beeline.fdmproducts.domain.Operation;
 import ru.beeline.fdmproducts.domain.OperationRelation;
 import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.dto.TcDTO;
+import ru.beeline.fdmproducts.dto.e2e.E2eRelationParticipation;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eCardDTO;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eOperationDTO;
 import ru.beeline.fdmproducts.dto.e2e.ProductE2eStepDTO;
@@ -59,8 +60,11 @@ public class ProductE2eStepsService {
     private final OperationRelationRepository operationRelationRepository;
     private final E2eRepository e2eRepository;
     private final OperationTechCapabilityResolver techCapabilityResolver;
+    private final E2eOwnerService e2eOwnerService;
 
-    public List<ProductE2eStepDTO> getE2eSteps(String cmdb) {
+    public List<ProductE2eStepDTO> getE2eSteps(String cmdb, String branch) {
+        // Ветка e2e (SFDM-4250); архитектура продукта по-прежнему берётся из его ветки main.
+        String e2eBranchName = ProductBranchService.normalizeBranchName(branch);
         String decodedCmdb = URLDecoder.decode(cmdb, StandardCharsets.UTF_8);
         Product product = productRepository.findByAliasCaseInsensitive(decodedCmdb);
         if (product == null) {
@@ -74,8 +78,7 @@ public class ProductE2eStepsService {
             return List.of();
         }
 
-        Map<Integer, List<MethodRef>> methodsByE2e = methodsByE2e(operations.keySet().stream().toList(),
-                discoveredOperations.keySet().stream().toList());
+        Map<Integer, List<MethodRef>> methodsByE2e = methodsByE2e(operations, discoveredOperations, e2eBranchName);
         if (methodsByE2e.isEmpty()) {
             log.info("E2E-шаги продукта: методы не участвуют в E2E, cmdb={}", decodedCmdb);
             return List.of();
@@ -85,8 +88,10 @@ public class ProductE2eStepsService {
         Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.load(
                 Stream.concat(operations.values().stream(), connectedOperations.values().stream()).toList());
 
-        List<ProductE2eStepDTO> steps = e2eRepository.findAllById(methodsByE2e.keySet()).stream()
-                .map(e2e -> new ProductE2eStepDTO(card(e2e), methodsByE2e.get(e2e.getId()).stream()
+        List<E2e> e2es = e2eRepository.findAllById(methodsByE2e.keySet());
+        Map<Integer, String> ownerAliases = e2eOwnerService.aliasesOf(e2es);
+        List<ProductE2eStepDTO> steps = e2es.stream()
+                .map(e2e -> new ProductE2eStepDTO(card(e2e, ownerAliases), methodsByE2e.get(e2e.getId()).stream()
                         .map(method -> operationDto(method, operations, discoveredOperations, connectedOperations,
                                 techCapabilities))
                         .filter(Objects::nonNull)
@@ -134,21 +139,47 @@ public class ProductE2eStepsService {
                         LinkedHashMap::new));
     }
 
-    private Map<Integer, List<MethodRef>> methodsByE2e(List<Integer> operationIds, List<Integer> discoveredIds) {
+    /**
+     * SFDM-4244: обе стороны связи — id discovered_operation. Discovered-метод продукта попадает в шаг,
+     * если стоит на любой стороне связи. Архитектурный метод продукта попадает в шаг, если
+     * connection_operation_id обнаруженного метода этой связи равен id метода.
+     */
+    private Map<Integer, List<MethodRef>> methodsByE2e(Map<Integer, Operation> operations,
+                                                       Map<Integer, DiscoveredOperation> discoveredOperations,
+                                                       String e2eBranchName) {
+        Map<Integer, DiscoveredOperation> connectedToProduct = operations.isEmpty() ? Map.of()
+                : discoveredOperationRepository.findAllByConnectionOperationIdInAndDeletedDateIsNull(operations.keySet())
+                .stream()
+                .collect(Collectors.toMap(DiscoveredOperation::getId, Function.identity(), (left, right) -> left));
+        List<Integer> participantIds = Stream.concat(discoveredOperations.keySet().stream(),
+                        connectedToProduct.keySet().stream())
+                .distinct()
+                .toList();
+        if (participantIds.isEmpty()) {
+            return Map.of();
+        }
+
         List<MethodOccurrence> occurrences = new ArrayList<>();
-        relations(operationIds, discoveredIds).forEach(relation -> {
-            MethodRef callee = new MethodRef(relation.getEntityTypeOperationRelation(),
-                    relation.getRelatedOperationId());
-            if (belongsToProduct(callee, operationIds, discoveredIds)) {
-                occurrences.add(new MethodOccurrence(relation.getE2eId(), relation.getOrder(), relation.getId(),
-                        callee));
+        for (E2eRelationParticipation participation
+                : operationRelationRepository.findDiscoveredOperationParticipations(participantIds, e2eBranchName)) {
+            OperationRelation relation = participation.relation();
+            for (Integer side : java.util.Arrays.asList(relation.getRelatedOperationId(), relation.getOperationId())) {
+                if (side == null) {
+                    continue;
+                }
+                if (discoveredOperations.containsKey(side)) {
+                    occurrences.add(new MethodOccurrence(participation.e2eId(), relation.getOrder(), relation.getId(),
+                            new MethodRef(DISCOVERED_OPERATION, side)));
+                }
+                DiscoveredOperation discovered = discoveredOperations.containsKey(side)
+                        ? discoveredOperations.get(side) : connectedToProduct.get(side);
+                Integer connectionId = discovered == null ? null : discovered.getConnectionOperationId();
+                if (connectionId != null && operations.containsKey(connectionId)) {
+                    occurrences.add(new MethodOccurrence(participation.e2eId(), relation.getOrder(), relation.getId(),
+                            new MethodRef(OPERATION, connectionId)));
+                }
             }
-            MethodRef caller = new MethodRef(relation.getEntityTypeOperation(), relation.getOperationId());
-            if (belongsToProduct(caller, operationIds, discoveredIds)) {
-                occurrences.add(new MethodOccurrence(relation.getE2eId(), relation.getOrder(), relation.getId(),
-                        caller));
-            }
-        });
+        }
         return occurrences.stream()
                 .sorted(Comparator.comparing(MethodOccurrence::order, Comparator.nullsLast(Comparator.naturalOrder()))
                         .thenComparing(MethodOccurrence::relationId))
@@ -156,34 +187,6 @@ public class ProductE2eStepsService {
                         Collectors.mapping(MethodOccurrence::method,
                                 Collectors.collectingAndThen(Collectors.toList(),
                                         methods -> methods.stream().distinct().toList()))));
-    }
-
-    private List<OperationRelation> relations(List<Integer> operationIds, List<Integer> discoveredIds) {
-        Map<Integer, OperationRelation> relations = new LinkedHashMap<>();
-        if (!operationIds.isEmpty()) {
-            operationRelationRepository.findAllByRelatedOperationIdInAndEntityTypeOperationRelation(operationIds,
-                    OPERATION).forEach(relation -> relations.putIfAbsent(relation.getId(), relation));
-            operationRelationRepository.findAllByOperationIdInAndEntityTypeOperation(operationIds, OPERATION)
-                    .forEach(relation -> relations.putIfAbsent(relation.getId(), relation));
-        }
-        if (!discoveredIds.isEmpty()) {
-            operationRelationRepository.findAllByRelatedOperationIdInAndEntityTypeOperationRelation(discoveredIds,
-                    DISCOVERED_OPERATION).forEach(relation -> relations.putIfAbsent(relation.getId(), relation));
-            operationRelationRepository.findAllByOperationIdInAndEntityTypeOperation(discoveredIds,
-                    DISCOVERED_OPERATION).forEach(relation -> relations.putIfAbsent(relation.getId(), relation));
-        }
-        return new ArrayList<>(relations.values());
-    }
-
-    private static boolean belongsToProduct(MethodRef method, List<Integer> operationIds,
-                                            List<Integer> discoveredIds) {
-        if (method.id() == null) {
-            return false;
-        }
-        if (DISCOVERED_OPERATION.equals(method.entityType())) {
-            return discoveredIds.contains(method.id());
-        }
-        return OPERATION.equals(method.entityType()) && operationIds.contains(method.id());
     }
 
     private Map<Integer, Operation> connectedOperationsOf(Iterable<DiscoveredOperation> discoveredOperations) {
@@ -222,8 +225,9 @@ public class ProductE2eStepsService {
                 OperationTechCapabilityResolver.of(operation, techCapabilities));
     }
 
-    private static ProductE2eCardDTO card(E2e e2e) {
-        return new ProductE2eCardDTO(e2e.getId(), e2e.getCode(), e2e.getName(), e2e.getBiStepCode(), e2e.getSource());
+    private static ProductE2eCardDTO card(E2e e2e, Map<Integer, String> ownerAliases) {
+        return new ProductE2eCardDTO(e2e.getId(), e2e.getCode(), e2e.getName(), e2e.getBiStepCode(), e2e.getSource(),
+                e2e.getProductId(), e2e.getProductId() == null ? null : ownerAliases.get(e2e.getProductId()));
     }
 
     private record MethodRef(String entityType, Integer id) {

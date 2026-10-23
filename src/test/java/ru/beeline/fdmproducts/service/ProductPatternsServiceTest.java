@@ -24,6 +24,7 @@ import ru.beeline.fdmproducts.repository.EnumSourceTypeRepository;
 import ru.beeline.fdmproducts.repository.ProductPatternsRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -216,17 +217,20 @@ class ProductPatternsServiceTest {
     @DisplayName("GET v2: актуальные записи с обогащением из Techradar и без него")
     void getReturnsActualWithAndWithoutTechradarCard() {
         givenProduct();
+        LocalDateTime checkedAt = LocalDateTime.of(2026, 10, 23, 12, 0, 0);
         when(productPatternsRepository.findAllByProductAliasAndProductBranchAndIsActualTrue(ALIAS, "main"))
                 .thenReturn(List.of(
                         ProductPatterns.builder()
                                 .patternCode("PAT-001")
                                 .isCheck(true)
                                 .resultDetails("ok")
+                                .createdDate(checkedAt)
                                 .build(),
                         ProductPatterns.builder()
                                 .patternCode("PAT-002")
                                 .isCheck(false)
                                 .resultDetails(null)
+                                .createdDate(checkedAt.plusMinutes(1))
                                 .build()));
         when(techradarClient.getPatternsAutoCheck()).thenReturn(List.of(
                 PatternDTO.builder().id(11).code("PAT-001").name("Pattern One").rule("r1").isAntiPattern(false).build()));
@@ -240,11 +244,13 @@ class ProductPatternsServiceTest {
         assertThat(enriched.getResultDetails()).isEqualTo("ok");
         assertThat(enriched.getId()).isEqualTo(11);
         assertThat(enriched.getName()).isEqualTo("Pattern One");
+        assertThat(enriched.getCheckedAt()).isEqualTo(checkedAt);
         ProductPatternV2DTO onlyDb = result.get(1);
         assertThat(onlyDb.getCode()).isEqualTo("PAT-002");
         assertThat(onlyDb.getIsCheck()).isFalse();
         assertThat(onlyDb.getId()).isNull();
         assertThat(onlyDb.getName()).isNull();
+        assertThat(onlyDb.getCheckedAt()).isEqualTo(checkedAt.plusMinutes(1));
     }
 
     @Test

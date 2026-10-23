@@ -32,7 +32,8 @@ public class SourceMetricService {
     private InterfaceRepository interfaceRepository;
 
     public SourceMetricDto getAllMetrics() {
-        return SourceMetricDto.builder()
+        log.debug("SourceMetricService.getAllMetrics — выборка сущностей с непустым source_metric");
+        SourceMetricDto result = SourceMetricDto.builder()
                 .products(productRepository.findAllBySourceMetricIsNotNull()
                         .stream()
                         .map(product -> ProductMetricDto.builder()
@@ -49,6 +50,9 @@ public class SourceMetricService {
                         .map(this::toInterfaceMetricDto)
                         .collect(Collectors.toUnmodifiableList()))
                 .build();
+        log.debug("SourceMetricService.getAllMetrics — собрано products={}, containers={}, interfaces={}",
+                result.getProducts().size(), result.getContainers().size(), result.getInterfaces().size());
+        return result;
     }
 
     private ContainerMetricDto toContainerMetricDto(ContainerProduct container) {

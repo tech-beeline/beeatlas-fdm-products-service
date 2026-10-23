@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -14,6 +15,7 @@ import ru.beeline.fdmproducts.dto.SourceMetricDto;
 import ru.beeline.fdmproducts.dto.dashboard.SourceMetricRequestDto;
 import ru.beeline.fdmproducts.service.SourceMetricService;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/v1")
 @Tag(name = "source-metric", description = "Метрики источников данных дашборда: чтение и обновление конфигурации метрик.")
@@ -34,7 +36,14 @@ public class SourceMetricController {
             content = @Content(mediaType = "application/json",
                     schema = @Schema(implementation = SourceMetricDto.class)))
     public ResponseEntity<SourceMetricDto> getSourceMetrics() {
-        return ResponseEntity.ok(sourceMetricService.getAllMetrics());
+        log.info("GET /api/v1/source-metric — запрос списка source_metric");
+        SourceMetricDto response = sourceMetricService.getAllMetrics();
+        int products = response.getProducts() != null ? response.getProducts().size() : 0;
+        int containers = response.getContainers() != null ? response.getContainers().size() : 0;
+        int interfaces = response.getInterfaces() != null ? response.getInterfaces().size() : 0;
+        log.info("GET /api/v1/source-metric — ответ: products={}, containers={}, interfaces={}",
+                products, containers, interfaces);
+        return ResponseEntity.ok(response);
     }
 
     @ApiErrorCodes({400, 404, 500})

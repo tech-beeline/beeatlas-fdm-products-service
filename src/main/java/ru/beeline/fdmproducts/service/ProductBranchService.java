@@ -96,16 +96,18 @@ public class ProductBranchService {
         return DEFAULT_BRANCH.equalsIgnoreCase(branchName);
     }
 
-    public boolean isContainerInDefaultBranch(Integer containerId) {
-        return productBranchRepository.findBranchNameByContainerId(containerId).filter(this::isDefaultBranch).isPresent();
-    }
-
     public boolean isInterfaceInDefaultBranch(Integer interfaceId) {
         return productBranchRepository.findBranchNameByInterfaceId(interfaceId).filter(this::isDefaultBranch).isPresent();
     }
 
     public boolean isOperationInDefaultBranch(Integer operationId) {
         return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
+    }
+
+    /** Ветка контейнера со своими атрибутами связи discovered (SFDM-4320); пусто — другая ветка или нет контейнера. */
+    public Optional<DiscoveredConnectionBranch> findConnectionBranchByContainerId(Integer containerId) {
+        return productBranchRepository.findBranchNameByContainerId(containerId)
+                .flatMap(DiscoveredConnectionBranch::fromBranchName);
     }
 
     /** Ветка интерфейса со своими атрибутами связи discovered (SFDM-4317); пусто — другая ветка или нет интерфейса. */

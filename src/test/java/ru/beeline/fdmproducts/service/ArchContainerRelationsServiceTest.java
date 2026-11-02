@@ -33,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -56,20 +57,39 @@ class ArchContainerRelationsServiceTest {
     private ArchContainerRelationsService service;
 
     @Test
-    @DisplayName("Удаление контейнера main сбрасывает связи")
+    @DisplayName("Удаление контейнера main сбрасывает связи ветки main")
     void mainContainerDeleteClearsRelations() {
-        when(productBranchService.isContainerInDefaultBranch(10)).thenReturn(true);
+        when(productBranchService.findConnectionBranchByContainerId(10))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.MAIN));
 
         service.processContainerDelete(10);
 
-        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByEntityId(10);
-        verify(discoveredOperationRepository).clearConnectionOperationIdByEntityId(10);
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByEntityId(10, "main");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByEntityId(10, "main");
     }
 
     @Test
-    @DisplayName("Удаление контейнера не из main связи не трогает")
+    @DisplayName("Удаление контейнера develop и design сбрасывает связи только своей ветки")
+    void developAndDesignContainerDeleteClearsOwnBranchRelations() {
+        when(productBranchService.findConnectionBranchByContainerId(10))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DEVELOP));
+        when(productBranchService.findConnectionBranchByContainerId(11))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DESIGN));
+
+        service.processContainerDelete(10);
+        service.processContainerDelete(11);
+
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByEntityId(10, "develop");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByEntityId(10, "develop");
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByEntityId(11, "design");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByEntityId(11, "design");
+        verifyNoMoreInteractions(discoveredInterfaceRepository, discoveredOperationRepository);
+    }
+
+    @Test
+    @DisplayName("Удаление контейнера не из main, develop или design связи не трогает")
     void nonMainContainerDeleteKeepsRelations() {
-        when(productBranchService.isContainerInDefaultBranch(anyInt())).thenReturn(false);
+        when(productBranchService.findConnectionBranchByContainerId(anyInt())).thenReturn(Optional.empty());
 
         service.processContainerDelete(10);
 

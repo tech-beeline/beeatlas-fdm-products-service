@@ -168,11 +168,9 @@ class ProductBranchServiceTest {
     @Test
     @DisplayName("SFDM-4098: принадлежность arch-объекта ветке main — без учёта регистра")
     void archObjectBranchCheck() {
-        when(productBranchRepository.findBranchNameByContainerId(1)).thenReturn(Optional.of("Main"));
         when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("design"));
         when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.empty());
 
-        assertThat(service.isContainerInDefaultBranch(1)).isTrue();
         assertThat(service.isInterfaceInDefaultBranch(2)).isFalse();
         assertThat(service.isOperationInDefaultBranch(3)).isFalse();
     }
@@ -201,5 +199,17 @@ class ProductBranchServiceTest {
 
         assertThat(service.findConnectionBranchByInterfaceId(1)).contains(DiscoveredConnectionBranch.DEVELOP);
         assertThat(service.findConnectionBranchByInterfaceId(2)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SFDM-4320: ветка контейнера со своими атрибутами связи discovered — без учёта регистра")
+    void containerConnectionBranch() {
+        when(productBranchRepository.findBranchNameByContainerId(1)).thenReturn(Optional.of("Main"));
+        when(productBranchRepository.findBranchNameByContainerId(2)).thenReturn(Optional.of("Design"));
+        when(productBranchRepository.findBranchNameByContainerId(3)).thenReturn(Optional.of("hotfix"));
+
+        assertThat(service.findConnectionBranchByContainerId(1)).contains(DiscoveredConnectionBranch.MAIN);
+        assertThat(service.findConnectionBranchByContainerId(2)).contains(DiscoveredConnectionBranch.DESIGN);
+        assertThat(service.findConnectionBranchByContainerId(3)).isEmpty();
     }
 }

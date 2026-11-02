@@ -21,6 +21,23 @@ import java.util.Optional;
 @Repository
 public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredInterface, Integer> {
 
+    /**
+     * Атрибут связи discovered-интерфейса ветки {@code :branch} — main, develop или design, как
+     * {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch#getBranchName()}.
+     */
+    String BRANCH_CONNECTION_INTERFACE = "CASE :branch "
+            + "WHEN 'main' THEN connection_interface_id "
+            + "WHEN 'develop' THEN connection_interface_dev_id "
+            + "WHEN 'design' THEN connection_interface_design_id END";
+
+    /** SET: обнуляет атрибут интерфейса ветки {@code :branch}, атрибуты двух других веток не меняются. */
+    String CLEAR_BRANCH_CONNECTION_INTERFACE = "connection_interface_id = "
+            + "CASE WHEN :branch = 'main' THEN NULL ELSE connection_interface_id END, "
+            + "connection_interface_dev_id = "
+            + "CASE WHEN :branch = 'develop' THEN NULL ELSE connection_interface_dev_id END, "
+            + "connection_interface_design_id = "
+            + "CASE WHEN :branch = 'design' THEN NULL ELSE connection_interface_design_id END";
+
     List<DiscoveredInterface> findByExternalIdIn(List<String> externalIds);
 
     /**
@@ -29,24 +46,20 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
      */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET "
-            + "connection_interface_id = CASE WHEN :branch = 'main' THEN NULL ELSE connection_interface_id END, "
-            + "connection_interface_dev_id = CASE WHEN :branch = 'develop' THEN NULL ELSE connection_interface_dev_id END, "
-            + "connection_interface_design_id = CASE WHEN :branch = 'design' THEN NULL ELSE connection_interface_design_id END "
-            + "WHERE id <> :mapicInterfaceId "
-            + "AND CASE :branch "
-            + "    WHEN 'main' THEN connection_interface_id "
-            + "    WHEN 'develop' THEN connection_interface_dev_id "
-            + "    WHEN 'design' THEN connection_interface_design_id END = :archInterfaceId",
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " "
+            + "WHERE id <> :mapicInterfaceId AND " + BRANCH_CONNECTION_INTERFACE + " = :archInterfaceId",
             nativeQuery = true)
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
                                          @Param("mapicInterfaceId") Integer mapicInterfaceId,
                                          @Param("branch") String branch);
+
+    /** Снимает связь ветки {@code branch} с интерфейсами контейнера entityId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
-            "WHERE connection_interface_id IN (SELECT id FROM product.interface WHERE container_id = :entityId)", nativeQuery = true)
-    int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId);
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " " +
+            "WHERE " + BRANCH_CONNECTION_INTERFACE + " IN (SELECT id FROM product.interface WHERE container_id = :entityId)",
+            nativeQuery = true)
+    int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
     @Modifying
     @Transactional
@@ -64,15 +77,11 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     /**
      * Discovered-интерфейсы продукта для сопоставления с операцией arch-интерфейса: атрибут интерфейса
-     * ветки {@code branch} (main, develop, design — {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch})
-     * пуст или уже равен этому интерфейсу (COALESCE — то же «IS NULL OR = :archInterfaceId»).
+     * ветки {@code branch} пуст или уже равен этому интерфейсу (COALESCE — то же «IS NULL OR = :archInterfaceId»).
      */
-    @Query(value = "SELECT * FROM product.discovered_interface di "
-            + "WHERE di.product_id = :productId "
-            + "AND COALESCE(CASE :branch "
-            + "    WHEN 'main' THEN di.connection_interface_id "
-            + "    WHEN 'develop' THEN di.connection_interface_dev_id "
-            + "    WHEN 'design' THEN di.connection_interface_design_id END, :archInterfaceId) = :archInterfaceId",
+    @Query(value = "SELECT * FROM product.discovered_interface "
+            + "WHERE product_id = :productId "
+            + "AND COALESCE(" + BRANCH_CONNECTION_INTERFACE + ", :archInterfaceId) = :archInterfaceId",
             nativeQuery = true)
     List<DiscoveredInterface> findAllForArchOperationComparison(@Param("productId") Integer productId,
                                                                 @Param("archInterfaceId") Integer archInterfaceId,

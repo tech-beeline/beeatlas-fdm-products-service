@@ -20,6 +20,24 @@ import java.util.Optional;
 
 @Repository
 public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredOperation, Integer> {
+
+    /**
+     * Атрибут связи discovered-операции ветки {@code :branch} — main, develop или design, как
+     * {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch#getBranchName()}.
+     */
+    String BRANCH_CONNECTION_OPERATION = "CASE :branch "
+            + "WHEN 'main' THEN connection_operation_id "
+            + "WHEN 'develop' THEN connection_operation_dev_id "
+            + "WHEN 'design' THEN connection_operation_design_id END";
+
+    /** SET: обнуляет атрибут операции ветки {@code :branch}, атрибуты двух других веток не меняются. */
+    String CLEAR_BRANCH_CONNECTION_OPERATION = "connection_operation_id = "
+            + "CASE WHEN :branch = 'main' THEN NULL ELSE connection_operation_id END, "
+            + "connection_operation_dev_id = "
+            + "CASE WHEN :branch = 'develop' THEN NULL ELSE connection_operation_dev_id END, "
+            + "connection_operation_design_id = "
+            + "CASE WHEN :branch = 'design' THEN NULL ELSE connection_operation_design_id END";
+
     Optional<DiscoveredOperation> findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(Integer interfaceId,
                                                                                       String name,
                                                                                       String type);
@@ -81,14 +99,15 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     /** Включая soft-deleted: синхронизация состава операций интерфейса оживляет удалённые ранее. */
     List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
 
+    /** Снимает связь ветки {@code branch} с операциями контейнера entityId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
-            "WHERE connection_operation_id IN (" +
+    @Query(value = "UPDATE product.discovered_operation SET " + CLEAR_BRANCH_CONNECTION_OPERATION + " " +
+            "WHERE " + BRANCH_CONNECTION_OPERATION + " IN (" +
             "  SELECT o.id FROM product.operation o " +
             "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.container_id = :entityId)", nativeQuery = true)
-    int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId);
+    int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
     @Modifying
     @Transactional

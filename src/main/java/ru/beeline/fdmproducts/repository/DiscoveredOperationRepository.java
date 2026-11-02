@@ -109,14 +109,15 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
             "  WHERE i.container_id = :entityId)", nativeQuery = true)
     int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
+    /** Снимает связь ветки {@code branch} с операциями интерфейса interfaceId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
-            "WHERE connection_operation_id IN (" +
+    @Query(value = "UPDATE product.discovered_operation SET " + CLEAR_BRANCH_CONNECTION_OPERATION + " " +
+            "WHERE " + BRANCH_CONNECTION_OPERATION + " IN (" +
             "  SELECT o.id FROM product.operation o " +
             "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.id = :interfaceId)", nativeQuery = true)
-    int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
+    int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId, @Param("branch") String branch);
 
     @Modifying
     @Transactional

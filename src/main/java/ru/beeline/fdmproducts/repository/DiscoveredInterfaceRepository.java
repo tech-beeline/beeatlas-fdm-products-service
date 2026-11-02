@@ -61,11 +61,12 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
             nativeQuery = true)
     int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
+    /** Снимает связь ветки {@code branch} с интерфейсом interfaceId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
-            "WHERE connection_interface_id  = :interfaceId", nativeQuery = true)
-    int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " " +
+            "WHERE " + BRANCH_CONNECTION_INTERFACE + " = :interfaceId", nativeQuery = true)
+    int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId, @Param("branch") String branch);
 
     @Modifying
     @Transactional

@@ -96,10 +96,6 @@ public class ProductBranchService {
         return DEFAULT_BRANCH.equalsIgnoreCase(branchName);
     }
 
-    public boolean isInterfaceInDefaultBranch(Integer interfaceId) {
-        return productBranchRepository.findBranchNameByInterfaceId(interfaceId).filter(this::isDefaultBranch).isPresent();
-    }
-
     public boolean isOperationInDefaultBranch(Integer operationId) {
         return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
     }

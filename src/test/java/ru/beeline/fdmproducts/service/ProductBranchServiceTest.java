@@ -168,10 +168,8 @@ class ProductBranchServiceTest {
     @Test
     @DisplayName("SFDM-4098: принадлежность arch-объекта ветке main — без учёта регистра")
     void archObjectBranchCheck() {
-        when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("design"));
         when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.empty());
 
-        assertThat(service.isInterfaceInDefaultBranch(2)).isFalse();
         assertThat(service.isOperationInDefaultBranch(3)).isFalse();
     }
 

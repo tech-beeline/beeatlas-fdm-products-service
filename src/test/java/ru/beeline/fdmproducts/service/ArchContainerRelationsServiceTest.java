@@ -97,20 +97,39 @@ class ArchContainerRelationsServiceTest {
     }
 
     @Test
-    @DisplayName("Удаление интерфейса main сбрасывает связи")
+    @DisplayName("Удаление интерфейса main сбрасывает связи ветки main")
     void mainInterfaceDeleteClearsRelations() {
-        when(productBranchService.isInterfaceInDefaultBranch(20)).thenReturn(true);
+        when(productBranchService.findConnectionBranchByInterfaceId(20))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.MAIN));
 
         service.processInterfaceDelete(20);
 
-        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByInterfaceId(20);
-        verify(discoveredOperationRepository).clearConnectionOperationIdByInterfaceId(20);
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByInterfaceId(20, "main");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByInterfaceId(20, "main");
     }
 
     @Test
-    @DisplayName("Удаление интерфейса не из main связи не трогает")
+    @DisplayName("Удаление интерфейса develop и design сбрасывает связи только своей ветки")
+    void developAndDesignInterfaceDeleteClearsOwnBranchRelations() {
+        when(productBranchService.findConnectionBranchByInterfaceId(20))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DEVELOP));
+        when(productBranchService.findConnectionBranchByInterfaceId(21))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DESIGN));
+
+        service.processInterfaceDelete(20);
+        service.processInterfaceDelete(21);
+
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByInterfaceId(20, "develop");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByInterfaceId(20, "develop");
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByInterfaceId(21, "design");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByInterfaceId(21, "design");
+        verifyNoMoreInteractions(discoveredInterfaceRepository, discoveredOperationRepository);
+    }
+
+    @Test
+    @DisplayName("Удаление интерфейса не из main, develop или design связи не трогает")
     void nonMainInterfaceDeleteKeepsRelations() {
-        when(productBranchService.isInterfaceInDefaultBranch(anyInt())).thenReturn(false);
+        when(productBranchService.findConnectionBranchByInterfaceId(anyInt())).thenReturn(Optional.empty());
 
         service.processInterfaceDelete(20);
 

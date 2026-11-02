@@ -56,12 +56,14 @@ public class ArchContainerRelationsService {
 
     public void processInterfaceDelete(int entityId) {
         log.info("[СТАРТ] Начало обработки processInterfaceDelete entityId={}", entityId);
-        if (!productBranchService.isInterfaceInDefaultBranch(entityId)) {
-            log.info("Interface entityId={} не из ветки main, связи discovered не сбрасываются", entityId);
+        // Снимаются связи только ветки интерфейса: атрибуты двух других веток у тех же строк остаются.
+        Optional<DiscoveredConnectionBranch> branch = productBranchService.findConnectionBranchByInterfaceId(entityId);
+        if (branch.isEmpty()) {
+            log.info("Interface entityId={} не из веток main, develop или design, связи discovered не сбрасываются", entityId);
             return;
         }
-        discoveredInterfaceRepository.clearConnectionInterfaceIdByInterfaceId(entityId);
-        discoveredOperationRepository.clearConnectionOperationIdByInterfaceId(entityId);
+        discoveredInterfaceRepository.clearConnectionInterfaceIdByInterfaceId(entityId, branch.get().getBranchName());
+        discoveredOperationRepository.clearConnectionOperationIdByInterfaceId(entityId, branch.get().getBranchName());
     }
 
     public void processOperationDelete(int entityId) {

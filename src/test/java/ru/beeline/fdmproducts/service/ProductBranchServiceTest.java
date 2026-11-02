@@ -192,4 +192,14 @@ class ProductBranchServiceTest {
         assertThat(service.findConnectionBranchByOperationId(4)).isEmpty();
         assertThat(service.findConnectionBranchByOperationId(5)).isEmpty();
     }
+
+    @Test
+    @DisplayName("SFDM-4317: ветка интерфейса со своими атрибутами связи discovered — без учёта регистра")
+    void interfaceConnectionBranch() {
+        when(productBranchRepository.findBranchNameByInterfaceId(1)).thenReturn(Optional.of("Develop"));
+        when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("release"));
+
+        assertThat(service.findConnectionBranchByInterfaceId(1)).contains(DiscoveredConnectionBranch.DEVELOP);
+        assertThat(service.findConnectionBranchByInterfaceId(2)).isEmpty();
+    }
 }

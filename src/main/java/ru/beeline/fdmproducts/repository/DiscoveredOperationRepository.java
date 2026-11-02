@@ -102,7 +102,7 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     @Modifying
     @Transactional
     @Query(value = "UPDATE product.discovered_operation " +
-            "SET connection_operation_id = NULL " +
+            "SET connection_operation_id = NULL, connection_operation_dev_id = NULL, connection_operation_design_id = NULL " +
             "WHERE interface_id = :interfaceId", nativeQuery = true)
     void clearConnectionOperationIdByDiscoveredInterfaceId(@Param("interfaceId") Integer interfaceId);
 

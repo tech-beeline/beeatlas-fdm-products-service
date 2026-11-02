@@ -23,11 +23,25 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
 
     List<DiscoveredInterface> findByExternalIdIn(List<String> externalIds);
 
+    /**
+     * Снимает у остальных discovered-интерфейсов связь ветки {@code branch} (main, develop, design) с
+     * archInterfaceId; атрибуты двух других веток не меняются.
+     */
     @Modifying
     @Transactional
-    @Query("UPDATE DiscoveredInterface di SET di.connectionInterfaceId = null WHERE di.id <> :mapicInterfaceId AND di.connectionInterfaceId = :archInterfaceId")
+    @Query(value = "UPDATE product.discovered_interface SET "
+            + "connection_interface_id = CASE WHEN :branch = 'main' THEN NULL ELSE connection_interface_id END, "
+            + "connection_interface_dev_id = CASE WHEN :branch = 'develop' THEN NULL ELSE connection_interface_dev_id END, "
+            + "connection_interface_design_id = CASE WHEN :branch = 'design' THEN NULL ELSE connection_interface_design_id END "
+            + "WHERE id <> :mapicInterfaceId "
+            + "AND CASE :branch "
+            + "    WHEN 'main' THEN connection_interface_id "
+            + "    WHEN 'develop' THEN connection_interface_dev_id "
+            + "    WHEN 'design' THEN connection_interface_design_id END = :archInterfaceId",
+            nativeQuery = true)
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
-                                         @Param("mapicInterfaceId") Integer mapicInterfaceId);
+                                         @Param("mapicInterfaceId") Integer mapicInterfaceId,
+                                         @Param("branch") String branch);
     @Modifying
     @Transactional
     @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +

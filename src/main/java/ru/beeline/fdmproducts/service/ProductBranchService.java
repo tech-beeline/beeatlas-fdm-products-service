@@ -108,6 +108,12 @@ public class ProductBranchService {
         return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
     }
 
+    /** Ветка интерфейса со своими атрибутами связи discovered (SFDM-4317); пусто — другая ветка или нет интерфейса. */
+    public Optional<DiscoveredConnectionBranch> findConnectionBranchByInterfaceId(Integer interfaceId) {
+        return productBranchRepository.findBranchNameByInterfaceId(interfaceId)
+                .flatMap(DiscoveredConnectionBranch::fromBranchName);
+    }
+
     /**
      * Ветка операции, если у неё есть свои атрибуты связи discovered (SFDM-4318). Пусто — операция другой
      * ветки или не найдена: с discovered такая операция не связывается.

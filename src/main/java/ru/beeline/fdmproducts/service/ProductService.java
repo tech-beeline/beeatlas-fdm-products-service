@@ -2264,17 +2264,24 @@ public class ProductService {
             List<Integer> interfaceIds = interfaceRepository.findIdsByContainerIds(containerIds);
             if (!interfaceIds.isEmpty()) {
                 log.info("Удаление discovered_interface для интерфейсов: {} шт", interfaceIds.size());
+                // Ссылки discovered на интерфейсы и операции продукта собираются по атрибутам всех веток
+                // (main, develop, design): иначе внешний ключ dev/design-атрибута остановит удаление.
                 List<Integer> discoveredInterfaceIds = discoveredInterfaceRepository.findIdsByInterfaceIds(interfaceIds);
                 List<Integer> operationIds = operationRepository.findIdsByInterfaceIds(interfaceIds);
-                List<Integer> discoveredOperationIds = new ArrayList<>();
+                Set<Integer> discoveredOperationIds = new LinkedHashSet<>();
                 if (!discoveredInterfaceIds.isEmpty()) {
                     discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds));
+                }
+                if (!operationIds.isEmpty()) {
                     discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByOperationIds(operationIds));
-                    if (!discoveredOperationIds.isEmpty()) {
-                        discoveredParameterRepository.deleteByDiscoveredOperationIdIn(discoveredOperationIds);
-                        discoveredOperationRepository.deleteByIdIn(discoveredOperationIds);
-                        log.info("Удалено discovered_operation: {} записей", discoveredOperationIds.size());
-                    }
+                }
+                if (!discoveredOperationIds.isEmpty()) {
+                    List<Integer> ids = new ArrayList<>(discoveredOperationIds);
+                    discoveredParameterRepository.deleteByDiscoveredOperationIdIn(ids);
+                    discoveredOperationRepository.deleteByIdIn(ids);
+                    log.info("Удалено discovered_operation: {} записей", ids.size());
+                }
+                if (!discoveredInterfaceIds.isEmpty()) {
                     discoveredInterfaceRepository.deleteByIdIn(discoveredInterfaceIds);
                     log.info("Удалено discovered_interface: {} записей", discoveredInterfaceIds.size());
                 }

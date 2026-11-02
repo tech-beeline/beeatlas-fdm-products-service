@@ -169,7 +169,10 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     @Query("DELETE FROM DiscoveredOperation do WHERE do.id IN :ids")
     void deleteByIdIn(@Param("ids") List<Integer> ids);
 
-    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds")
+    /** Discovered-операции, связанные с operationIds атрибутом любой ветки: main, develop или design. */
+    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds "
+            + "OR do.connectionOperationDevId IN :operationIds "
+            + "OR do.connectionOperationDesignId IN :operationIds")
     List<Integer> findIdsByOperationIds(@Param("operationIds") List<Integer> operationIds);
 
     @Modifying

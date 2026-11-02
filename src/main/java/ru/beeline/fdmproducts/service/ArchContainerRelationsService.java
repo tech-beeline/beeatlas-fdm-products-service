@@ -74,27 +74,30 @@ public class ArchContainerRelationsService {
 
     public void processOperationComparison(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationComparison entityId={}", entityId);
-        if (!productBranchService.isOperationInDefaultBranch(entityId)) {
-            log.info("Operation entityId={} не из ветки main, сопоставление не выполняется", entityId);
+        // Ветки main, develop и design пишут каждая в свои атрибуты связи и не затирают связи других веток.
+        Optional<DiscoveredConnectionBranch> connectionBranch = productBranchService.findConnectionBranchByOperationId(entityId);
+        if (connectionBranch.isEmpty()) {
+            log.info("Operation entityId={} не из веток main, develop или design, сопоставление не выполняется", entityId);
             return;
         }
+        DiscoveredConnectionBranch branch = connectionBranch.get();
         Optional<Operation> operation = operationRepository.findById(entityId);
         if (operation.isPresent()) {
             Interface interfaceEntity = interfaceRepository.findById(operation.get().getInterfaceId()).get();
             ContainerProduct containerProduct = containerRepository.findById(interfaceEntity.getContainerId()).get();
-            List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(
-                    containerProduct.getProductBranch().getProduct().getId(), interfaceEntity.getId());
-            log.info("[ШАГ ] discoveredInterfaces size is {}", discoveredInterfaces.size());
+            List<DiscoveredInterface> discoveredInterfaces = discoveredInterfaceRepository.findAllForArchOperationComparison(
+                    containerProduct.getProductBranch().getProduct().getId(), interfaceEntity.getId(), branch.getBranchName());
+            log.info("[ШАГ ] branch is {}, discoveredInterfaces size is {}", branch.getBranchName(), discoveredInterfaces.size());
             discoveredInterfaces.forEach(discoveredInterface -> {
                 log.info("[ШАГ ] discoveredInterface is {}", discoveredInterface.getName());
                 AtomicReference<Integer> discoveredOperationCounter = new AtomicReference<>(0);
                 discoveredInterface.getOperations().forEach(discoveredOperation -> {
                     if (matchesArchOperation(discoveredOperation, discoveredInterface, operation.get())) {
-                        discoveredOperation.setConnectionOperationId(entityId);
+                        branch.setConnectionOperationId(discoveredOperation, entityId);
                         log.info("Сопоставлено с arch-операцией name={}, type={} (discoveredOperationId={})",
                                 operation.get().getName(), operation.get().getType(), discoveredOperation.getId());
                     }
-                    if (discoveredOperation.getConnectionOperationId() == null) {
+                    if (branch.getConnectionOperationId(discoveredOperation) == null) {
                         discoveredOperationCounter.getAndSet(discoveredOperationCounter.get() + 1);
                     }
                 });
@@ -102,7 +105,7 @@ public class ArchContainerRelationsService {
                 if (discoveredOperationCounter.get() == 0) {
                     List<Operation> operationList = operationRepository.findAllByIdIn(discoveredInterface.getOperations()
                             .stream()
-                            .map(DiscoveredOperation::getConnectionOperationId)
+                            .map(branch::getConnectionOperationId)
                             .filter(Objects::nonNull)
                             .distinct()
                             .collect(Collectors.toList()));
@@ -113,10 +116,10 @@ public class ArchContainerRelationsService {
                     if (sameInterface) {
                         log.info("[ШАГ ] sameInterface is {}", sameInterface);
                         Integer connectionInterfaceId = operationList.get(0).getInterfaceId();
-                        discoveredInterface.setConnectionInterfaceId(connectionInterfaceId);
+                        branch.setConnectionInterfaceId(discoveredInterface, connectionInterfaceId);
                         discoveredInterfaceRepository.save(discoveredInterface);
-                        log.info("Связан интерфейс: connectionInterfaceId={} (discoveredInterfaceId={})",
-                                connectionInterfaceId, discoveredInterface.getId());
+                        log.info("Связан интерфейс ветки {}: connectionInterfaceId={} (discoveredInterfaceId={})",
+                                branch.getBranchName(), connectionInterfaceId, discoveredInterface.getId());
                     }
                 }
                 discoveredOperationRepository.saveAll(discoveredInterface.getOperations());

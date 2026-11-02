@@ -48,12 +48,21 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
 
 
+    /**
+     * Discovered-интерфейсы продукта для сопоставления с операцией arch-интерфейса: атрибут интерфейса
+     * ветки {@code branch} (main, develop, design — {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch})
+     * пуст или уже равен этому интерфейсу (COALESCE — то же «IS NULL OR = :archInterfaceId»).
+     */
     @Query(value = "SELECT * FROM product.discovered_interface di "
             + "WHERE di.product_id = :productId "
-            + "AND (di.connection_interface_id is null OR di.connection_interface_id = :archInterfaceId) ",
+            + "AND COALESCE(CASE :branch "
+            + "    WHEN 'main' THEN di.connection_interface_id "
+            + "    WHEN 'develop' THEN di.connection_interface_dev_id "
+            + "    WHEN 'design' THEN di.connection_interface_design_id END, :archInterfaceId) = :archInterfaceId",
             nativeQuery = true)
-    List<DiscoveredInterface> findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(@Param("productId") Integer productId,
-                                                                               @Param("archInterfaceId") Integer archInterfaceId);
+    List<DiscoveredInterface> findAllForArchOperationComparison(@Param("productId") Integer productId,
+                                                                @Param("archInterfaceId") Integer archInterfaceId,
+                                                                @Param("branch") String branch);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 

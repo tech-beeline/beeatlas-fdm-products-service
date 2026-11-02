@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import ru.beeline.fdmproducts.domain.ContainerProduct;
+import ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
 import ru.beeline.fdmproducts.domain.Interface;
@@ -117,19 +118,14 @@ class ArchContainerRelationsServiceTest {
         verifyNoInteractions(discoveredInterfaceRepository, discoveredOperationRepository);
     }
 
-    @Test
-    @DisplayName("Разные имена path-параметров сопоставляются общим правилом")
-    void matchesDiscoveredOperationWithADifferentParameterName() {
+    /** Arch-операция 77 интерфейса 5 контейнера 4 продукта 41 и discovered-интерфейс 3 с одним методом 9. */
+    private DiscoveredInterface givenArchOperationComparison(DiscoveredConnectionBranch connectionBranch,
+                                                             DiscoveredOperation discoveredOperation) {
         Operation archOperation = new Operation();
         archOperation.setId(77);
         archOperation.setName("/api/v1/product/{code}");
         archOperation.setType("GET");
         archOperation.setInterfaceId(5);
-
-        DiscoveredOperation discoveredOperation = new DiscoveredOperation();
-        discoveredOperation.setId(9);
-        discoveredOperation.setName("/api/v1/product/{cmdb}");
-        discoveredOperation.setType("get");
 
         DiscoveredInterface discoveredInterface = new DiscoveredInterface();
         discoveredInterface.setId(3);
@@ -148,13 +144,29 @@ class ArchContainerRelationsServiceTest {
         container.setId(4);
         container.setProductBranch(branch);
 
-        when(productBranchService.isOperationInDefaultBranch(anyInt())).thenReturn(true);
+        when(productBranchService.findConnectionBranchByOperationId(77)).thenReturn(Optional.of(connectionBranch));
         when(operationRepository.findById(77)).thenReturn(Optional.of(archOperation));
         when(interfaceRepository.findById(5)).thenReturn(Optional.of(archInterface));
         when(containerRepository.findById(4)).thenReturn(Optional.of(container));
-        when(discoveredInterfaceRepository.findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(41, 5))
+        when(discoveredInterfaceRepository.findAllForArchOperationComparison(41, 5, connectionBranch.getBranchName()))
                 .thenReturn(List.of(discoveredInterface));
         when(operationRepository.findAllByIdIn(List.of(77))).thenReturn(List.of(archOperation));
+        return discoveredInterface;
+    }
+
+    private DiscoveredOperation discoveredOperation(String name) {
+        DiscoveredOperation discoveredOperation = new DiscoveredOperation();
+        discoveredOperation.setId(9);
+        discoveredOperation.setName(name);
+        discoveredOperation.setType("get");
+        return discoveredOperation;
+    }
+
+    @Test
+    @DisplayName("Разные имена path-параметров сопоставляются общим правилом")
+    void matchesDiscoveredOperationWithADifferentParameterName() {
+        DiscoveredOperation discoveredOperation = discoveredOperation("/api/v1/product/{cmdb}");
+        givenArchOperationComparison(DiscoveredConnectionBranch.MAIN, discoveredOperation);
 
         service.processOperationComparison(77);
 
@@ -162,9 +174,101 @@ class ArchContainerRelationsServiceTest {
     }
 
     @Test
-    @DisplayName("CREATE/UPDATE операции не из main не сопоставляется с discovered")
+    @DisplayName("Операция main пишет атрибуты main, связи develop и design не меняются")
+    void mainOperationWritesMainAttributesOnly() {
+        DiscoveredOperation discoveredOperation = discoveredOperation("/api/v1/product/{cmdb}");
+        discoveredOperation.setConnectionOperationDevId(100);
+        discoveredOperation.setConnectionOperationDesignId(200);
+        DiscoveredInterface discoveredInterface =
+                givenArchOperationComparison(DiscoveredConnectionBranch.MAIN, discoveredOperation);
+        discoveredInterface.setConnectionInterfaceDevId(10);
+        discoveredInterface.setConnectionInterfaceDesignId(20);
+
+        service.processOperationComparison(77);
+
+        assertThat(discoveredOperation.getConnectionOperationId()).isEqualTo(77);
+        assertThat(discoveredOperation.getConnectionOperationDevId()).isEqualTo(100);
+        assertThat(discoveredOperation.getConnectionOperationDesignId()).isEqualTo(200);
+        assertThat(discoveredInterface.getConnectionInterfaceId()).isEqualTo(5);
+        assertThat(discoveredInterface.getConnectionInterfaceDevId()).isEqualTo(10);
+        assertThat(discoveredInterface.getConnectionInterfaceDesignId()).isEqualTo(20);
+    }
+
+    @Test
+    @DisplayName("Операция develop перезаписывает атрибуты develop, атрибуты main и design не меняются")
+    void developOperationWritesDevelopAttributesOnly() {
+        DiscoveredOperation discoveredOperation = discoveredOperation("/api/v1/product/{cmdb}");
+        discoveredOperation.setConnectionOperationId(100);
+        discoveredOperation.setConnectionOperationDevId(55);
+        DiscoveredInterface discoveredInterface =
+                givenArchOperationComparison(DiscoveredConnectionBranch.DEVELOP, discoveredOperation);
+        discoveredInterface.setConnectionInterfaceId(10);
+
+        service.processOperationComparison(77);
+
+        assertThat(discoveredOperation.getConnectionOperationDevId()).isEqualTo(77);
+        assertThat(discoveredOperation.getConnectionOperationId()).isEqualTo(100);
+        assertThat(discoveredOperation.getConnectionOperationDesignId()).isNull();
+        assertThat(discoveredInterface.getConnectionInterfaceDevId()).isEqualTo(5);
+        assertThat(discoveredInterface.getConnectionInterfaceId()).isEqualTo(10);
+        assertThat(discoveredInterface.getConnectionInterfaceDesignId()).isNull();
+        verify(discoveredInterfaceRepository).findAllForArchOperationComparison(41, 5, "develop");
+    }
+
+    @Test
+    @DisplayName("Операция design пишет только атрибуты design")
+    void designOperationWritesDesignAttributesOnly() {
+        DiscoveredOperation discoveredOperation = discoveredOperation("/api/v1/product/{cmdb}");
+        DiscoveredInterface discoveredInterface =
+                givenArchOperationComparison(DiscoveredConnectionBranch.DESIGN, discoveredOperation);
+
+        service.processOperationComparison(77);
+
+        assertThat(discoveredOperation.getConnectionOperationDesignId()).isEqualTo(77);
+        assertThat(discoveredOperation.getConnectionOperationId()).isNull();
+        assertThat(discoveredOperation.getConnectionOperationDevId()).isNull();
+        assertThat(discoveredInterface.getConnectionInterfaceDesignId()).isEqualTo(5);
+        assertThat(discoveredInterface.getConnectionInterfaceId()).isNull();
+        assertThat(discoveredInterface.getConnectionInterfaceDevId()).isNull();
+    }
+
+    @Test
+    @DisplayName("Метод без совпадения сохраняет связь своей ветки, интерфейс своей ветки не меняется")
+    void unmatchedOperationKeepsBranchAttribute() {
+        DiscoveredOperation discoveredOperation = discoveredOperation("/api/v1/other");
+        discoveredOperation.setConnectionOperationDevId(55);
+        DiscoveredInterface discoveredInterface =
+                givenArchOperationComparison(DiscoveredConnectionBranch.DEVELOP, discoveredOperation);
+        when(operationRepository.findAllByIdIn(List.of(55))).thenReturn(List.of());
+
+        service.processOperationComparison(77);
+
+        assertThat(discoveredOperation.getConnectionOperationDevId()).isEqualTo(55);
+        assertThat(discoveredInterface.getConnectionInterfaceDevId()).isNull();
+    }
+
+    @Test
+    @DisplayName("Метод без связи своей ветки не даёт связать интерфейс, даже если связь main заполнена")
+    void interfaceIsNotConnectedWhileBranchOperationIsEmpty() {
+        DiscoveredOperation matched = discoveredOperation("/api/v1/product/{cmdb}");
+        DiscoveredOperation unmatched = discoveredOperation("/api/v1/other");
+        unmatched.setId(10);
+        unmatched.setConnectionOperationId(77);
+        DiscoveredInterface discoveredInterface =
+                givenArchOperationComparison(DiscoveredConnectionBranch.DESIGN, matched);
+        discoveredInterface.setOperations(List.of(matched, unmatched));
+
+        service.processOperationComparison(77);
+
+        assertThat(matched.getConnectionOperationDesignId()).isEqualTo(77);
+        assertThat(unmatched.getConnectionOperationDesignId()).isNull();
+        assertThat(discoveredInterface.getConnectionInterfaceDesignId()).isNull();
+    }
+
+    @Test
+    @DisplayName("CREATE/UPDATE операции не из main, develop или design не сопоставляется с discovered")
     void nonMainOperationIsNotCompared() {
-        when(productBranchService.isOperationInDefaultBranch(anyInt())).thenReturn(false);
+        when(productBranchService.findConnectionBranchByOperationId(anyInt())).thenReturn(Optional.empty());
 
         service.processOperationComparison(30);
 

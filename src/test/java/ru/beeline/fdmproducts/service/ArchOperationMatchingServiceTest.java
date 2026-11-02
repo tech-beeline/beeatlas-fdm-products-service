@@ -114,6 +114,19 @@ class ArchOperationMatchingServiceTest {
     }
 
     @Test
+    @DisplayName("SFDM-4319: область поиска ветки develop — та же цепочка от ветки develop продукта")
+    void resolvesInterfaceIdsThroughGivenBranch() {
+        ProductBranch branch = ProductBranch.builder().id(8).alias(ALIAS).branchName("Develop").build();
+        when(productBranchRepository.findAllByAliasIgnoreCaseAndBranchNameIgnoreCaseOrderByIdAsc(ALIAS, "develop"))
+                .thenReturn(List.of(branch));
+        when(containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(8)).thenReturn(List.of(21));
+        when(interfaceRepository.findAllByContainerIdInAndDeletedDateIsNull(List.of(21)))
+                .thenReturn(List.of(Interface.builder().id(201).build()));
+
+        assertThat(service.resolveInterfaceIds(ALIAS, "develop")).containsExactly(201);
+    }
+
+    @Test
     @DisplayName("Пустая область поиска не доходит до запроса: IN () — синтаксическая ошибка")
     void doesNotQueryWithEmptyInterfaceIds() {
         assertThat(service.findMatches("GET /orders", "GET", "REST", List.of())).isEmpty();

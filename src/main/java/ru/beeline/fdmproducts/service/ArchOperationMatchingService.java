@@ -41,17 +41,26 @@ public class ArchOperationMatchingService {
     private final OperationRepository operationRepository;
 
     /**
-     * Идентификаторы интерфейсов, среди которых ищется соответствие для продукта. Пустой список
-     * означает «искать негде» — у продукта нет ветки main, живых контейнеров или живых интерфейсов.
+     * Идентификаторы интерфейсов основной ветки main, среди которых ищется соответствие для продукта.
+     * Пустой список означает «искать негде» — у продукта нет ветки main, живых контейнеров или живых
+     * интерфейсов.
      *
      * @param productAlias alias продукта; регистр должен быть каноническим (как в product.alias)
      */
     public List<Integer> resolveInterfaceIds(String productAlias) {
+        return resolveInterfaceIds(productAlias, ProductBranchService.DEFAULT_BRANCH);
+    }
+
+    /**
+     * Та же цепочка для указанной ветки продукта (SFDM-4319: автосопоставление discovered-операции идёт
+     * по веткам main, develop и design). Пустой список — у продукта нет этой ветки, живых контейнеров
+     * или живых интерфейсов.
+     */
+    public List<Integer> resolveInterfaceIds(String productAlias, String branchName) {
         if (productAlias == null) {
             return Collections.emptyList();
         }
-        // null вместо имени ветки — сопоставление всегда идёт по основной ветке архитектуры продукта.
-        List<Integer> containerIds = productBranchService.find(productAlias, null)
+        List<Integer> containerIds = productBranchService.find(productAlias, branchName)
                 .map(branch -> containerRepository.findContainerIdsByProductBranchIdAndDeletedDateIsNull(branch.getId()))
                 .orElse(Collections.emptyList());
         if (containerIds.isEmpty()) {

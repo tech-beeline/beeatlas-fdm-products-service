@@ -7,6 +7,7 @@ package ru.beeline.fdmproducts.service;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -31,6 +32,7 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -137,20 +139,40 @@ class ArchContainerRelationsServiceTest {
     }
 
     @Test
-    @DisplayName("Удаление операции main сбрасывает связи")
+    @DisplayName("Удаление операции main сбрасывает связи ветки main: сначала интерфейс, затем операцию")
     void mainOperationDeleteClearsRelations() {
-        when(productBranchService.isOperationInDefaultBranch(30)).thenReturn(true);
+        when(productBranchService.findConnectionBranchByOperationId(30))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.MAIN));
 
         service.processOperationDelete(30);
 
-        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByOperationId(30);
-        verify(discoveredOperationRepository).clearConnectionOperationIdByOperationId(30);
+        InOrder inOrder = inOrder(discoveredInterfaceRepository, discoveredOperationRepository);
+        inOrder.verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByOperationId(30, "main");
+        inOrder.verify(discoveredOperationRepository).clearConnectionOperationIdByOperationId(30, "main");
     }
 
     @Test
-    @DisplayName("Удаление операции не из main связи не трогает")
+    @DisplayName("Удаление операции develop и design сбрасывает связи только своей ветки")
+    void developAndDesignOperationDeleteClearsOwnBranchRelations() {
+        when(productBranchService.findConnectionBranchByOperationId(30))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DEVELOP));
+        when(productBranchService.findConnectionBranchByOperationId(31))
+                .thenReturn(Optional.of(DiscoveredConnectionBranch.DESIGN));
+
+        service.processOperationDelete(30);
+        service.processOperationDelete(31);
+
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByOperationId(30, "develop");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByOperationId(30, "develop");
+        verify(discoveredInterfaceRepository).clearConnectionInterfaceIdByOperationId(31, "design");
+        verify(discoveredOperationRepository).clearConnectionOperationIdByOperationId(31, "design");
+        verifyNoMoreInteractions(discoveredInterfaceRepository, discoveredOperationRepository);
+    }
+
+    @Test
+    @DisplayName("Удаление операции не из main, develop или design связи не трогает")
     void nonMainOperationDeleteKeepsRelations() {
-        when(productBranchService.isOperationInDefaultBranch(anyInt())).thenReturn(false);
+        when(productBranchService.findConnectionBranchByOperationId(anyInt())).thenReturn(Optional.empty());
 
         service.processOperationDelete(30);
 

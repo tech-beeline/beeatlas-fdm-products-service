@@ -68,12 +68,15 @@ public class ArchContainerRelationsService {
 
     public void processOperationDelete(int entityId) {
         log.info("[СТАРТ] Начало обработки processOperationDelete entityId={}", entityId);
-        if (!productBranchService.isOperationInDefaultBranch(entityId)) {
-            log.info("Operation entityId={} не из ветки main, связи discovered не сбрасываются", entityId);
+        // Снимается только атрибут ветки операции. Интерфейс очищается первым: его отбор идёт по ещё не
+        // очищенному атрибуту операции.
+        Optional<DiscoveredConnectionBranch> branch = productBranchService.findConnectionBranchByOperationId(entityId);
+        if (branch.isEmpty()) {
+            log.info("Operation entityId={} не из веток main, develop или design, связи discovered не сбрасываются", entityId);
             return;
         }
-        discoveredInterfaceRepository.clearConnectionInterfaceIdByOperationId(entityId);
-        discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId);
+        discoveredInterfaceRepository.clearConnectionInterfaceIdByOperationId(entityId, branch.get().getBranchName());
+        discoveredOperationRepository.clearConnectionOperationIdByOperationId(entityId, branch.get().getBranchName());
     }
 
     public void processOperationComparison(int entityId) {

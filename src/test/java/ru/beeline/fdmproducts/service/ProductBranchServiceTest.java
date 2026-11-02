@@ -166,14 +166,6 @@ class ProductBranchServiceTest {
     }
 
     @Test
-    @DisplayName("SFDM-4098: принадлежность arch-объекта ветке main — без учёта регистра")
-    void archObjectBranchCheck() {
-        when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.empty());
-
-        assertThat(service.isOperationInDefaultBranch(3)).isFalse();
-    }
-
-    @Test
     @DisplayName("SFDM-4318: ветка операции со своими атрибутами связи discovered — без учёта регистра")
     void operationConnectionBranch() {
         when(productBranchRepository.findBranchNameByOperationId(1)).thenReturn(Optional.of("Main"));

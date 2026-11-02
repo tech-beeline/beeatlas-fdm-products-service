@@ -96,10 +96,6 @@ public class ProductBranchService {
         return DEFAULT_BRANCH.equalsIgnoreCase(branchName);
     }
 
-    public boolean isOperationInDefaultBranch(Integer operationId) {
-        return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
-    }
-
     /** Ветка контейнера со своими атрибутами связи discovered (SFDM-4320); пусто — другая ветка или нет контейнера. */
     public Optional<DiscoveredConnectionBranch> findConnectionBranchByContainerId(Integer containerId) {
         return productBranchRepository.findBranchNameByContainerId(containerId)

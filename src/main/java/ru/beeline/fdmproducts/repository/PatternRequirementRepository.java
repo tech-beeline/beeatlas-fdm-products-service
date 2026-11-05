@@ -27,21 +27,10 @@ public interface PatternRequirementRepository extends JpaRepository<PatternRequi
     Optional<PatternRequirement> findByPatternIdAndNfrId(Integer patternId, Integer nfrId);
 
     @Query(value = ""
-            + "WITH latest AS ("
-            + "  SELECT DISTINCT ON (e.core_id) e.id, e.core_id "
-            + "  FROM product.non_functional_requirement_enum e "
-            + "  ORDER BY e.core_id, e.version DESC"
-            + "), product_cores AS ("
-            + "  SELECT DISTINCT e.core_id "
-            + "  FROM product.non_functional_requirement_enum e "
-            + "  WHERE e.id IN (:nfrIds)"
-            + ") "
             + "SELECT pr.pattern_id "
             + "FROM product.pattern_requirement pr "
-            + "JOIN latest l ON l.id = pr.nfr_id "
-            + "LEFT JOIN product_cores pc ON pc.core_id = l.core_id "
             + "GROUP BY pr.pattern_id "
-            + "HAVING COUNT(*) = COUNT(pc.core_id) "
+            + "HAVING COUNT(*) = SUM(CASE WHEN pr.nfr_id IN (:nfrIds) THEN 1 ELSE 0 END) "
             + "ORDER BY pr.pattern_id",
             nativeQuery = true)
     List<Integer> findPatternIdsWhereAllRequirementsIn(@Param("nfrIds") List<Integer> nfrIds);

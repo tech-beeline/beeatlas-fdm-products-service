@@ -34,20 +34,12 @@ public class E2eGroupedByE2eMapper {
     public E2eGroupedByE2eOperationDTO toOperationDto(DiscoveredOperation operation,
                                                       Map<Integer, Operation> archOperations,
                                                       Map<Integer, TcDTO> techCapabilities) {
-        OperationWithTechCapabilityDTO archOperation = null;
-        if (operation.getConnectionOperationId() != null) {
-            Operation connected = archOperations.get(operation.getConnectionOperationId());
-            if (connected != null) {
-                TcDTO techCapability = connected.getTcId() == null
-                        ? null
-                        : techCapabilities.get(connected.getTcId());
-                archOperation = toArchOperationDto(connected, techCapability);
-            }
-        }
         return E2eGroupedByE2eOperationDTO.builder()
                 .id(operation.getId())
                 .interfaceId(operation.getInterfaceId())
                 .connectionOperationId(operation.getConnectionOperationId())
+                .connectionOperationDevId(operation.getConnectionOperationDevId())
+                .connectionOperationDesignId(operation.getConnectionOperationDesignId())
                 .name(operation.getName())
                 .context(operation.getContext())
                 .description(operation.getDescription())
@@ -61,8 +53,25 @@ public class E2eGroupedByE2eMapper {
                 .createdDate(operation.getCreatedDate())
                 .updatedDate(operation.getUpdatedDate())
                 .deletedDate(operation.getDeletedDate())
-                .archOperation(archOperation)
+                .archOperation(toArchOperation(operation.getConnectionOperationId(), archOperations, techCapabilities))
+                .archOperationDev(toArchOperation(operation.getConnectionOperationDevId(), archOperations, techCapabilities))
+                .archOperationDesign(toArchOperation(operation.getConnectionOperationDesignId(), archOperations,
+                        techCapabilities))
                 .build();
+    }
+
+    private OperationWithTechCapabilityDTO toArchOperation(Integer connectionOperationId,
+                                                           Map<Integer, Operation> archOperations,
+                                                           Map<Integer, TcDTO> techCapabilities) {
+        if (connectionOperationId == null) {
+            return null;
+        }
+        Operation connected = archOperations.get(connectionOperationId);
+        if (connected == null) {
+            return null;
+        }
+        TcDTO techCapability = connected.getTcId() == null ? null : techCapabilities.get(connected.getTcId());
+        return toArchOperationDto(connected, techCapability);
     }
 
     private OperationWithTechCapabilityDTO toArchOperationDto(Operation operation, TcDTO techCapability) {

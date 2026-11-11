@@ -6,15 +6,20 @@ package ru.beeline.fdmproducts.mapper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import ru.beeline.fdmproducts.dto.*;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.DiscoveredOperation;
+import ru.beeline.fdmproducts.dto.ConnectionOperationDTO;
+import ru.beeline.fdmproducts.dto.ContainerSearchDTO;
+import ru.beeline.fdmproducts.dto.DiscoveredOperationDTO;
+import ru.beeline.fdmproducts.dto.InterfaceSearchDTO;
 import ru.beeline.fdmproducts.dto.MapicOperationFullDTO;
+import ru.beeline.fdmproducts.dto.ProductSearchDTO;
 import ru.beeline.fdmproducts.dto.search.projection.ArchOperationProjection;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Component
@@ -50,15 +55,24 @@ public class DiscoveredOperationMapper {
 
     public DiscoveredOperationDTO mapToOperationDTO(DiscoveredOperation discoveredOperation,
                                                     ArchOperationProjection projection) {
-        // projection is a Map#get() result upstream (SearchService) — null whenever the connected
-        // operation's id didn't resolve to a live arch operation (deleted, or a broken
-        // interface/container/product chain); that's an expected case here, not a bug
-        if (projection == null) {
+        return mapToOperationDTO(discoveredOperation, projection, Map.of());
+    }
+
+    public DiscoveredOperationDTO mapToOperationDTO(DiscoveredOperation discoveredOperation,
+                                                    ArchOperationProjection mainProjection,
+                                                    Map<Integer, ArchOperationProjection> projectionsById) {
+        ConnectionOperationDTO connectionOperationDev = toConnectionOperation(
+                projectionsById.get(discoveredOperation.getConnectionOperationDevId()));
+        ConnectionOperationDTO connectionOperationDesign = toConnectionOperation(
+                projectionsById.get(discoveredOperation.getConnectionOperationDesignId()));
+        if (mainProjection == null) {
             return DiscoveredOperationDTO.builder()
                     .id(discoveredOperation.getId())
                     .name(discoveredOperation.getName())
                     .type(discoveredOperation.getType())
                     .connectionOperation(null)
+                    .connectionOperationDev(connectionOperationDev)
+                    .connectionOperationDesign(connectionOperationDesign)
                     .interfaceObj(null)
                     .container(null)
                     .product(null)
@@ -68,27 +82,36 @@ public class DiscoveredOperationMapper {
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .type(discoveredOperation.getType())
-                .connectionOperation(ConnectionOperationDTO.builder()
-                        .id(projection.getOpId())
-                        .name(projection.getOpName())
-                        .type(projection.getOpType())
-                        .build())
+                .connectionOperation(toConnectionOperation(mainProjection))
+                .connectionOperationDev(connectionOperationDev)
+                .connectionOperationDesign(connectionOperationDesign)
                 .interfaceObj(InterfaceSearchDTO.builder()
-                        .id(projection.getInterfaceId())
-                        .code(projection.getInterfaceCode())
-                        .name(projection.getInterfaceName())
+                        .id(mainProjection.getInterfaceId())
+                        .code(mainProjection.getInterfaceCode())
+                        .name(mainProjection.getInterfaceName())
                         .build())
                 .container(ContainerSearchDTO.builder()
-                        .id(projection.getContainerId())
-                        .name(projection.getContainerName())
-                        .code(projection.getContainerCode())
+                        .id(mainProjection.getContainerId())
+                        .name(mainProjection.getContainerName())
+                        .code(mainProjection.getContainerCode())
                         .build())
                 .product(ProductSearchDTO.builder()
-                        .id(projection.getProductId())
-                        .name(projection.getProductName())
-                        .alias(projection.getProductAlias())
-                        .branchName(projection.getProductBranchName())
+                        .id(mainProjection.getProductId())
+                        .name(mainProjection.getProductName())
+                        .alias(mainProjection.getProductAlias())
+                        .branchName(mainProjection.getProductBranchName())
                         .build())
+                .build();
+    }
+
+    public static ConnectionOperationDTO toConnectionOperation(ArchOperationProjection projection) {
+        if (projection == null) {
+            return null;
+        }
+        return ConnectionOperationDTO.builder()
+                .id(projection.getOpId())
+                .name(projection.getOpName())
+                .type(projection.getOpType())
                 .build();
     }
 }

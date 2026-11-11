@@ -25,6 +25,7 @@ import ru.beeline.fdmproducts.repository.ProductRepository;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Transactional
 @Service
@@ -109,24 +110,39 @@ public class SearchService {
                 withConOperation.add(obj);
             }
         }
+        Map<Integer, ArchOperationProjection> projectionMap = loadConnectionProjections(discoveredOperationList);
         Map<Integer, DiscoveredInterface> interfaceMap = getInterfaceMap(withoutConOperation);
-        List<DiscoveredOperationDTO> disconnectedDTOs = createDisconnectedDTOs(withoutConOperation, interfaceMap);
+        List<DiscoveredOperationDTO> disconnectedDTOs =
+                createDisconnectedDTOs(withoutConOperation, interfaceMap, projectionMap);
         result.getDiscoveredOperations().addAll(disconnectedDTOs);
-        List<ArchOperationProjection> disOperationWithConOperation = operationRepository
-                .findOperationsProjection(withConOperation.stream()
-                        .map(DiscoveredOperation::getConnectionOperationId).toList());
-        Map<Integer, ArchOperationProjection> projectionMap = disOperationWithConOperation.stream()
+        List<DiscoveredOperationDTO> doResult = withConOperation.stream()
+                .map(op -> discoveredOperationMapper.mapToOperationDTO(
+                        op, projectionMap.get(op.getConnectionOperationId()), projectionMap))
+                .toList();
+        result.getDiscoveredOperations().addAll(doResult);
+        return result;
+    }
+
+    private Map<Integer, ArchOperationProjection> loadConnectionProjections(
+            List<DiscoveredOperation> discoveredOperations) {
+        List<Integer> connectionIds = discoveredOperations.stream()
+                .flatMap(op -> Stream.of(
+                        op.getConnectionOperationId(),
+                        op.getConnectionOperationDevId(),
+                        op.getConnectionOperationDesignId()))
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (connectionIds.isEmpty()) {
+            return Map.of();
+        }
+        return operationRepository.findOperationsProjection(connectionIds).stream()
                 .filter(Objects::nonNull)
                 .collect(Collectors.toMap(
                         ArchOperationProjection::getOpId,
                         Function.identity(),
                         (first, second) -> first
                 ));
-        List<DiscoveredOperationDTO> doResult = withConOperation.stream()
-                .map(op -> discoveredOperationMapper.mapToOperationDTO(op, projectionMap.get(op.getConnectionOperationId())))
-                .toList();
-        result.getDiscoveredOperations().addAll(doResult);
-        return result;
     }
 
     private OperationSearchDTO emptyOperationSearch() {
@@ -160,7 +176,8 @@ public class SearchService {
     }
 
     private List<DiscoveredOperationDTO> createDisconnectedDTOs(List<DiscoveredOperation> discoveredOperations,
-                                                                Map<Integer, DiscoveredInterface> interfaceMap) {
+                                                                Map<Integer, DiscoveredInterface> interfaceMap,
+                                                                Map<Integer, ArchOperationProjection> projectionMap) {
         return discoveredOperations.stream()
                 .map(op -> {
                     DiscoveredInterface discoveredInterface = interfaceMap.get(op.getInterfaceId());
@@ -175,6 +192,10 @@ public class SearchService {
                             .name(op.getName())
                             .type(op.getType())
                             .connectionOperation(null)
+                            .connectionOperationDev(DiscoveredOperationMapper.toConnectionOperation(
+                                    projectionMap.get(op.getConnectionOperationDevId())))
+                            .connectionOperationDesign(DiscoveredOperationMapper.toConnectionOperation(
+                                    projectionMap.get(op.getConnectionOperationDesignId())))
                             .interfaceObj(InterfaceSearchDTO.builder()
                                     .id(discoveredInterface.getId())
                                     .name(discoveredInterface.getName())

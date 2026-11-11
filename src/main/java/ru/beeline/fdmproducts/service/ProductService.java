@@ -1619,13 +1619,7 @@ public class ProductService {
                 : discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(discoveredInterfaceIds);
         Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId = allDiscoveredOperations.stream()
                 .collect(Collectors.groupingBy(DiscoveredOperation::getInterfaceId));
-        List<Integer> connectionOperationIds = allDiscoveredOperations.stream()
-                .map(DiscoveredOperation::getConnectionOperationId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-        Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
-                .collect(Collectors.toMap(Operation::getId, Function.identity()));
+        Map<Integer, Operation> operationsById = loadConnectedOperationsById(allDiscoveredOperations);
         return buildProductMapicInterfaceDTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById);
     }
 
@@ -1654,16 +1648,33 @@ public class ProductService {
                 : discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(discoveredInterfaceIds);
         Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId = allDiscoveredOperations.stream()
                 .collect(Collectors.groupingBy(DiscoveredOperation::getInterfaceId));
-        List<Integer> connectionOperationIds = allDiscoveredOperations.stream()
+        Map<Integer, Operation> operationsById = loadConnectedOperationsById(allDiscoveredOperations);
+        List<Operation> mainOperations = allDiscoveredOperations.stream()
                 .map(DiscoveredOperation::getConnectionOperationId)
+                .filter(Objects::nonNull)
+                .map(operationsById::get)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.loadOrEmpty(mainOperations);
+        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById,
+                techCapabilities);
+    }
+
+    private Map<Integer, Operation> loadConnectedOperationsById(List<DiscoveredOperation> discoveredOperations) {
+        List<Integer> connectionOperationIds = discoveredOperations.stream()
+                .flatMap(op -> Stream.of(
+                        op.getConnectionOperationId(),
+                        op.getConnectionOperationDevId(),
+                        op.getConnectionOperationDesignId()))
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
+        if (connectionOperationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return operationRepository.findAllById(connectionOperationIds).stream()
                 .collect(Collectors.toMap(Operation::getId, Function.identity()));
-        Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.loadOrEmpty(operationsById.values());
-        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById,
-                techCapabilities);
     }
 
     private List<ProductMapicInterfaceV2DTO> buildProductMapicInterfaceV2DTOs(List<DiscoveredInterface> discoveredInterfaces,
@@ -1679,14 +1690,16 @@ public class ProductService {
                     }
                     List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
                             .map(discoveredOperation -> {
-                                Operation operation = discoveredOperation.getConnectionOperationId() != null
-                                        ? operationsById.get(discoveredOperation.getConnectionOperationId())
-                                        : null;
-                                ConnectOperationDTO operationDto =
-                                        InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                                Operation mainOperation = operationOf(discoveredOperation.getConnectionOperationId(),
+                                        operationsById);
+                                ConnectOperationDTO operationDto = InterfaceMapper.createConnectOperationDTO(
+                                        mainOperation,
+                                        operationOf(discoveredOperation.getConnectionOperationDevId(), operationsById),
+                                        operationOf(discoveredOperation.getConnectionOperationDesignId(), operationsById),
+                                        discoveredOperation);
                                 operationDto.setIsPlanned(discoveredOperation.getIsPlanned());
                                 operationDto.setTechCapability(OperationTechCapabilityResolver.of(discoveredOperation,
-                                        operation, techCapabilities));
+                                        mainOperation, techCapabilities));
                                 return operationDto;
                             })
                             .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
@@ -1710,17 +1723,11 @@ public class ProductService {
                         dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
                     }
                     List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
-                            .map(discoveredOperation -> {
-                                log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
-                                Operation operation = null;
-                                if (discoveredOperation.getConnectionOperationId() != null) {
-                                    operation = operationsById.get(discoveredOperation.getConnectionOperationId());
-                                    if (operation != null) {
-                                        log.info("operationId = {}", operation.getId());
-                                    }
-                                }
-                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
-                            })
+                            .map(discoveredOperation -> InterfaceMapper.createConnectOperationDTO(
+                                    operationOf(discoveredOperation.getConnectionOperationId(), operationsById),
+                                    operationOf(discoveredOperation.getConnectionOperationDevId(), operationsById),
+                                    operationOf(discoveredOperation.getConnectionOperationDesignId(), operationsById),
+                                    discoveredOperation))
                             .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
                             .collect(Collectors.toList());
                     dto.setOperations(operationDTOs);
@@ -1729,6 +1736,13 @@ public class ProductService {
                     return dto;
                 }).sorted(Comparator.comparing(ProductMapicInterfaceDTO::getCreateDate).reversed())
                 .collect(Collectors.toList());
+    }
+
+    private static Operation operationOf(Integer connectionOperationId, Map<Integer, Operation> operationsById) {
+        if (connectionOperationId == null) {
+            return null;
+        }
+        return operationsById.get(connectionOperationId);
     }
 
     public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb, String branch) {

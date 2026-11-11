@@ -18,6 +18,8 @@ public class DiscoveredOperationDTO {
     private String name;
     private String type;
     private ConnectionOperationDTO connectionOperation;
+    private ConnectionOperationDTO connectionOperationDev;
+    private ConnectionOperationDTO connectionOperationDesign;
     @JsonProperty("interface")
     private InterfaceSearchDTO interfaceObj;
     private ContainerSearchDTO container;

@@ -243,16 +243,20 @@ public class SearchService {
     }
 
     public List<ArchOperationDTO> getOperationByTc(Integer tcId) {
-        List<ArchOperationDTO> result = new ArrayList<>();
         List<Operation> operations = operationRepository.findOperationsWithFullChainGraph(tcId);
-        if (!operations.isEmpty()) {
-            result = operations.stream()
-                    .filter(operation -> {
-                        var interf = operation.getInterfaceObj();
-                        return interf != null && interf.getContainerProduct() != null;
-                    })
-                    .map(operation -> archOperationMapper.mapToArchOperationDTO(operation))
-                    .toList();
+        List<ArchOperationDTO> result = new ArrayList<>();
+        for (Operation operation : operations) {
+            var interf = operation.getInterfaceObj();
+            if (interf == null || interf.getContainerProduct() == null) {
+                continue;
+            }
+            var container = interf.getContainerProduct();
+            if (container.getProductBranch() == null || container.getProductBranch().getProduct() == null) {
+                log.warn("Пропуск операции id={}: нет product_branch (product_branch_id={})",
+                        operation.getId(), container.getProductBranchId());
+                continue;
+            }
+            result.add(archOperationMapper.mapToArchOperationDTO(operation));
         }
         return result;
     }

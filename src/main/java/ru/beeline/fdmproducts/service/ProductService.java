@@ -256,7 +256,8 @@ public class ProductService {
     public void createOrUpdate(ProductPutDto productPutDto, String code) {
         validateProductPutDto(productPutDto);
         Product product = productRepository.findByAliasCaseInsensitive(code);
-        if (product == null) {
+        boolean created = product == null;
+        if (created) {
             product = new Product();
             product.setAlias(code);
         }
@@ -282,6 +283,12 @@ public class ProductService {
             product.setStructurizrApiUrl(productPutDto.getStructurizrApiUrl());
         }
         productRepository.save(product);
+        if (created) {
+            productBranchRepository.save(ProductBranch.builder()
+                    .alias(code)
+                    .branchName(BRANCH_MAIN)
+                    .build());
+        }
     }
 
     public void patchProduct(ProductPutDto productPutDto, String code) {

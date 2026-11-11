@@ -42,8 +42,7 @@ class ArchOperationMapperTest {
 
         assertThatThrownBy(() -> mapper.mapToArchOperationDTO(operation))
                 .isInstanceOf(EntityNotFoundException.class)
-                .hasMessageContaining("Ветка продукта не найдена")
-                .hasMessageContaining("42");
+                .hasMessage("Ветка продукта не найдена: product_branch_id=42");
     }
 
     @Test

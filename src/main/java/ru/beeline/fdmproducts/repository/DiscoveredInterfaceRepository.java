@@ -124,7 +124,6 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 
-    /** Discovered-интерфейсы, связанные с interfaceIds атрибутом любой ветки: main, develop или design. */
     @Query("SELECT di.id FROM DiscoveredInterface di WHERE di.connectionInterfaceId IN :interfaceIds "
             + "OR di.connectionInterfaceDevId IN :interfaceIds "
             + "OR di.connectionInterfaceDesignId IN :interfaceIds")

@@ -2271,13 +2271,12 @@ public class ProductService {
             List<Integer> interfaceIds = interfaceRepository.findIdsByContainerIds(containerIds);
             if (!interfaceIds.isEmpty()) {
                 log.info("Удаление discovered_interface для интерфейсов: {} шт", interfaceIds.size());
-                // Ссылки discovered на интерфейсы и операции продукта собираются по атрибутам всех веток
-                // (main, develop, design): иначе внешний ключ dev/design-атрибута остановит удаление.
                 List<Integer> discoveredInterfaceIds = discoveredInterfaceRepository.findIdsByInterfaceIds(interfaceIds);
                 List<Integer> operationIds = operationRepository.findIdsByInterfaceIds(interfaceIds);
                 Set<Integer> discoveredOperationIds = new LinkedHashSet<>();
                 if (!discoveredInterfaceIds.isEmpty()) {
-                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds));
+                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(
+                            discoveredInterfaceIds));
                 }
                 if (!operationIds.isEmpty()) {
                     discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByOperationIds(operationIds));

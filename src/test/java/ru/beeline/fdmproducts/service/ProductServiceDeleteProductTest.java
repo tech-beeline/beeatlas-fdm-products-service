@@ -40,10 +40,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * SFDM-4305: DELETE /api/v1/product/{id} снимает discovered-ссылки на интерфейсы и операции продукта
- * из атрибутов всех веток до удаления самих интерфейсов и операций.
- */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class ProductServiceDeleteProductTest {
@@ -101,7 +97,7 @@ class ProductServiceDeleteProductTest {
     }
 
     @Test
-    @DisplayName("Discovered-метод, связанный с операцией продукта без discovered-интерфейса, удаляется до операции")
+    @DisplayName("T0781#test006: сбор по operation-атрибутам всегда, даже без discovered-интерфейсов")
     void deletesDiscoveredOperationsFoundByOperationWithoutDiscoveredInterface() {
         when(discoveredOperationRepository.findIdsByOperationIds(OPERATION_IDS)).thenReturn(List.of(50));
 
@@ -113,6 +109,7 @@ class ProductServiceDeleteProductTest {
         inOrder.verify(discoveredOperationRepository).deleteByIdIn(List.of(50));
         inOrder.verify(operationRepository).deleteByIdIn(OPERATION_IDS);
         inOrder.verify(interfaceRepository).deleteByIdIn(INTERFACE_IDS);
+        verify(discoveredOperationRepository).findIdsByOperationIds(OPERATION_IDS);
         verify(discoveredInterfaceRepository, never()).deleteByIdIn(anyList());
     }
 

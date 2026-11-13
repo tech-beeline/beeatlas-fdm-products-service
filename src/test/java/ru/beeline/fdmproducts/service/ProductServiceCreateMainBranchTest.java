@@ -22,6 +22,7 @@ import ru.beeline.fdmproducts.repository.UserProductRepository;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -81,5 +82,28 @@ class ProductServiceCreateMainBranchTest {
         verify(productBranchRepository).save(branchCaptor.capture());
         assertThat(branchCaptor.getValue().getAlias()).isEqualTo(ALIAS);
         assertThat(branchCaptor.getValue().getBranchName()).isEqualTo("main");
+    }
+
+    @Test
+    @DisplayName("PUT /product: без name — IllegalArgumentException (400)")
+    void updateProductWithoutNameThrows() {
+        assertThatThrownBy(() -> service.updateProduct(PutUpdateProductDTO.builder()
+                .alias(ALIAS)
+                .description("probe")
+                .build()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Отсутствует обязательное поле name");
+        verify(productRepository, never()).save(any());
+        verify(productBranchRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("PUT /product/{code}: без name — IllegalArgumentException (400)")
+    void createOrUpdateWithoutNameThrows() {
+        assertThatThrownBy(() -> service.createOrUpdate(ProductPutDto.builder().description("probe").build(), ALIAS))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Отсутствует обязательное поле name");
+        verify(productRepository, never()).save(any());
+        verify(productBranchRepository, never()).save(any());
     }
 }

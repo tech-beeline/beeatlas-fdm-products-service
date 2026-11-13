@@ -306,6 +306,7 @@ public class ProductService {
     }
 
     public void updateProduct(PutUpdateProductDTO putUpdateProductDTO) {
+        validatePutUpdateProductDto(putUpdateProductDTO);
         Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
         if (product == null) {
             product = Product.builder()
@@ -468,12 +469,20 @@ public class ProductService {
     }
 
     public void validateProductPutDto(ProductPutDto productPutDto) {
-        StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getName() == null || productPutDto.getName().equals("")) {
-            errMsg.append("409 Ошибка валидации тела запроса: Отсутствует обязательное поле name");
+        if (productPutDto.getName() == null || productPutDto.getName().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле name");
         }
-        if (!errMsg.toString().isEmpty()) {
-            throw new ValidationException(errMsg.toString());
+    }
+
+    public void validatePutUpdateProductDto(PutUpdateProductDTO putUpdateProductDTO) {
+        if (putUpdateProductDTO.getAlias() == null || putUpdateProductDTO.getAlias().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле alias");
+        }
+        if (putUpdateProductDTO.getName() == null || putUpdateProductDTO.getName().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле name");
         }
     }
 

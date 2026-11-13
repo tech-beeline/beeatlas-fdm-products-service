@@ -451,7 +451,8 @@ public class ProductController {
 
     @ApiErrorCodes({400, 404, 500})
     @PutMapping("/v1/product")
-    @Operation(summary = "Массовое создание/обновление приложений")
+    @Operation(summary = "Создать или обновить приложение",
+            description = "Alias передаётся в теле (PutUpdateProductDTO). При создании сразу создаётся ветка main.")
     public ResponseEntity<Void> updateProduct(@RequestBody PutUpdateProductDTO putUpdateProductDTO) {
         productService.updateProduct(putUpdateProductDTO);
         return new ResponseEntity<>(HttpStatus.OK);

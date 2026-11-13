@@ -36,6 +36,9 @@ public class RabbitConfig {
     @Value("${queue.comparison-operations.name}")
     private String queueName;
 
+    @Value("${queue.nfr-create.name}")
+    private String nfrCreateQueueName;
+
     @Value("${spring.rabbitmq.template.routing-key}")
     private String routingName;
 
@@ -48,6 +51,21 @@ public class RabbitConfig {
     @Bean
     public Queue queue() {
         return new Queue(queueName, true);
+    }
+
+    @Bean
+    public FanoutExchange nfrExchange() {
+        return new FanoutExchange("NFR", true, false);
+    }
+
+    @Bean
+    public Queue nfrCreateQueue() {
+        return new Queue(nfrCreateQueueName, true);
+    }
+
+    @Bean
+    public Binding nfrCreateBinding() {
+        return BindingBuilder.bind(nfrCreateQueue()).to(nfrExchange());
     }
 
     @Bean

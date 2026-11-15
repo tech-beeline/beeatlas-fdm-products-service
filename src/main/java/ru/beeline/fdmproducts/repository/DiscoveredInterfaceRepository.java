@@ -129,6 +129,12 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
             + "OR di.connectionInterfaceDesignId IN :interfaceIds")
     List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET product_id = NULL WHERE product_id = :productId",
+            nativeQuery = true)
+    int clearProductId(@Param("productId") Integer productId);
+
     @Modifying
     @Query("DELETE FROM DiscoveredInterface di WHERE di.id IN :ids")
     void deleteByIdIn(@Param("ids") List<Integer> ids);

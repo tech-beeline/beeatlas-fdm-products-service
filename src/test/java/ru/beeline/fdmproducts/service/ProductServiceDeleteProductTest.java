@@ -104,11 +104,13 @@ class ProductServiceDeleteProductTest {
         service.deleteProduct(PRODUCT_ID);
 
         InOrder inOrder = inOrder(discoveredParameterRepository, discoveredOperationRepository, operationRepository,
-                interfaceRepository);
+                interfaceRepository, discoveredInterfaceRepository, productRepository);
         inOrder.verify(discoveredParameterRepository).deleteByDiscoveredOperationIdIn(List.of(50));
         inOrder.verify(discoveredOperationRepository).deleteByIdIn(List.of(50));
         inOrder.verify(operationRepository).deleteByIdIn(OPERATION_IDS);
         inOrder.verify(interfaceRepository).deleteByIdIn(INTERFACE_IDS);
+        inOrder.verify(discoveredInterfaceRepository).clearProductId(PRODUCT_ID);
+        inOrder.verify(productRepository).deleteById(PRODUCT_ID);
         verify(discoveredOperationRepository).findIdsByOperationIds(OPERATION_IDS);
         verify(discoveredInterfaceRepository, never()).deleteByIdIn(anyList());
     }
@@ -133,6 +135,7 @@ class ProductServiceDeleteProductTest {
         inOrder.verify(interfaceRepository).deleteByIdIn(INTERFACE_IDS);
         inOrder.verify(containerRepository).deleteByIdIn(CONTAINER_IDS);
         inOrder.verify(productBranchRepository).deleteByAlias(ALIAS);
+        inOrder.verify(discoveredInterfaceRepository).clearProductId(PRODUCT_ID);
         inOrder.verify(productRepository).deleteById(PRODUCT_ID);
     }
 
@@ -146,7 +149,9 @@ class ProductServiceDeleteProductTest {
         verify(discoveredInterfaceRepository, never()).deleteByIdIn(any());
         verify(operationRepository).deleteByIdIn(OPERATION_IDS);
         verify(interfaceRepository).deleteByIdIn(INTERFACE_IDS);
-        verify(productRepository).deleteById(PRODUCT_ID);
+        InOrder inOrder = inOrder(discoveredInterfaceRepository, productRepository);
+        inOrder.verify(discoveredInterfaceRepository).clearProductId(PRODUCT_ID);
+        inOrder.verify(productRepository).deleteById(PRODUCT_ID);
     }
 
     @Test

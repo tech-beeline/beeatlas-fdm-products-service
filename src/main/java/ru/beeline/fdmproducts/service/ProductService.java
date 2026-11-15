@@ -2331,6 +2331,8 @@ public class ProductService {
             productBranchRepository.deleteByAlias(product.getAlias());
             log.info("Удалено product_branch: {} записей для alias={}", branchIds.size(), product.getAlias());
         }
+        int detachedDiscoveredInterfaces = discoveredInterfaceRepository.clearProductId(id);
+        log.info("Снят product_id у discovered_interface: {} записей", detachedDiscoveredInterfaces);
         productRepository.deleteById(id);
         log.info("Продукт id: {} успешно удален", id);
     }

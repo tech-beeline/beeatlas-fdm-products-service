@@ -7,11 +7,15 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
@@ -71,7 +75,9 @@ public class ProductController {
     @GetMapping("/v1/product/infra")
     @Operation(summary = "Получить элементы инфраструктуры cmdb по имени")
     @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Успешный ответ с элементами инфраструктуры"),
+            @ApiResponse(responseCode = "200", description = "Успешный ответ с элементами инфраструктуры",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ProductInfraDto.class))),
             @ApiResponse(responseCode = "400", description = "Параметр 'name' отсутствует или пустой"),
             @ApiResponse(responseCode = "404", description = "Элементы инфраструктуры с заданным именем не найдены")
     })
@@ -438,6 +444,14 @@ public class ProductController {
     @PutMapping("/v1/product/{code}/relations")
     @Operation(summary = "Сохранить дерево контейнеров и связей продукта",
             description = "При ошибках валидации ответ может быть 207 Multi-Status с телом errorEntity.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Связи сохранены",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"message\":\"Сущности успешно сохранены\"}"))),
+            @ApiResponse(responseCode = "207", description = "Ошибки валидации",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            examples = @ExampleObject(value = "{\"errorEntity\":{\"containerError\":[],\"interfaceError\":[],\"methodError\":[],\"parameterError\":[]}}")))
+    })
     public ResponseEntity<?> putProductRelations(@Parameter(description = "Alias продукта") @PathVariable String code,
                                                  @RequestBody List<ContainerDTO> containerDTO,
                                                  @Parameter(description = "Ветка архитектуры продукта. Параметр можно не передавать — тогда это main; пустое значение (?branch=) — 400. Поиск ветки без учёта регистра, имя хранится в нижнем регистре. Отсутствующая ветка создаётся.") @RequestParam(required = false) String branch,

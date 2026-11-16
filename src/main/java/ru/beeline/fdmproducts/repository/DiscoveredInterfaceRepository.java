@@ -153,4 +153,14 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     List<DiscoveredInterface> findActiveByProductIdAndSourceInIgnoreCase(
             @Param("productId") Integer productId,
             @Param("sources") Collection<String> sources);
+
+    @Query("SELECT DISTINCT di FROM DiscoveredInterface di " +
+            "LEFT JOIN FETCH di.product " +
+            "WHERE di.sourceMetric IS NOT NULL AND di.deletedDate IS NULL")
+    List<DiscoveredInterface> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
+    @Modifying
+    @Query("UPDATE DiscoveredInterface di SET di.sourceMetric = :sourceMetric WHERE di.id = :id")
+    void updateSourceMetricById(@Param("id") Integer id,
+                                @Param("sourceMetric") String sourceMetric);
 }

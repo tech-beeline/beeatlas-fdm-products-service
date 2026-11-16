@@ -41,18 +41,20 @@ public class SourceMetricController {
         int products = response.getProducts() != null ? response.getProducts().size() : 0;
         int containers = response.getContainers() != null ? response.getContainers().size() : 0;
         int interfaces = response.getInterfaces() != null ? response.getInterfaces().size() : 0;
-        log.info("GET /api/v1/source-metric — ответ: products={}, containers={}, interfaces={}",
-                products, containers, interfaces);
+        int discoveredInterfaces = response.getDiscoveredInterfaces() != null
+                ? response.getDiscoveredInterfaces().size() : 0;
+        log.info("GET /api/v1/source-metric — ответ: products={}, containers={}, interfaces={}, discoveredInterfaces={}",
+                products, containers, interfaces, discoveredInterfaces);
         return ResponseEntity.ok(response);
     }
 
     @ApiErrorCodes({400, 404, 500})
     @PutMapping("/source-metric")
     @Operation(summary = "Обновить метрику источника",
-            description = "Частичное обновление: entity/id задают целевую сущность; тело содержит новые значения метрик.")
+            description = "Частичное обновление: entity (product, container, interface, discovered-interface) и id задают целевую сущность; тело содержит sourceMetric.")
     @ApiResponse(responseCode = "200", description = "Обновление выполнено")
     public ResponseEntity<Void> updateSourceMetric(
-            @Parameter(description = "Тип сущности (используется сервисом для адресации записи)") @RequestParam(name = "entity", required = false) String entity,
+            @Parameter(description = "Тип сущности: product, container, interface или discovered-interface") @RequestParam(name = "entity", required = false) String entity,
             @Parameter(description = "Идентификатор сущности") @RequestParam(name = "id", required = false) Long id,
             @RequestBody SourceMetricRequestDto body) {
 

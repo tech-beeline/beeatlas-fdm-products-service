@@ -80,6 +80,9 @@ public class DiscoveredInterface {
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
 
+    @Column(name = "source_metric")
+    private String sourceMetric;
+
     @JsonManagedReference
     @ToString.Exclude
     @OneToMany(mappedBy = "discoveredInterface")

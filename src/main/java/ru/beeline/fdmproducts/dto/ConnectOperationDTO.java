@@ -27,6 +27,8 @@ public class ConnectOperationDTO {
     private LocalDateTime createDate;
     private LocalDateTime deletedDate;
     private MapicOperationDTO connectOperation;
+    private MapicOperationDTO connectOperationDev;
+    private MapicOperationDTO connectOperationDesign;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean isPlanned;
     @JsonInclude(JsonInclude.Include.NON_NULL)

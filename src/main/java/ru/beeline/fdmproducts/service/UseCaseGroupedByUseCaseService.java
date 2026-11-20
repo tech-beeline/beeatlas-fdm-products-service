@@ -187,18 +187,28 @@ public class UseCaseGroupedByUseCaseService {
 
     private Map<Integer, Operation> loadArchOperations(Set<Integer> participatingOperationIds,
                                                        Map<Integer, DiscoveredOperation> operationsById) {
-        Set<Integer> connectionIds = participatingOperationIds.stream()
-                .map(operationsById::get)
-                .filter(Objects::nonNull)
-                .map(DiscoveredOperation::getConnectionOperationId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Integer> connectionIds = new LinkedHashSet<>();
+        for (Integer operationId : participatingOperationIds) {
+            DiscoveredOperation discovered = operationsById.get(operationId);
+            if (discovered == null) {
+                continue;
+            }
+            addConnectionId(connectionIds, discovered.getConnectionOperationId());
+            addConnectionId(connectionIds, discovered.getConnectionOperationDevId());
+            addConnectionId(connectionIds, discovered.getConnectionOperationDesignId());
+        }
         if (connectionIds.isEmpty()) {
             return Map.of();
         }
         return operationRepository.findAllByIdIn(new ArrayList<>(connectionIds)).stream()
                 .collect(Collectors.toMap(Operation::getId, Function.identity(), (left, right) -> left,
                         LinkedHashMap::new));
+    }
+
+    private static void addConnectionId(Set<Integer> connectionIds, Integer connectionOperationId) {
+        if (connectionOperationId != null) {
+            connectionIds.add(connectionOperationId);
+        }
     }
 
     private Map<Integer, TcDTO> loadTechCapabilities(Map<Integer, Operation> archOperations) {

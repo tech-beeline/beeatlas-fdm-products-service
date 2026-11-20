@@ -41,6 +41,12 @@ public class DiscoveredInterface {
     @Column(name = "connection_interface_id")
     private Integer connectionInterfaceId;
 
+    @Column(name = "connection_interface_dev_id")
+    private Integer connectionInterfaceDevId;
+
+    @Column(name = "connection_interface_design_id")
+    private Integer connectionInterfaceDesignId;
+
     @Column(name = "api_link")
     private String apiLink;
 
@@ -73,6 +79,9 @@ public class DiscoveredInterface {
 
     @Column(name = "updated_date")
     private LocalDateTime updatedDate;
+
+    @Column(name = "source_metric")
+    private String sourceMetric;
 
     @JsonManagedReference
     @ToString.Exclude

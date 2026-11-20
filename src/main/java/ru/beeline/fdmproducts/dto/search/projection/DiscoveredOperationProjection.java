@@ -12,4 +12,8 @@ public interface DiscoveredOperationProjection {
     Double getLatency();
     Double getErrorRate();
     Integer getConnectionOperationId();
+
+    Integer getConnectionOperationDevId();
+
+    Integer getConnectionOperationDesignId();
 }

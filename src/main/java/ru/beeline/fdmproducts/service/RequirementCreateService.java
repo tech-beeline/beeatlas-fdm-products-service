@@ -7,10 +7,7 @@ package ru.beeline.fdmproducts.service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.client.HttpStatusCodeException;
-import ru.beeline.fdmproducts.client.BpmClient;
 import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.client.UserClient;
@@ -50,7 +47,6 @@ public class RequirementCreateService {
     private final UserClient userClient;
     private final TechradarClient techradarClient;
     private final FfManagerClient ffManagerClient;
-    private final BpmClient bpmClient;
     private final ChapterRepository chapterRepository;
     private final NonFunctionalRequirementEnumCoreRepository coreRepository;
     private final NonFunctionalRequirementEnumRepository enumRepository;
@@ -123,21 +119,11 @@ public class RequirementCreateService {
                     .collect(Collectors.toList());
             patternRequirementRepository.saveAll(patternRequirements);
         }
-        runAfterCommit(() -> bpmClient.startNfrAutoAssign(nfrEnum.getId(), parseRuleCodesLower(request.getRule())));
 
         return CreateRequirementResponseDTO.builder()
                 .coreId(core.getId())
                 .versionId(nfrEnum.getId())
                 .build();
-    }
-
-    private static void runAfterCommit(Runnable action) {
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                action.run();
-            }
-        });
     }
 
     private static boolean isBlank(String s) {

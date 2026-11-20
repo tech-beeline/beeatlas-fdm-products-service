@@ -351,6 +351,8 @@ class E2eV2GetByCodeServiceTest {
         when(projection.getLatency()).thenReturn(latency);
         when(projection.getErrorRate()).thenReturn(errorRate);
         when(projection.getConnectionOperationId()).thenReturn(connectionOperationId);
+        when(projection.getConnectionOperationDevId()).thenReturn(null);
+        when(projection.getConnectionOperationDesignId()).thenReturn(null);
         return projection;
     }
 

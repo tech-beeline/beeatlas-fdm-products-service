@@ -15,4 +15,5 @@ public class SourceMetricDto {
     private List<ProductMetricDto> products;
     private List<ContainerMetricDto> containers;
     private List<InterfaceMetricDto> interfaces;
+    private List<DiscoveredInterfaceMetricDto> discoveredInterfaces;
 }

@@ -115,7 +115,14 @@ public class InterfaceMapper {
 
     public static ConnectOperationDTO createConnectOperationDTO(Operation operation,
                                                                 DiscoveredOperation discoveredOperation) {
-        ConnectOperationDTO connectOperationDTO = ConnectOperationDTO.builder()
+        return createConnectOperationDTO(operation, null, null, discoveredOperation);
+    }
+
+    public static ConnectOperationDTO createConnectOperationDTO(Operation mainOperation,
+                                                                Operation devOperation,
+                                                                Operation designOperation,
+                                                                DiscoveredOperation discoveredOperation) {
+        return ConnectOperationDTO.builder()
                 .id(discoveredOperation.getId())
                 .name(discoveredOperation.getName())
                 .description(discoveredOperation.getDescription())
@@ -123,17 +130,23 @@ public class InterfaceMapper {
                 .updateDate(discoveredOperation.getUpdatedDate())
                 .deletedDate(discoveredOperation.getDeletedDate())
                 .type(discoveredOperation.getType())
+                .connectOperation(toMapicOperation(discoveredOperation.getConnectionOperationId(), mainOperation))
+                .connectOperationDev(toMapicOperation(discoveredOperation.getConnectionOperationDevId(), devOperation))
+                .connectOperationDesign(toMapicOperation(discoveredOperation.getConnectionOperationDesignId(),
+                        designOperation))
                 .build();
-        if (operation != null) {
-            MapicOperationDTO mapicOperationDTO = MapicOperationDTO.builder()
-                    .id(discoveredOperation.getConnectionOperationId())
-                    .name(operation.getName())
-                    .description(operation.getDescription())
-                    .type(operation.getType())
-                    .build();
-            connectOperationDTO.setConnectOperation(mapicOperationDTO);
+    }
+
+    private static MapicOperationDTO toMapicOperation(Integer connectionOperationId, Operation operation) {
+        if (connectionOperationId == null || operation == null) {
+            return null;
         }
-        return connectOperationDTO;
+        return MapicOperationDTO.builder()
+                .id(connectionOperationId)
+                .name(operation.getName())
+                .description(operation.getDescription())
+                .type(operation.getType())
+                .build();
     }
 
     public static InterfaceMethodDTO createInterfaceMethodDTO(Interface interfaceObj, List<OperationFullDTO> operations,

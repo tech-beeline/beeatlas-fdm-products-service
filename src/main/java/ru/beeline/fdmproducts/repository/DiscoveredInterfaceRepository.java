@@ -21,39 +21,78 @@ import java.util.Optional;
 @Repository
 public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredInterface, Integer> {
 
+    /**
+     * Атрибут связи discovered-интерфейса ветки {@code :branch} — main, develop или design, как
+     * {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch#getBranchName()}.
+     */
+    String BRANCH_CONNECTION_INTERFACE = "CASE :branch "
+            + "WHEN 'main' THEN connection_interface_id "
+            + "WHEN 'develop' THEN connection_interface_dev_id "
+            + "WHEN 'design' THEN connection_interface_design_id END";
+
+    /** SET: обнуляет атрибут интерфейса ветки {@code :branch}, атрибуты двух других веток не меняются. */
+    String CLEAR_BRANCH_CONNECTION_INTERFACE = "connection_interface_id = "
+            + "CASE WHEN :branch = 'main' THEN NULL ELSE connection_interface_id END, "
+            + "connection_interface_dev_id = "
+            + "CASE WHEN :branch = 'develop' THEN NULL ELSE connection_interface_dev_id END, "
+            + "connection_interface_design_id = "
+            + "CASE WHEN :branch = 'design' THEN NULL ELSE connection_interface_design_id END";
+
     List<DiscoveredInterface> findByExternalIdIn(List<String> externalIds);
 
+    /**
+     * Снимает у остальных discovered-интерфейсов связь ветки {@code branch} (main, develop, design) с
+     * archInterfaceId; атрибуты двух других веток не меняются.
+     */
     @Modifying
     @Transactional
-    @Query("UPDATE DiscoveredInterface di SET di.connectionInterfaceId = null WHERE di.id <> :mapicInterfaceId AND di.connectionInterfaceId = :archInterfaceId")
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " "
+            + "WHERE id <> :mapicInterfaceId AND " + BRANCH_CONNECTION_INTERFACE + " = :archInterfaceId",
+            nativeQuery = true)
     int clearConnectionInterfaceIdExcept(@Param("archInterfaceId") Integer archInterfaceId,
-                                         @Param("mapicInterfaceId") Integer mapicInterfaceId);
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
-            "WHERE connection_interface_id IN (SELECT id FROM product.interface WHERE container_id = :entityId)", nativeQuery = true)
-    int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId);
+                                         @Param("mapicInterfaceId") Integer mapicInterfaceId,
+                                         @Param("branch") String branch);
 
+    /** Снимает связь ветки {@code branch} с интерфейсами контейнера entityId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
-            "WHERE connection_interface_id  = :interfaceId", nativeQuery = true)
-    int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
-
-    @Modifying
-    @Transactional
-    @Query(value = "UPDATE product.discovered_interface SET connection_interface_id = NULL " +
-            "WHERE id IN (SELECT o.interface_id FROM product.discovered_operation o WHERE o.connection_operation_id = :operationId)",
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " " +
+            "WHERE " + BRANCH_CONNECTION_INTERFACE + " IN (SELECT id FROM product.interface WHERE container_id = :entityId)",
             nativeQuery = true)
-    int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId);
+    int clearConnectionInterfaceIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
+    /** Снимает связь ветки {@code branch} с интерфейсом interfaceId; атрибуты других веток остаются. */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " " +
+            "WHERE " + BRANCH_CONNECTION_INTERFACE + " = :interfaceId", nativeQuery = true)
+    int clearConnectionInterfaceIdByInterfaceId(@Param("interfaceId") Integer interfaceId, @Param("branch") String branch);
 
-    @Query(value = "SELECT * FROM product.discovered_interface di "
-            + "WHERE di.product_id = :productId "
-            + "AND (di.connection_interface_id is null OR di.connection_interface_id = :archInterfaceId) ",
+    /**
+     * Снимает связь ветки {@code branch} у интерфейсов, среди методов которых атрибут операции этой ветки
+     * равен operationId; атрибуты других веток остаются. Колонки connection_operation_* в подзапросе
+     * принадлежат discovered_operation o.
+     */
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET " + CLEAR_BRANCH_CONNECTION_INTERFACE + " " +
+            "WHERE id IN (SELECT o.interface_id FROM product.discovered_operation o " +
+            "WHERE " + DiscoveredOperationRepository.BRANCH_CONNECTION_OPERATION + " = :operationId)",
             nativeQuery = true)
-    List<DiscoveredInterface> findAllByProductIdAndArchInterfaceIdAndConnectionInterfaceIdIsNull(@Param("productId") Integer productId,
-                                                                               @Param("archInterfaceId") Integer archInterfaceId);
+    int clearConnectionInterfaceIdByOperationId(@Param("operationId") Integer operationId, @Param("branch") String branch);
+
+
+    /**
+     * Discovered-интерфейсы продукта для сопоставления с операцией arch-интерфейса: атрибут интерфейса
+     * ветки {@code branch} пуст или уже равен этому интерфейсу (COALESCE — то же «IS NULL OR = :archInterfaceId»).
+     */
+    @Query(value = "SELECT * FROM product.discovered_interface "
+            + "WHERE product_id = :productId "
+            + "AND COALESCE(" + BRANCH_CONNECTION_INTERFACE + ", :archInterfaceId) = :archInterfaceId",
+            nativeQuery = true)
+    List<DiscoveredInterface> findAllForArchOperationComparison(@Param("productId") Integer productId,
+                                                                @Param("archInterfaceId") Integer archInterfaceId,
+                                                                @Param("branch") String branch);
 
     List<DiscoveredInterface> findAllByConnectionInterfaceIdIn(List<Integer> interfaceIds);
 
@@ -85,8 +124,16 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     @EntityGraph(attributePaths = {"product"})
     List<DiscoveredInterface> findAllByIdInAndDeletedDateIsNull(List<Integer> ids);
 
-    @Query("SELECT di.id FROM DiscoveredInterface di WHERE di.connectionInterfaceId IN :interfaceIds")
+    @Query("SELECT di.id FROM DiscoveredInterface di WHERE di.connectionInterfaceId IN :interfaceIds "
+            + "OR di.connectionInterfaceDevId IN :interfaceIds "
+            + "OR di.connectionInterfaceDesignId IN :interfaceIds")
     List<Integer> findIdsByInterfaceIds(@Param("interfaceIds") List<Integer> interfaceIds);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Transactional
+    @Query(value = "UPDATE product.discovered_interface SET product_id = NULL WHERE product_id = :productId",
+            nativeQuery = true)
+    int clearProductId(@Param("productId") Integer productId);
 
     @Modifying
     @Query("DELETE FROM DiscoveredInterface di WHERE di.id IN :ids")
@@ -106,4 +153,14 @@ public interface DiscoveredInterfaceRepository extends JpaRepository<DiscoveredI
     List<DiscoveredInterface> findActiveByProductIdAndSourceInIgnoreCase(
             @Param("productId") Integer productId,
             @Param("sources") Collection<String> sources);
+
+    @Query("SELECT DISTINCT di FROM DiscoveredInterface di " +
+            "LEFT JOIN FETCH di.product " +
+            "WHERE di.sourceMetric IS NOT NULL AND di.deletedDate IS NULL")
+    List<DiscoveredInterface> findAllBySourceMetricIsNotNullAndDeletedDateIsNull();
+
+    @Modifying
+    @Query("UPDATE DiscoveredInterface di SET di.sourceMetric = :sourceMetric WHERE di.id = :id")
+    void updateSourceMetricById(@Param("id") Integer id,
+                                @Param("sourceMetric") String sourceMetric);
 }

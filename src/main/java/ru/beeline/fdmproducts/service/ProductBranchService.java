@@ -7,6 +7,7 @@ package ru.beeline.fdmproducts.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch;
 import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ProductBranchRepository;
@@ -95,16 +96,25 @@ public class ProductBranchService {
         return DEFAULT_BRANCH.equalsIgnoreCase(branchName);
     }
 
-    public boolean isContainerInDefaultBranch(Integer containerId) {
-        return productBranchRepository.findBranchNameByContainerId(containerId).filter(this::isDefaultBranch).isPresent();
+    /** Ветка контейнера со своими атрибутами связи discovered (SFDM-4320); пусто — другая ветка или нет контейнера. */
+    public Optional<DiscoveredConnectionBranch> findConnectionBranchByContainerId(Integer containerId) {
+        return productBranchRepository.findBranchNameByContainerId(containerId)
+                .flatMap(DiscoveredConnectionBranch::fromBranchName);
     }
 
-    public boolean isInterfaceInDefaultBranch(Integer interfaceId) {
-        return productBranchRepository.findBranchNameByInterfaceId(interfaceId).filter(this::isDefaultBranch).isPresent();
+    /** Ветка интерфейса со своими атрибутами связи discovered (SFDM-4317); пусто — другая ветка или нет интерфейса. */
+    public Optional<DiscoveredConnectionBranch> findConnectionBranchByInterfaceId(Integer interfaceId) {
+        return productBranchRepository.findBranchNameByInterfaceId(interfaceId)
+                .flatMap(DiscoveredConnectionBranch::fromBranchName);
     }
 
-    public boolean isOperationInDefaultBranch(Integer operationId) {
-        return productBranchRepository.findBranchNameByOperationId(operationId).filter(this::isDefaultBranch).isPresent();
+    /**
+     * Ветка операции, если у неё есть свои атрибуты связи discovered (SFDM-4318). Пусто — операция другой
+     * ветки или не найдена: с discovered такая операция не связывается.
+     */
+    public Optional<DiscoveredConnectionBranch> findConnectionBranchByOperationId(Integer operationId) {
+        return productBranchRepository.findBranchNameByOperationId(operationId)
+                .flatMap(DiscoveredConnectionBranch::fromBranchName);
     }
 
     private Optional<ProductBranch> findByName(String alias, String branchName) {

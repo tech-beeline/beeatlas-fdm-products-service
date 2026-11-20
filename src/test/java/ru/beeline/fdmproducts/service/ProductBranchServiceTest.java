@@ -12,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch;
 import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ProductBranchRepository;
@@ -165,14 +166,40 @@ class ProductBranchServiceTest {
     }
 
     @Test
-    @DisplayName("SFDM-4098: принадлежность arch-объекта ветке main — без учёта регистра")
-    void archObjectBranchCheck() {
-        when(productBranchRepository.findBranchNameByContainerId(1)).thenReturn(Optional.of("Main"));
-        when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("design"));
-        when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.empty());
+    @DisplayName("SFDM-4318: ветка операции со своими атрибутами связи discovered — без учёта регистра")
+    void operationConnectionBranch() {
+        when(productBranchRepository.findBranchNameByOperationId(1)).thenReturn(Optional.of("Main"));
+        when(productBranchRepository.findBranchNameByOperationId(2)).thenReturn(Optional.of("DEVELOP"));
+        when(productBranchRepository.findBranchNameByOperationId(3)).thenReturn(Optional.of("design"));
+        when(productBranchRepository.findBranchNameByOperationId(4)).thenReturn(Optional.of("feature-1"));
+        when(productBranchRepository.findBranchNameByOperationId(5)).thenReturn(Optional.empty());
 
-        assertThat(service.isContainerInDefaultBranch(1)).isTrue();
-        assertThat(service.isInterfaceInDefaultBranch(2)).isFalse();
-        assertThat(service.isOperationInDefaultBranch(3)).isFalse();
+        assertThat(service.findConnectionBranchByOperationId(1)).contains(DiscoveredConnectionBranch.MAIN);
+        assertThat(service.findConnectionBranchByOperationId(2)).contains(DiscoveredConnectionBranch.DEVELOP);
+        assertThat(service.findConnectionBranchByOperationId(3)).contains(DiscoveredConnectionBranch.DESIGN);
+        assertThat(service.findConnectionBranchByOperationId(4)).isEmpty();
+        assertThat(service.findConnectionBranchByOperationId(5)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SFDM-4317: ветка интерфейса со своими атрибутами связи discovered — без учёта регистра")
+    void interfaceConnectionBranch() {
+        when(productBranchRepository.findBranchNameByInterfaceId(1)).thenReturn(Optional.of("Develop"));
+        when(productBranchRepository.findBranchNameByInterfaceId(2)).thenReturn(Optional.of("release"));
+
+        assertThat(service.findConnectionBranchByInterfaceId(1)).contains(DiscoveredConnectionBranch.DEVELOP);
+        assertThat(service.findConnectionBranchByInterfaceId(2)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("SFDM-4320: ветка контейнера со своими атрибутами связи discovered — без учёта регистра")
+    void containerConnectionBranch() {
+        when(productBranchRepository.findBranchNameByContainerId(1)).thenReturn(Optional.of("Main"));
+        when(productBranchRepository.findBranchNameByContainerId(2)).thenReturn(Optional.of("Design"));
+        when(productBranchRepository.findBranchNameByContainerId(3)).thenReturn(Optional.of("hotfix"));
+
+        assertThat(service.findConnectionBranchByContainerId(1)).contains(DiscoveredConnectionBranch.MAIN);
+        assertThat(service.findConnectionBranchByContainerId(2)).contains(DiscoveredConnectionBranch.DESIGN);
+        assertThat(service.findConnectionBranchByContainerId(3)).isEmpty();
     }
 }

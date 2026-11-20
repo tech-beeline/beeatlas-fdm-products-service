@@ -7,9 +7,13 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,6 +45,9 @@ public class MapicController {
     @GetMapping("/spec/{api-id}")
     @Operation(summary = "Спецификация API по id в таблице mapic.api",
             description = "Возвращает строковое представление спецификации (например OpenAPI в текстовом виде).")
+    @ApiResponse(responseCode = "200", description = "Текст спецификации",
+            content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                    schema = @Schema(type = "string")))
     public ResponseEntity<String> getMapicApi(@Parameter(description = "Первичный ключ записи mapic.api") @PathVariable("api-id") Integer apiId) {
         return ResponseEntity.status(HttpStatus.OK).body(mapicService.getMapicApi(apiId));
     }

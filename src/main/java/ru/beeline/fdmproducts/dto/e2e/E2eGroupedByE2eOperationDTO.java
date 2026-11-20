@@ -23,6 +23,8 @@ public class E2eGroupedByE2eOperationDTO {
     private Integer id;
     private Integer interfaceId;
     private Integer connectionOperationId;
+    private Integer connectionOperationDevId;
+    private Integer connectionOperationDesignId;
     private String name;
     private String context;
     private String description;
@@ -37,4 +39,6 @@ public class E2eGroupedByE2eOperationDTO {
     private LocalDateTime updatedDate;
     private LocalDateTime deletedDate;
     private OperationWithTechCapabilityDTO archOperation;
+    private OperationWithTechCapabilityDTO archOperationDev;
+    private OperationWithTechCapabilityDTO archOperationDesign;
 }

@@ -24,4 +24,6 @@ public class E2eV2DiscoveredOperationCatalogItemDTO {
     private String source;
     private SlaV2DTO sla;
     private E2eV2ConnectedOperationDTO operation;
+    private E2eV2ConnectedOperationDTO operationDev;
+    private E2eV2ConnectedOperationDTO operationDesign;
 }

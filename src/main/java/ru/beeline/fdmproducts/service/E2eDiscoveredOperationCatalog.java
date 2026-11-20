@@ -33,12 +33,6 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-/**
- * Справочник discoveredOperations дерева e2e (GET /api/v2/e2e/{code} и GET /api/v3/e2e/{code}): карточка
- * обнаруженного метода и вложенная операция архитектуры по connection_operation_id со sla, interface и container.
- * product.operation, sla, interface и containers_product читаются по одному запросу на непустой набор id;
- * удалённые строки не отбрасываются. Один connection_operation_id — один и тот же вложенный объект.
- */
 @Component
 @RequiredArgsConstructor
 public class E2eDiscoveredOperationCatalog {
@@ -48,14 +42,15 @@ public class E2eDiscoveredOperationCatalog {
     private final InterfaceRepository interfaceRepository;
     private final ContainerRepository containerRepository;
 
-    /** Карточки в порядке orderedIds; id без строки discovered_operation пропускаются. */
     public List<E2eV2DiscoveredOperationCatalogItemDTO> build(Collection<Integer> orderedIds,
                                                               List<DiscoveredOperationProjection> projections) {
         List<DiscoveredOperationProjection> rows = projections.stream().filter(Objects::nonNull).toList();
-        Set<Integer> connectionOperationIds = rows.stream()
-                .map(DiscoveredOperationProjection::getConnectionOperationId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Integer> connectionOperationIds = new LinkedHashSet<>();
+        for (DiscoveredOperationProjection row : rows) {
+            addConnectionId(connectionOperationIds, row.getConnectionOperationId());
+            addConnectionId(connectionOperationIds, row.getConnectionOperationDevId());
+            addConnectionId(connectionOperationIds, row.getConnectionOperationDesignId());
+        }
         Map<Integer, E2eV2ConnectedOperationDTO> connectedById = loadConnectedOperations(connectionOperationIds);
 
         Map<Integer, E2eV2DiscoveredOperationCatalogItemDTO> catalogById = rows.stream()
@@ -168,9 +163,6 @@ public class E2eDiscoveredOperationCatalog {
     private static E2eV2DiscoveredOperationCatalogItemDTO mapItem(DiscoveredOperationProjection projection,
                                                                   Map<Integer, E2eV2ConnectedOperationDTO> connectedById) {
         boolean hasSla = projection.getRps() != null || projection.getLatency() != null || projection.getErrorRate() != null;
-        E2eV2ConnectedOperationDTO connected = projection.getConnectionOperationId() == null
-                ? null
-                : connectedById.get(projection.getConnectionOperationId());
         return E2eV2DiscoveredOperationCatalogItemDTO.builder()
                 .id(projection.getOpId())
                 .name(projection.getOpName())
@@ -183,7 +175,23 @@ public class E2eDiscoveredOperationCatalog {
                         .latency(projection.getLatency())
                         .errorRate(projection.getErrorRate())
                         .build() : null)
-                .operation(connected)
+                .operation(connectedOf(projection.getConnectionOperationId(), connectedById))
+                .operationDev(connectedOf(projection.getConnectionOperationDevId(), connectedById))
+                .operationDesign(connectedOf(projection.getConnectionOperationDesignId(), connectedById))
                 .build();
+    }
+
+    private static E2eV2ConnectedOperationDTO connectedOf(Integer connectionOperationId,
+                                                          Map<Integer, E2eV2ConnectedOperationDTO> connectedById) {
+        if (connectionOperationId == null) {
+            return null;
+        }
+        return connectedById.get(connectionOperationId);
+    }
+
+    private static void addConnectionId(Set<Integer> connectionIds, Integer connectionOperationId) {
+        if (connectionOperationId != null) {
+            connectionIds.add(connectionOperationId);
+        }
     }
 }

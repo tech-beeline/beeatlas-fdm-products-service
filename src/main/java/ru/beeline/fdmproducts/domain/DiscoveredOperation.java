@@ -41,6 +41,12 @@ public class DiscoveredOperation {
     @Column(name = "connection_operation_id")
     private Integer connectionOperationId;
 
+    @Column(name = "connection_operation_dev_id")
+    private Integer connectionOperationDevId;
+
+    @Column(name = "connection_operation_design_id")
+    private Integer connectionOperationDesignId;
+
     private String name;
 
     private String context;

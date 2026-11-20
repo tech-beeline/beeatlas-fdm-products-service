@@ -13,13 +13,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import ru.beeline.fdmproducts.annotation.ApiErrorCodes;
-import ru.beeline.fdmproducts.dto.ErrorMessageDTO;
 import ru.beeline.fdmproducts.service.PatternProductService;
 
 @RestController
@@ -39,6 +39,11 @@ public class PatternProductController {
                     Ровно один из параметров id, alias или api-key обязателен. По продукту находятся связанные \
                     требования NFR; возвращаются id паттернов, в которых покрыты все эти требования. \
                     Пустой массив — если у продукта нет подходящих NFR или паттернов.""")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Список id паттернов",
+                    content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            array = @ArraySchema(schema = @Schema(implementation = Integer.class))))
+    })
     public ResponseEntity<?> getPatternIdsByProduct(
             @Parameter(description = "Числовой id продукта") @RequestParam(required = false) Integer id,
             @Parameter(description = "Alias (код) продукта") @RequestParam(required = false) String alias,

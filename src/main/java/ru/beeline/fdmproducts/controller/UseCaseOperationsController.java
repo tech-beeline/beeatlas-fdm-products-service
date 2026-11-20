@@ -6,6 +6,7 @@ package ru.beeline.fdmproducts.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -36,12 +37,14 @@ public class UseCaseOperationsController {
                     + "В ответе — discoveredOperationId.")
     @ApiResponse(responseCode = "200", description = "Состав сохранён",
             content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE,
-                    schema = @Schema(implementation = UseCaseDiscoveredInterfaceResultDTO.class)))
+                    array = @ArraySchema(schema = @Schema(implementation = UseCaseDiscoveredInterfaceResultDTO.class))))
     public ResponseEntity<List<UseCaseDiscoveredInterfaceResultDTO>> putUseCaseOperations(
             @Parameter(description = "Идентификатор use case в сервисе project (обязательное, целое положительное)")
             @RequestParam(name = "use-case-id", required = false) String useCaseId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(required = true,
-                    description = "Массив интерфейсов с методами")
+                    description = "Массив интерфейсов с методами",
+                    content = @Content(array = @ArraySchema(
+                            schema = @Schema(implementation = UseCaseDiscoveredInterfaceDTO.class))))
             @RequestBody(required = false) List<UseCaseDiscoveredInterfaceDTO> interfaces) {
         return ResponseEntity.ok(useCaseDiscoveredInterfaceService.syncUseCaseOperations(useCaseId, interfaces));
     }

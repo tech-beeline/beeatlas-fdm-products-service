@@ -20,6 +20,24 @@ import java.util.Optional;
 
 @Repository
 public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredOperation, Integer> {
+
+    /**
+     * Атрибут связи discovered-операции ветки {@code :branch} — main, develop или design, как
+     * {@link ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch#getBranchName()}.
+     */
+    String BRANCH_CONNECTION_OPERATION = "CASE :branch "
+            + "WHEN 'main' THEN connection_operation_id "
+            + "WHEN 'develop' THEN connection_operation_dev_id "
+            + "WHEN 'design' THEN connection_operation_design_id END";
+
+    /** SET: обнуляет атрибут операции ветки {@code :branch}, атрибуты двух других веток не меняются. */
+    String CLEAR_BRANCH_CONNECTION_OPERATION = "connection_operation_id = "
+            + "CASE WHEN :branch = 'main' THEN NULL ELSE connection_operation_id END, "
+            + "connection_operation_dev_id = "
+            + "CASE WHEN :branch = 'develop' THEN NULL ELSE connection_operation_dev_id END, "
+            + "connection_operation_design_id = "
+            + "CASE WHEN :branch = 'design' THEN NULL ELSE connection_operation_design_id END";
+
     Optional<DiscoveredOperation> findByInterfaceIdAndNameAndTypeAndDeletedDateIsNull(Integer interfaceId,
                                                                                       String name,
                                                                                       String type);
@@ -39,7 +57,9 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
                 do.rps AS rps,
                 do.latency AS latency,
                 do.errorRate AS errorRate,
-                do.connectionOperationId AS connectionOperationId
+                do.connectionOperationId AS connectionOperationId,
+                do.connectionOperationDevId AS connectionOperationDevId,
+                do.connectionOperationDesignId AS connectionOperationDesignId
             FROM DiscoveredOperation do
             JOIN do.discoveredInterface di
             JOIN di.product p
@@ -62,7 +82,9 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
                 do.rps AS rps,
                 do.latency AS latency,
                 do.errorRate AS errorRate,
-                do.connectionOperationId AS connectionOperationId
+                do.connectionOperationId AS connectionOperationId,
+                do.connectionOperationDevId AS connectionOperationDevId,
+                do.connectionOperationDesignId AS connectionOperationDesignId
             FROM DiscoveredOperation do
             LEFT JOIN do.discoveredInterface di
             LEFT JOIN di.product p
@@ -81,36 +103,39 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     /** Включая soft-deleted: синхронизация состава операций интерфейса оживляет удалённые ранее. */
     List<DiscoveredOperation> findAllByInterfaceId(Integer interfaceId);
 
+    /** Снимает связь ветки {@code branch} с операциями контейнера entityId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
-            "WHERE connection_operation_id IN (" +
+    @Query(value = "UPDATE product.discovered_operation SET " + CLEAR_BRANCH_CONNECTION_OPERATION + " " +
+            "WHERE " + BRANCH_CONNECTION_OPERATION + " IN (" +
             "  SELECT o.id FROM product.operation o " +
             "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.container_id = :entityId)", nativeQuery = true)
-    int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId);
+    int clearConnectionOperationIdByEntityId(@Param("entityId") Integer entityId, @Param("branch") String branch);
 
+    /** Снимает связь ветки {@code branch} с операциями интерфейса interfaceId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
-            "WHERE connection_operation_id IN (" +
+    @Query(value = "UPDATE product.discovered_operation SET " + CLEAR_BRANCH_CONNECTION_OPERATION + " " +
+            "WHERE " + BRANCH_CONNECTION_OPERATION + " IN (" +
             "  SELECT o.id FROM product.operation o " +
             "  JOIN product.interface i ON o.interface_id = i.id " +
             "  WHERE i.id = :interfaceId)", nativeQuery = true)
-    int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId);
+    int clearConnectionOperationIdByInterfaceId(@Param("interfaceId") Integer interfaceId, @Param("branch") String branch);
 
     @Modifying
     @Transactional
     @Query(value = "UPDATE product.discovered_operation " +
-            "SET connection_operation_id = NULL " +
+            "SET connection_operation_id = NULL, connection_operation_dev_id = NULL, connection_operation_design_id = NULL " +
             "WHERE interface_id = :interfaceId", nativeQuery = true)
     void clearConnectionOperationIdByDiscoveredInterfaceId(@Param("interfaceId") Integer interfaceId);
 
+    /** Снимает связь ветки {@code branch} с операцией operationId; атрибуты других веток остаются. */
     @Modifying
     @Transactional
-    @Query(value = "UPDATE product.discovered_operation SET connection_operation_id = NULL " +
-            "WHERE connection_operation_id = :operationId", nativeQuery = true)
-    int clearConnectionOperationIdByOperationId(@Param("operationId") Integer operationId);
+    @Query(value = "UPDATE product.discovered_operation SET " + CLEAR_BRANCH_CONNECTION_OPERATION + " " +
+            "WHERE " + BRANCH_CONNECTION_OPERATION + " = :operationId", nativeQuery = true)
+    int clearConnectionOperationIdByOperationId(@Param("operationId") Integer operationId, @Param("branch") String branch);
 
     @Query("SELECT do FROM DiscoveredOperation do "
             + "WHERE do.interfaceId = :interfaceId "
@@ -148,7 +173,9 @@ public interface DiscoveredOperationRepository extends JpaRepository<DiscoveredO
     @Query("DELETE FROM DiscoveredOperation do WHERE do.id IN :ids")
     void deleteByIdIn(@Param("ids") List<Integer> ids);
 
-    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds")
+    @Query("SELECT do.id FROM DiscoveredOperation do WHERE do.connectionOperationId IN :operationIds "
+            + "OR do.connectionOperationDevId IN :operationIds "
+            + "OR do.connectionOperationDesignId IN :operationIds")
     List<Integer> findIdsByOperationIds(@Param("operationIds") List<Integer> operationIds);
 
     @Modifying

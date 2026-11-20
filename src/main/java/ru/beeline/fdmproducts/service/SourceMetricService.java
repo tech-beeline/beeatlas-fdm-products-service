@@ -5,14 +5,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.beeline.fdmproducts.domain.ContainerProduct;
+import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.domain.Interface;
+import ru.beeline.fdmproducts.domain.Product;
 import ru.beeline.fdmproducts.domain.ProductBranch;
 import ru.beeline.fdmproducts.dto.ContainerMetricDto;
+import ru.beeline.fdmproducts.dto.DiscoveredInterfaceMetricDto;
 import ru.beeline.fdmproducts.dto.InterfaceMetricDto;
 import ru.beeline.fdmproducts.dto.ProductMetricDto;
 import ru.beeline.fdmproducts.dto.SourceMetricDto;
 import ru.beeline.fdmproducts.exception.EntityNotFoundException;
 import ru.beeline.fdmproducts.repository.ContainerRepository;
+import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
 import ru.beeline.fdmproducts.repository.InterfaceRepository;
 import ru.beeline.fdmproducts.repository.ProductRepository;
 
@@ -31,8 +35,12 @@ public class SourceMetricService {
     @Autowired
     private InterfaceRepository interfaceRepository;
 
+    @Autowired
+    private DiscoveredInterfaceRepository discoveredInterfaceRepository;
+
     public SourceMetricDto getAllMetrics() {
-        return SourceMetricDto.builder()
+        log.debug("SourceMetricService.getAllMetrics — выборка сущностей с непустым source_metric");
+        SourceMetricDto result = SourceMetricDto.builder()
                 .products(productRepository.findAllBySourceMetricIsNotNull()
                         .stream()
                         .map(product -> ProductMetricDto.builder()
@@ -48,7 +56,16 @@ public class SourceMetricService {
                         .stream()
                         .map(this::toInterfaceMetricDto)
                         .collect(Collectors.toUnmodifiableList()))
+                .discoveredInterfaces(discoveredInterfaceRepository
+                        .findAllBySourceMetricIsNotNullAndDeletedDateIsNull()
+                        .stream()
+                        .map(this::toDiscoveredInterfaceMetricDto)
+                        .collect(Collectors.toUnmodifiableList()))
                 .build();
+        log.debug("SourceMetricService.getAllMetrics — собрано products={}, containers={}, interfaces={}, discoveredInterfaces={}",
+                result.getProducts().size(), result.getContainers().size(), result.getInterfaces().size(),
+                result.getDiscoveredInterfaces().size());
+        return result;
     }
 
     private ContainerMetricDto toContainerMetricDto(ContainerProduct container) {
@@ -68,6 +85,18 @@ public class SourceMetricService {
                 .containerCode(container != null ? container.getCode() : null)
                 .productAlias(container != null ? resolveProductAlias(container.getProductBranch()) : null)
                 .sourceMetric(anInterface.getSourceMetric())
+                .build();
+    }
+
+    private DiscoveredInterfaceMetricDto toDiscoveredInterfaceMetricDto(DiscoveredInterface discoveredInterface) {
+        Product product = discoveredInterface.getProduct();
+        return DiscoveredInterfaceMetricDto.builder()
+                .id(discoveredInterface.getId())
+                .externalId(discoveredInterface.getExternalId())
+                .name(discoveredInterface.getName())
+                .source(discoveredInterface.getSource())
+                .productAlias(product != null ? product.getAlias() : null)
+                .sourceMetric(discoveredInterface.getSourceMetric())
                 .build();
     }
 
@@ -94,6 +123,11 @@ public class SourceMetricService {
             case "interface":
                 interfaceRepository.findById(id.intValue()).orElseThrow(() -> new EntityNotFoundException("Ресурс не найден"));
                 interfaceRepository.updateSourceMetricById(id.intValue(), sourceMetric);
+                break;
+            case "discovered-interface":
+                discoveredInterfaceRepository.findById(id.intValue())
+                        .orElseThrow(() -> new EntityNotFoundException("Ресурс не найден"));
+                discoveredInterfaceRepository.updateSourceMetricById(id.intValue(), sourceMetric);
                 break;
             default:
                 throw new IllegalArgumentException("Неверные входные данные: " + entity);

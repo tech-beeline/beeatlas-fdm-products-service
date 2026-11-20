@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.beeline.fdmproducts.domain.DiscoveredConnectionBranch;
 import ru.beeline.fdmproducts.domain.DiscoveredInterface;
 import ru.beeline.fdmproducts.dto.ConnectionRequestDTO;
 import ru.beeline.fdmproducts.repository.DiscoveredInterfaceRepository;
@@ -42,22 +43,30 @@ public class InterfaceService {
         DiscoveredInterface discoveredInterface = discoveredInterfaceRepository.findById(mapicInterfaceId)
                 .orElseThrow(() -> new IllegalArgumentException("DiscoveredInterface отсутствует в БД"));
 
+        DiscoveredConnectionBranch branch = null;
         if (archInterfaceId != null) {
             interfaceRepository.findById(archInterfaceId)
                     .orElseThrow(() -> new IllegalArgumentException("Interface отсутствует в БД"));
-            if (!productBranchService.isInterfaceInDefaultBranch(archInterfaceId)) {
-                throw new IllegalArgumentException("Сопоставление возможно только с интерфейсом ветки main");
-            }
+            branch = productBranchService.findConnectionBranchByInterfaceId(archInterfaceId)
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "Сопоставление возможно только с интерфейсом веток main, develop или design"));
         }
 
         LocalDateTime now = LocalDateTime.now();
-        discoveredInterface.setConnectionInterfaceId(archInterfaceId);
         discoveredInterface.setUpdatedDate(now);
 
-        if (archInterfaceId != null) {
-            discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(archInterfaceId, mapicInterfaceId);
+        if (branch != null) {
+            // Привязка пишется в атрибут ветки arch-интерфейса; связи двух других веток не меняются.
+            branch.setConnectionInterfaceId(discoveredInterface, archInterfaceId);
+            discoveredInterfaceRepository.clearConnectionInterfaceIdExcept(archInterfaceId, mapicInterfaceId,
+                    branch.getBranchName());
 
         } else {
+            // Снятие очищает все три ветки: иначе связи develop и design остаются, и автосопоставление
+            // этот discovered-интерфейс больше не берёт.
+            for (DiscoveredConnectionBranch connectionBranch : DiscoveredConnectionBranch.values()) {
+                connectionBranch.setConnectionInterfaceId(discoveredInterface, null);
+            }
             discoveredOperationRepository.clearConnectionOperationIdByDiscoveredInterfaceId(mapicInterfaceId);
 
         }

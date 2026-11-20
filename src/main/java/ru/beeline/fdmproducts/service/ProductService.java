@@ -256,7 +256,8 @@ public class ProductService {
     public void createOrUpdate(ProductPutDto productPutDto, String code) {
         validateProductPutDto(productPutDto);
         Product product = productRepository.findByAliasCaseInsensitive(code);
-        if (product == null) {
+        boolean created = product == null;
+        if (created) {
             product = new Product();
             product.setAlias(code);
         }
@@ -282,6 +283,12 @@ public class ProductService {
             product.setStructurizrApiUrl(productPutDto.getStructurizrApiUrl());
         }
         productRepository.save(product);
+        if (created) {
+            productBranchRepository.save(ProductBranch.builder()
+                    .alias(code)
+                    .branchName(BRANCH_MAIN)
+                    .build());
+        }
     }
 
     public void patchProduct(ProductPutDto productPutDto, String code) {
@@ -299,6 +306,7 @@ public class ProductService {
     }
 
     public void updateProduct(PutUpdateProductDTO putUpdateProductDTO) {
+        validatePutUpdateProductDto(putUpdateProductDTO);
         Product product = productRepository.findByAliasCaseInsensitive(putUpdateProductDTO.getAlias());
         if (product == null) {
             product = Product.builder()
@@ -461,12 +469,20 @@ public class ProductService {
     }
 
     public void validateProductPutDto(ProductPutDto productPutDto) {
-        StringBuilder errMsg = new StringBuilder();
-        if (productPutDto.getName() == null || productPutDto.getName().equals("")) {
-            errMsg.append("409 Ошибка валидации тела запроса: Отсутствует обязательное поле name");
+        if (productPutDto.getName() == null || productPutDto.getName().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле name");
         }
-        if (!errMsg.toString().isEmpty()) {
-            throw new ValidationException(errMsg.toString());
+    }
+
+    public void validatePutUpdateProductDto(PutUpdateProductDTO putUpdateProductDTO) {
+        if (putUpdateProductDTO.getAlias() == null || putUpdateProductDTO.getAlias().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле alias");
+        }
+        if (putUpdateProductDTO.getName() == null || putUpdateProductDTO.getName().isEmpty()) {
+            throw new IllegalArgumentException(
+                    "Ошибка валидации тела запроса: Отсутствует обязательное поле name");
         }
     }
 
@@ -1612,13 +1628,7 @@ public class ProductService {
                 : discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(discoveredInterfaceIds);
         Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId = allDiscoveredOperations.stream()
                 .collect(Collectors.groupingBy(DiscoveredOperation::getInterfaceId));
-        List<Integer> connectionOperationIds = allDiscoveredOperations.stream()
-                .map(DiscoveredOperation::getConnectionOperationId)
-                .filter(Objects::nonNull)
-                .distinct()
-                .collect(Collectors.toList());
-        Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
-                .collect(Collectors.toMap(Operation::getId, Function.identity()));
+        Map<Integer, Operation> operationsById = loadConnectedOperationsById(allDiscoveredOperations);
         return buildProductMapicInterfaceDTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById);
     }
 
@@ -1647,16 +1657,33 @@ public class ProductService {
                 : discoveredOperationRepository.findAllByInterfaceIdInAndDeletedDateIsNull(discoveredInterfaceIds);
         Map<Integer, List<DiscoveredOperation>> discoveredOperationsByInterfaceId = allDiscoveredOperations.stream()
                 .collect(Collectors.groupingBy(DiscoveredOperation::getInterfaceId));
-        List<Integer> connectionOperationIds = allDiscoveredOperations.stream()
+        Map<Integer, Operation> operationsById = loadConnectedOperationsById(allDiscoveredOperations);
+        List<Operation> mainOperations = allDiscoveredOperations.stream()
                 .map(DiscoveredOperation::getConnectionOperationId)
+                .filter(Objects::nonNull)
+                .map(operationsById::get)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.loadOrEmpty(mainOperations);
+        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById,
+                techCapabilities);
+    }
+
+    private Map<Integer, Operation> loadConnectedOperationsById(List<DiscoveredOperation> discoveredOperations) {
+        List<Integer> connectionOperationIds = discoveredOperations.stream()
+                .flatMap(op -> Stream.of(
+                        op.getConnectionOperationId(),
+                        op.getConnectionOperationDevId(),
+                        op.getConnectionOperationDesignId()))
                 .filter(Objects::nonNull)
                 .distinct()
                 .collect(Collectors.toList());
-        Map<Integer, Operation> operationsById = operationRepository.findAllById(connectionOperationIds).stream()
+        if (connectionOperationIds.isEmpty()) {
+            return Collections.emptyMap();
+        }
+        return operationRepository.findAllById(connectionOperationIds).stream()
                 .collect(Collectors.toMap(Operation::getId, Function.identity()));
-        Map<Integer, TcDTO> techCapabilities = techCapabilityResolver.loadOrEmpty(operationsById.values());
-        return buildProductMapicInterfaceV2DTOs(discoveredInterfaces, discoveredOperationsByInterfaceId, operationsById,
-                techCapabilities);
     }
 
     private List<ProductMapicInterfaceV2DTO> buildProductMapicInterfaceV2DTOs(List<DiscoveredInterface> discoveredInterfaces,
@@ -1672,14 +1699,16 @@ public class ProductService {
                     }
                     List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
                             .map(discoveredOperation -> {
-                                Operation operation = discoveredOperation.getConnectionOperationId() != null
-                                        ? operationsById.get(discoveredOperation.getConnectionOperationId())
-                                        : null;
-                                ConnectOperationDTO operationDto =
-                                        InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
+                                Operation mainOperation = operationOf(discoveredOperation.getConnectionOperationId(),
+                                        operationsById);
+                                ConnectOperationDTO operationDto = InterfaceMapper.createConnectOperationDTO(
+                                        mainOperation,
+                                        operationOf(discoveredOperation.getConnectionOperationDevId(), operationsById),
+                                        operationOf(discoveredOperation.getConnectionOperationDesignId(), operationsById),
+                                        discoveredOperation);
                                 operationDto.setIsPlanned(discoveredOperation.getIsPlanned());
                                 operationDto.setTechCapability(OperationTechCapabilityResolver.of(discoveredOperation,
-                                        operation, techCapabilities));
+                                        mainOperation, techCapabilities));
                                 return operationDto;
                             })
                             .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
@@ -1703,17 +1732,11 @@ public class ProductService {
                         dto.setContextProvider(interfaceDiscoveredOperations.get(0).getContext());
                     }
                     List<ConnectOperationDTO> operationDTOs = interfaceDiscoveredOperations.stream()
-                            .map(discoveredOperation -> {
-                                log.info("connection getConnectionOperationId = {}", discoveredOperation.getConnectionOperationId());
-                                Operation operation = null;
-                                if (discoveredOperation.getConnectionOperationId() != null) {
-                                    operation = operationsById.get(discoveredOperation.getConnectionOperationId());
-                                    if (operation != null) {
-                                        log.info("operationId = {}", operation.getId());
-                                    }
-                                }
-                                return InterfaceMapper.createConnectOperationDTO(operation, discoveredOperation);
-                            })
+                            .map(discoveredOperation -> InterfaceMapper.createConnectOperationDTO(
+                                    operationOf(discoveredOperation.getConnectionOperationId(), operationsById),
+                                    operationOf(discoveredOperation.getConnectionOperationDevId(), operationsById),
+                                    operationOf(discoveredOperation.getConnectionOperationDesignId(), operationsById),
+                                    discoveredOperation))
                             .sorted(Comparator.comparing(ConnectOperationDTO::getCreateDate).reversed())
                             .collect(Collectors.toList());
                     dto.setOperations(operationDTOs);
@@ -1722,6 +1745,13 @@ public class ProductService {
                     return dto;
                 }).sorted(Comparator.comparing(ProductMapicInterfaceDTO::getCreateDate).reversed())
                 .collect(Collectors.toList());
+    }
+
+    private static Operation operationOf(Integer connectionOperationId, Map<Integer, Operation> operationsById) {
+        if (connectionOperationId == null) {
+            return null;
+        }
+        return operationsById.get(connectionOperationId);
     }
 
     public List<ProductInterfaceDTO> getProductsFromStructurizr(String cmdb, String branch) {
@@ -2266,15 +2296,21 @@ public class ProductService {
                 log.info("Удаление discovered_interface для интерфейсов: {} шт", interfaceIds.size());
                 List<Integer> discoveredInterfaceIds = discoveredInterfaceRepository.findIdsByInterfaceIds(interfaceIds);
                 List<Integer> operationIds = operationRepository.findIdsByInterfaceIds(interfaceIds);
-                List<Integer> discoveredOperationIds = new ArrayList<>();
+                Set<Integer> discoveredOperationIds = new LinkedHashSet<>();
                 if (!discoveredInterfaceIds.isEmpty()) {
-                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(discoveredInterfaceIds));
+                    discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByDiscoveredInterfaceIds(
+                            discoveredInterfaceIds));
+                }
+                if (!operationIds.isEmpty()) {
                     discoveredOperationIds.addAll(discoveredOperationRepository.findIdsByOperationIds(operationIds));
-                    if (!discoveredOperationIds.isEmpty()) {
-                        discoveredParameterRepository.deleteByDiscoveredOperationIdIn(discoveredOperationIds);
-                        discoveredOperationRepository.deleteByIdIn(discoveredOperationIds);
-                        log.info("Удалено discovered_operation: {} записей", discoveredOperationIds.size());
-                    }
+                }
+                if (!discoveredOperationIds.isEmpty()) {
+                    List<Integer> ids = new ArrayList<>(discoveredOperationIds);
+                    discoveredParameterRepository.deleteByDiscoveredOperationIdIn(ids);
+                    discoveredOperationRepository.deleteByIdIn(ids);
+                    log.info("Удалено discovered_operation: {} записей", ids.size());
+                }
+                if (!discoveredInterfaceIds.isEmpty()) {
                     discoveredInterfaceRepository.deleteByIdIn(discoveredInterfaceIds);
                     log.info("Удалено discovered_interface: {} записей", discoveredInterfaceIds.size());
                 }
@@ -2295,6 +2331,8 @@ public class ProductService {
             productBranchRepository.deleteByAlias(product.getAlias());
             log.info("Удалено product_branch: {} записей для alias={}", branchIds.size(), product.getAlias());
         }
+        int detachedDiscoveredInterfaces = discoveredInterfaceRepository.clearProductId(id);
+        log.info("Снят product_id у discovered_interface: {} записей", detachedDiscoveredInterfaces);
         productRepository.deleteById(id);
         log.info("Продукт id: {} успешно удален", id);
     }

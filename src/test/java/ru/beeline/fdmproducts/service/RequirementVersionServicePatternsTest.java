@@ -10,7 +10,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
-import ru.beeline.fdmproducts.client.BpmClient;
 import ru.beeline.fdmproducts.client.FfManagerClient;
 import ru.beeline.fdmproducts.client.TechradarClient;
 import ru.beeline.fdmproducts.domain.NonFunctionalRequirementEnum;
@@ -48,8 +47,6 @@ class RequirementVersionServicePatternsTest {
     private TechradarClient techradarClient;
     @Mock
     private FfManagerClient ffManagerClient;
-    @Mock
-    private BpmClient bpmClient;
     @Mock
     private ChapterRepository chapterRepository;
     @Mock

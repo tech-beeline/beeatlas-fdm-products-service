@@ -40,6 +40,7 @@ public class BpmClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("businessKey", String.valueOf(nfrId));
+        body.put("isSync", false);
         body.put("variables", Map.of(
                 "nfrId", Map.of("value", nfrId, "type", "Integer"),
                 "rule", ruleVariable(rule != null ? rule : List.of())
